@@ -191,7 +191,21 @@ await world.run("python3", ["tools/canon_lint.py"], { timeoutMs: 60000 });
 const coverage = await world.run("python3", ["tools/coverage_check.py"], { timeoutMs: 60000 });
 await world.run("cmake", ["-S", "kernel", "-B", "kernel/build", "-DCMAKE_BUILD_TYPE=Release"], { timeoutMs: 120000 });
 const build = await world.run("cmake", ["--build", "kernel/build", "-j", "8"], { timeoutMs: 300000 });
-const test = await world.run("ctest", ["--test-dir", "kernel/build", "--output-on-failure"], { timeoutMs: 300000 });
+let test = await world.run("ctest", ["--test-dir", "kernel/build", "--output-on-failure"], { timeoutMs: 300000 });
+// New canon can invalidate stale kernel tests (Wave-1 tests assumed empty
+// tables). Route failures to kernel repair agents instead of reporting RED.
+for (let round = 1; round <= 2 && test.exitCode !== 0; round++) {
+  log(`Kernel suite red after canon load (round ${round}); routing failures to repair agents`);
+  await agent(`kernel-fixer-${round}`).ask<string>(
+    `You are a repair agent for the schizo-game C++20 kernel (workspace root = repo root).\n\n` +
+    `New canon content was authored and the kernel suite went red. Failing output (tail):\n${test.stdout.slice(-6000)}\n\n` +
+    `These are usually stale Wave-1 test assumptions (e.g. 'the table is empty') that the new canon invalidated — fix the TEST to be canon-robust (compute expectations from the canon like the code does), never weaken the code's guarantees. Edit ONLY kernel/tests/*.cpp unless the failure is a genuine code bug; if it is, fix the module minimally per its frozen header.\n` +
+    `Then verify: cmake -S kernel -B kernel/build -DCMAKE_BUILD_TYPE=Release && cmake --build kernel/build -j 8 && ctest --test-dir kernel/build --output-on-failure\n\n` +
+    `Return a one-paragraph summary of what you changed.`,
+  );
+  await world.run("cmake", ["--build", "kernel/build", "-j", "8"], { timeoutMs: 300000 });
+  test = await world.run("ctest", ["--test-dir", "kernel/build", "--output-on-failure"], { timeoutMs: 300000 });
+}
 const suiteGreen = build.exitCode === 0 && test.exitCode === 0;
 await world.run("python3", ["tools/codex_gen.py"], { timeoutMs: 60000 });
 

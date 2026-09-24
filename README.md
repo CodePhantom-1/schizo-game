@@ -40,6 +40,8 @@ Where everything comes from:
 
 ## Changelog
 
+- **2026-09-25 — content storm integrated; database is alive.** 147 rows authored across items, foods, laws, customs, events, schedules and names (run `dwfrun-27338ee5`, seven GLM-5.3-Flash authors + reviewers). The kernel gate went red on stale Wave-1 test assumptions (empty-table assertions) — fixed canon-robustly, 12/12 suites green with the new canon loaded; the storm workflow now gates on the kernel suite too. Law severity grounded in the real codes (D-013: Hammurabi/Eshnunna/Ur-Nammu penalties; the retune lever is the designer's). Items now sit on real shelves: markets stock 24 goods at canon price bands.
+
 - **2026-09-24 — content storm launched; Phase 3 sequenced.** No UE5 on this machine (D-012c: designer action item — install needs Epic/GitHub access), so the seven-table content storm (items, foods, laws, customs, events, schedules, names) is pulled forward and is running on GLM-5.3-Flash (`tools/workflows/storm_canon_content.ts`). Content policy gains the `INVENTED` tag (D-012); the D-011 conventions became real columns (events.repeat, rites.purity_required, quests.deadline_days).
 
 - **2026-09-24 — Phase 2 begun.** **Wave 0 complete** (commit `adc8d9c`): the headless C++20 kernel scaffolded — common layer (Types, deterministic Rng, Db canon loader, Test harness), the Time spine implemented + tested, the integration seam (`Context.hpp`, fixed tick order), `World.hpp` contract, ten frozen module contracts. **Wave 1 running**: the fleet workflow (`tools/workflows/wave1_kernel_modules.ts`) fans out 8 GLM-5.3-Flash build agents (Economy, Population, Faction, Magic, Justice, Events, Property, Quests) → deterministic cmake+ctest gate → per-module contract reviews → fix pass → final gate.

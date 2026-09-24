@@ -79,22 +79,37 @@ bool state_bytes_equal(const EventsState& a, const EventsState& b) {
 
 }  // namespace
 
-// --- Wave 1 reality: the canon table is empty ------------------------------
+// --- the canon table is live now (content storm): test the machinery on it --
 
-static bool test_empty_canon_loads_zero_rules_and_fires_nothing() {
+static bool test_real_canon_rules_load_and_behave() {
     World w;
     w.db = Db::load("../db/canon");  // ctest runs from kernel/
-    SIM_CHECK_EQ(w.db.rows("events").size(), std::size_t{0});
-
     load_rules(w.ctx(), w.events);
-    SIM_CHECK_EQ(w.events.rules.size(), std::size_t{0});
+    // Every shippable (non-OPEN) row becomes a rule; OPEN rows stay dormant.
+    std::size_t shippable = 0;
+    for (const Row& r : w.db.rows("events"))
+        if (r.get("tag") != "OPEN") ++shippable;
+    SIM_CHECK(shippable > 0);
+    SIM_CHECK_EQ(w.events.rules.size(), shippable);
 
-    // Even a world on fire fires nothing: there are no rules to evaluate.
+    // The machinery holds with live rules: whatever fires, its rule exists,
+    // counts agree with the fired log, and fire-once rules never refire.
     w.facts.drought_stage = 5;
     w.facts.war_stage = 5;
-    tick_events(w.ctx(), w.events, 30);
-    SIM_CHECK(w.events.fired.empty());
-    SIM_CHECK(w.events.fire_count_by_rule.empty());
+    tick_events(w.ctx(), w.events, 10);
+    for (const TriggeredEvent& e : w.events.fired)
+        SIM_CHECK(w.db.has("events", e.rule_id));
+    for (const auto& [rule_id, count] : w.events.fire_count_by_rule) {
+        std::size_t seen = 0;
+        for (const TriggeredEvent& e : w.events.fired)
+            if (e.rule_id == rule_id) ++seen;
+        SIM_CHECK_EQ(seen, std::size_t(count));
+        const EventRule* rule = nullptr;
+        for (const EventRule& r : w.events.rules)
+            if (r.id == rule_id) rule = &r;
+        SIM_CHECK(rule != nullptr);
+        if (rule != nullptr && !rule->repeatable) SIM_CHECK_EQ(count, 1);
+    }
     return true;
 }
 
@@ -364,7 +379,7 @@ static bool test_tick_touches_only_the_events_state() {
     return true;
 }
 
-SIM_MAIN(test_empty_canon_loads_zero_rules_and_fires_nothing,
+SIM_MAIN(test_real_canon_rules_load_and_behave,
          test_load_rules_is_idempotent,
          test_load_rules_parses_rows_skips_open_and_reloads_clean,
          test_drought_and_war_gates,

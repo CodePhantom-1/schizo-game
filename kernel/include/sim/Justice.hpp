@@ -23,7 +23,9 @@ struct Crime {
     Id id;              // "crime_<n>" in sequence
     Id criminal;        // npc id or "player"
     Id law_row;         // laws.csv id (e.g. "theft"); "" = unspecified
-    Id crime_kind;      // coarse kind: theft/burglary/assault/murder/sorcery/sacrilege/oath_breaking
+    Id crime_kind;      // coarse kind (free-form; laws.csv ships rows for theft, burglary,
+                        // assault, murder, sorcery, sacrilege, oath_breaking, tomb_robbery,
+                        // fraud, harbouring_fugitive)
     DayNumber day = 0;
     Id witnessed_by;    // npc id, or "" when unwitnessed (evidence remains)
     bool atoned = false;

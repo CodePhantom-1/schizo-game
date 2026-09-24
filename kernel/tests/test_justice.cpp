@@ -11,6 +11,8 @@
 #include <filesystem>
 #include <fstream>
 #include <stdexcept>
+#include <cctype>
+#include <map>
 #include <string>
 
 using namespace sim;
@@ -132,13 +134,15 @@ static bool test_unwitnessed_crimes_stay_open_through_ticks() {
     return true;
 }
 
-static bool test_hearing_falls_back_to_compensation_on_real_canon() {
+static bool test_hearing_reads_the_real_theft_law() {
     const Db db = Db::load("../db/canon");
     // Guard against a wrong working directory masquerading as "laws is empty".
     SIM_CHECK_EQ(db.rows("deities").size(), std::size_t{16});
-    // Law content is not authored yet (Phase 5 storm): no usable rows exist.
-    SIM_CHECK(db.rows("laws").empty());
-    SIM_CHECK(!db.has("laws", "theft"));
+    // The storm authored real law rows: the hearing reads the theft row now.
+    SIM_CHECK(db.has("laws", "theft"));
+    const Row theft = *db.find("laws", "theft");
+    // Shipped law: OPEN rows cannot ship and must never decide a verdict.
+    SIM_CHECK(theft.get("tag") == "A" || theft.get("tag") == "CANON");
 
     CtxParts parts;
     parts.db = db;
@@ -147,8 +151,20 @@ static bool test_hearing_falls_back_to_compensation_on_real_canon() {
     JusticeState state;
     (void)report_crime(state, "npc_eshnunna_baker", "theft", "theft", 5, "guard_larsa");
     const Hearing h = hold_hearing(ctx, state, "crime_1");
-    // The fallback is the age's most common outcome (city-life §3.3).
-    SIM_CHECK_EQ(h.verdict, Id("compensation"));
+    // D-011 mapping: the first ';'-option of penalty_options decides. Compute
+    // it from the canon like the kernel does, instead of hardcoding content.
+    std::string first = theft.get("penalty_options");
+    const auto sep = first.find(';');
+    if (sep != std::string::npos) first = first.substr(0, sep);
+    // trim + lowercase, mirroring the kernel's own normalization
+    const auto issp = [](unsigned char c) { return c == ' ' || c == '\t' || c == '\r' || c == '\n'; };
+    while (!first.empty() && issp(static_cast<unsigned char>(first.front()))) first.erase(first.begin());
+    while (!first.empty() && issp(static_cast<unsigned char>(first.back()))) first.pop_back();
+    for (auto& c : first) c = static_cast<char>(::tolower(static_cast<unsigned char>(c)));
+    SIM_CHECK(!first.empty());
+    SIM_CHECK(first == "compensation" || first == "confiscation" || first == "debt_service" ||
+              first == "exile" || first == "death" || first == "dismissed");
+    SIM_CHECK_EQ(h.verdict, Id(first));
     // A verdict is an event with a day: the day being ticked, not the crime day.
     SIM_CHECK_EQ(h.day, DayNumber{10});
     SIM_CHECK_EQ(state.verdicts.size(), std::size_t{1});
@@ -272,14 +288,24 @@ static bool test_same_seed_produces_same_state_bytes() {
 
     // And the run itself did the expected thing (so the comparison is not
     // vacuous): crime_1 and crime_3 on the first tick, crime_4 on the second,
-    // crime_2 only once evidence is found. Every verdict is the fallback.
+    // crime_2 only once evidence is found. Each verdict is its law row's
+    // first option (D-011), read from the canon the same way the kernel reads
+    // it; the crime -> law_row mapping is this run's own setup above.
+    const Db canon_db = Db::load("../db/canon");
+    const std::map<Id, Id> law_row_by_crime = {
+        {Id("crime_1"), Id("theft")}, {Id("crime_2"), Id("burglary")},
+        {Id("crime_3"), Id("assault")}, {Id("crime_4"), Id("sorcery")}};
     SIM_CHECK_EQ(run_a.verdicts.size(), std::size_t{4});
     SIM_CHECK_EQ(run_a.verdicts[0].crime_id, Id("crime_1"));
     SIM_CHECK_EQ(run_a.verdicts[1].crime_id, Id("crime_3"));
     SIM_CHECK_EQ(run_a.verdicts[2].crime_id, Id("crime_4"));
     SIM_CHECK_EQ(run_a.verdicts[3].crime_id, Id("crime_2"));
     for (const Hearing& h : run_a.verdicts) {
-        SIM_CHECK_EQ(h.verdict, Id("compensation"));
+        const Row row = *canon_db.find("laws", law_row_by_crime.at(h.crime_id));
+        std::string first = row.get("penalty_options");
+        const auto sep = first.find(';');
+        if (sep != std::string::npos) first = first.substr(0, sep);
+        SIM_CHECK_EQ(h.verdict, Id(first));
         SIM_CHECK_EQ(h.day, DayNumber{10});
     }
     SIM_CHECK(run_a.open_crimes.empty());
@@ -289,7 +315,7 @@ static bool test_same_seed_produces_same_state_bytes() {
 
 SIM_MAIN(test_report_assigns_sequential_ids_and_find_crime,
          test_unwitnessed_crimes_stay_open_through_ticks,
-         test_hearing_falls_back_to_compensation_on_real_canon,
+         test_hearing_reads_the_real_theft_law,
          test_hearing_reads_law_rows,
          test_hearing_for_unknown_or_already_heard_crime_is_dismissed,
          test_tick_is_a_noop_when_nothing_is_awaiting_hearing,
