@@ -1,0 +1,13 @@
+{
+	"FileVersion": 3,
+	"FriendlyName": "SimRuntime",
+	"Description": "Binds the deterministic schizo-game world kernel (kernel/ — plain C++, CMake-built) to Unreal. PLACEHOLDER skeleton: authored before the editor was installed; expect bring-up fixes at Phase 3 (plan v2 §6).",
+	"Category": "Game",
+	"Modules": [
+		{
+			"Name": "SimRuntime",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}

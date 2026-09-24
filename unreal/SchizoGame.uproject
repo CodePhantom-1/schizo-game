@@ -1,0 +1,19 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "5.8",
+	"Category": "",
+	"Description": "SCHIZO GAME — the notes' world on the imported kernel. Working title (the real title is an open decision, game-design §11.1).",
+	"Modules": [
+		{
+			"Name": "SchizoGame",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "SimRuntime",
+			"Enabled": true
+		}
+	]
+}
