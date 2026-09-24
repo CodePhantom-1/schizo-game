@@ -13,7 +13,7 @@ market_stalls_set_out,market trader,8,stalls set out on the square; grain and da
 market_peaks_in_the_morning,market trader,9,the market peaks in the morning; the best trade is done before the heat thins the crowd,,INVENTED,INVENTED (D-012 authored glue)
 lighthouse_harbor_watch,lighthouse keeper,9,guides the first ships past the Great Lighthouse; cargo measured and harbor dues taken in barley and silver by weight,,INVENTED,INVENTED (D-012 authored glue); anchored on wb §5; notes L52 (the Great Lighthouse)
 workshops_full_work,craftsman,10,wheels and looms and forges at full work through the mid-morning,,INVENTED,INVENTED (D-012 authored glue)
-midday_rest,workshops and households,12,midday rest; workshops shut and the streets empty through the worst heat; workers sleep and eat in the shade,summer,INVENTED,INVENTED (D-012 authored glue)
+midday_rest,workshops and households,12,midday rest; workshops shut and the streets empty through the worst heat; workers sleep and eat in the shade,,INVENTED,INVENTED (D-012 authored glue)
 cookshops_noon_meal,cook-shop keeper,13,serves the noon meal; day-laborers paid in bread and beer and barley,,INVENTED,INVENTED (D-012 authored glue)
 dockworkers_outbound_cargo,dockworker,15,outbound cargo carried down to the harbor for the evening tide,,INVENTED,INVENTED (D-012 authored glue)
 herds_home_before_dark,herdsman,17,brings the flocks back through the gate and counts them before dark,,INVENTED,INVENTED (D-012 authored glue)
