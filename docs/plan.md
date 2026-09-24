@@ -62,6 +62,8 @@ Repo structure (`docs/`, `db/{schema,canon,sources}`, `tools/`), the notes archi
 
 ## 5. Phase 2 — the world kernel (headless, engine-free) — the first fleet phase
 
+**Status: Wave 0 COMPLETE** (commit `adc8d9c`) — CMake build (C++20, zero deps), the common layer (Types, deterministic Rng, Db canon loader, Test harness), the **Time spine implemented and tested**, the integration seam (`Context.hpp`, fixed tick order), the `World.hpp` contract, and all ten module contracts frozen (`kernel/contracts/`). **Wave 1 RUNNING** — the fleet workflow (`tools/workflows/wave1_kernel_modules.ts`): 8 GLM-5.3-Flash builders → deterministic gate (cmake + ctest) → per-module contract reviews → fix pass → final gate.
+
 A plain, testable C++ library — no rendering, no UE dependency, runnable in a terminal.
 
 ```
