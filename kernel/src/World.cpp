@@ -1,0 +1,55 @@
+// World.cpp — Wave 2 integration: the deterministic daily tick (coordinator).
+// Tick order is fixed in Context.hpp; every module reads the other states as
+// of the same morning and writes only its own.
+#include "sim/World.hpp"
+
+namespace sim {
+
+void WorldState::init(const std::string& canon_dir, std::uint64_t world_seed) {
+    db = Db::load(canon_dir);
+    seed = world_seed;
+    rng = Rng(world_seed);
+    cal = Calendar{};  // default shape; month/season/festival names are OPEN canon
+    facts = WorldFacts{};
+    day = 1;
+
+    economy = EconomyState{};
+    population = PopulationState{};
+    faction = FactionState{};
+    magic = MagicState{};
+    justice = JusticeState{};
+    events = EventsState{};
+    property = PropertyState{};
+    quests = QuestState{};
+
+    WorldContext ctx = context();
+    for (const Row& city : db.rows("cities"))
+        seed_market(ctx, economy, city.at("id"));
+    seed_people(ctx, population);
+    load_rules(ctx, events);  // events.csv is canon-empty at Wave 1: zero rules
+    load_defs(ctx, quests);   // quests.csv likewise
+}
+
+void WorldState::advance_days(int days) {
+    for (int i = 0; i < days; ++i) {
+        const WorldContext ctx = context();
+        tick_economy(ctx, economy, 1);
+        tick_population(ctx, population, 1);
+        tick_faction(ctx, faction, 1);
+        // Magic has no tick: rites are performed by the engine layer through
+        // perform_rite; favour only moves when someone performs.
+        tick_justice(ctx, justice, 1);
+        tick_events(ctx, events, 1);
+        tick_property(ctx, property, 1);
+        tick_quests(ctx, quests, 1);
+        ++day;
+    }
+}
+
+WorldContext WorldState::context() {
+    return WorldContext{db,  rng,      day,      cal,      facts,
+                        economy, population, faction, magic,
+                        justice, events,     property, quests};
+}
+
+}  // namespace sim

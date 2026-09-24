@@ -4,6 +4,9 @@
 #include <stdexcept>
 
 namespace sim {
+namespace {
+const std::string kEmptyName;  // unnamed months/seasons are a canon gap, not an error
+}  // namespace
 
 Calendar::Calendar(const CalendarConfig& cfg) : cfg_(cfg) {
     if (cfg_.days_per_month <= 0 || cfg_.months_per_year <= 0)
@@ -46,7 +49,7 @@ int Calendar::day_of_year(DayNumber day) const {
 }
 
 const std::string& Calendar::season_id(DayNumber day) const {
-    if (cfg_.seasons.empty()) return empty_;
+    if (cfg_.seasons.empty()) return kEmptyName;
     const int doy = day_of_year(day);
     const SeasonDef* best = nullptr;
     for (const SeasonDef& s : cfg_.seasons)
@@ -56,7 +59,7 @@ const std::string& Calendar::season_id(DayNumber day) const {
 
 const std::string& Calendar::month_name(const Date& d) const {
     const std::size_t i = static_cast<std::size_t>(d.month - 1);
-    return i < cfg_.month_names.size() ? cfg_.month_names[i] : empty_;
+    return i < cfg_.month_names.size() ? cfg_.month_names[i] : kEmptyName;
 }
 
 bool Calendar::is_festival(DayNumber day) const {

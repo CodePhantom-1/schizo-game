@@ -42,7 +42,6 @@ public:
 
 private:
     CalendarConfig cfg_;
-    const std::string empty_;
 };
 
 }  // namespace sim

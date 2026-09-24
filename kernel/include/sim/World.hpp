@@ -34,8 +34,9 @@ struct WorldState {
     // Advances `days` days in fixed tick order (Context.hpp). Fully deterministic.
     void advance_days(int days);
 
-    // The context for the morning of the current day (used by the engine layer too).
-    WorldContext context() const;
+    // The context for the current morning (non-const: it exposes the world's
+    // rng so modules can draw). Used by the engine layer too.
+    WorldContext context();
 };
 
 }  // namespace sim

@@ -60,11 +60,9 @@ Locked as D-001…D-009 in [../DECISIONS.md](../DECISIONS.md): **UE5** · **map 
 
 Repo structure (`docs/`, `db/{schema,canon,sources}`, `tools/`), the notes archived verbatim at `db/sources/notes.md`, **29 canon tables (~95 rows) authored and green**, `canon_lint` + `coverage_check` (27/27 notes elements) + `codex_gen` working. The database is the product's backbone, as planned.
 
-## 5. Phase 2 — the world kernel (headless, engine-free) — the first fleet phase
+## 5. Phase 2 — the world kernel (headless, engine-free) — **COMPLETE** (2026-09-24)
 
-**Status: Wave 0 COMPLETE** (commit `adc8d9c`) — CMake build (C++20, zero deps), the common layer (Types, deterministic Rng, Db canon loader, Test harness), the **Time spine implemented and tested**, the integration seam (`Context.hpp`, fixed tick order), the `World.hpp` contract, and all ten module contracts frozen (`kernel/contracts/`). **Wave 1 RUNNING** — the fleet workflow (`tools/workflows/wave1_kernel_modules.ts`): 8 GLM-5.3-Flash builders → deterministic gate (cmake + ctest) → per-module contract reviews → fix pass → final gate.
-
-A plain, testable C++ library — no rendering, no UE dependency, runnable in a terminal.
+**Wave 0** (commit `adc8d9c`): scaffold + common layer + Time spine + ten frozen contracts. **Wave 1** (fleet run `dwfrun-07078046`, GLM-5.3-Flash): all eight modules built, reviewed, green — 32 open walls escalated and triaged (D-011), zero invented canon. **Wave 2** (coordinator): `WorldState::init/advance_days` wired in the fixed tick order; the DoD proven in `test_world.cpp` — **ten in-game years run headless and byte-deterministic; prices move with the drought; a rumour crosses the city in one hop; rites refuse the unknowing; a crime runs witness → hearing → verdict**. 12/12 suites green; lint + coverage green.
 
 ```
 kernel/

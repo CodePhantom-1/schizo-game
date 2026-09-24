@@ -7,7 +7,7 @@ Where everything comes from:
 - **Content — 100% the notes** ([docs/world-bible.md](docs/world-bible.md), archived verbatim at [db/sources/notes.md](db/sources/notes.md)): the world, the story, the factions, the cities, the pantheon, the magick, the endings, the tone. Nothing is invented and **nothing is imported from any other project — including no storyline**.
 - **Mechanics — imported systems** ([docs/mechanics.md](docs/mechanics.md)): the game's systems are carried unchanged from the earlier Age of Bronze blueprint ([../docs/](../docs/)) by the designer's instruction. **Systems only** — no story, setting, tone or content crosses over with them.
 
-> **Status: Phase 1 complete (foundation).** Phase 0 decisions locked (see [DECISIONS.md](DECISIONS.md)); the canon database is authored and green; next: **Phase 2 — the headless world kernel** ([docs/plan.md](docs/plan.md)). No engine project exists yet.
+> **Status: Phase 2 complete — the world kernel runs.** Phase 0 locked, Phase 1 foundation green, Phase 2 kernel complete (Wave 0 scaffold + Wave 1 fleet of 8 GLM-5.3-Flash module builders + Wave 2 integration; 12/12 test suites green; ten-year determinism proven). Next: Phase 3 — UE5 engine bring-up, and the Phase 5 canon content storms. No engine project exists yet.
 
 ## The blueprint set
 

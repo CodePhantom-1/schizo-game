@@ -22,6 +22,7 @@ struct WorldContext;  // defined in sim/Context.hpp (the seam — never included
 // Per-city book: what one silver item costs in one city's market.
 struct PriceBook {
     std::map<Id, Silver> silver_by_item;
+    bool operator==(const PriceBook&) const = default;  // determinism comparisons
 };
 
 struct EconomyState {
