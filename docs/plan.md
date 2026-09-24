@@ -94,6 +94,8 @@ kernel/
 
 No Unreal install exists on this machine; the install needs the designer's Epic/GitHub access (action item). The content storms (§8's pattern) are pulled forward while the engine is out — they are engine-independent and everything downstream consumes them.
 
+**When the engine lands, this phase resumes:** `unreal/Plugins/SimRuntime/` binds the kernel to UE (daily tick on the game clock, DataTables import from `db/canon/`) — serial, coordinator — then parallel build agents: `Player/` (first-person; the interaction verb set: touch, sit, eat, drink, carry, open, knock, pray, work) · `NPC/` (StateTree behaviour, Smart Object tasks, Mass crowds — L0/L1/L2) · `UI/` (diegetic: working scales, the drawn map, the codex) · `World/` (World Partition, PCG) · `Audio/`. **DoD:** walk a grey-box street at noon and midnight; doors open; a scheduled NPC does a full day's tasks; silver weighed on real scales; one readable tablet; day/night; save/load through the kernel snapshot.
+
 ## 7. Phase 4 — the vertical slice: "one street" → gate
 
 One district of the **City of the Moon** (D-005): market, temple front, houses, the gate. Content authored by **table storms**; assembly is the coordinator's, serial.
