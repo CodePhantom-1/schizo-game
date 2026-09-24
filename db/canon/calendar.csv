@@ -1,0 +1,5 @@
+id,subject,value,tag,source_ref
+months_count,months per year,(unwritten — INVENTED default shape: 12 months x 30 days),OPEN,notes (no calendar in the notes)
+month_names,the month names,(unwritten — INVENTED default: unnamed months 1..12),OPEN,notes (unwritten)
+season_names,the season names,(unwritten — INVENTED default: unnamed seasons),OPEN,notes (unwritten)
+festival_days,festival days,(unwritten — arrives with rites/festival content in later phases),OPEN,notes (unwritten)
