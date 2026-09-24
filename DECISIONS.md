@@ -13,5 +13,6 @@ One entry per decision. The build stops and asks before anything here gets contr
 | D-006 | 2026-09-24 | **Repo:** the blueprint folder renamed `schizo-game/`, git initialized, blueprint docs moved into `docs/`, the notes transcript archived verbatim at `db/sources/notes.md` as the primary source. | Phase 0 gate |
 | D-007 | 2026-09-24 | **Rank labels:** the imported 7-tier ladder (0 outsider → 6 king) keeps its structure with canon basis rows; the setting labels will be **drafted by the agent and approved by the designer** before Phase 3 (ranks.csv holds the OPEN slots). | plan.md §2 0.6 |
 | D-008 | 2026-09-24 | **Schema docs are generated** from the CSV headers (db/schema/*.md); the CSVs are the schema truth. | plan.md §3 |
+| D-009 | 2026-09-24 | **Backgrounds: the notes' single prisoner start.** Not separately asked at the gate — the notes give exactly one backstory ("a prisoner taken from your homeland"), so the single start is dictated by canon. The background *system* exists as an imported mechanic if the designer ever authors more starts. | plan.md §2 0.4; notes L3;L105 |
 
 **Standing rules:** every row tagged + sourced (`canon_lint.py`); `OPEN` rows cannot ship; every notes element keeps a blueprint home (`coverage_check.py`); no decision in this log may be silently changed — append a superseding entry instead.
