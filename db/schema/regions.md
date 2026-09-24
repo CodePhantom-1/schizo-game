@@ -1,6 +1,6 @@
 # regions
 
-**Rows:** 4 · **Source:** canon rows authored from the designer's notes ([world-bible](../../docs/world-bible.md)) or reserved for later phases.
+**Rows:** 4 · **Source:** canon rows authored from the designer's notes ([world-bible](../../docs/world-bible.md)), researched real-world rows, or reserved for later phases.
 
 ## Fields
 
@@ -10,6 +10,5 @@ id,direction,directions_element,taurus_d,tree_of_life,pentagram,sum,environment_
 
 ## Rules
 
-- every row carries `tag` (`CANON` / `A` / `OPEN`) and `source_ref` (`wb §x` and/or `notes L<n>` — [db/sources/notes.md](../sources/notes.md)).
+- every row carries `tag` (`CANON` / `A` / `INVENTED` / `OPEN`) and `source_ref` (`wb §x` and/or `notes L<n>` — [db/sources/notes.md](../sources/notes.md); `A` rows name their real-world source; `INVENTED` rows are authored glue shown to the player as such).
 - `OPEN` rows mark missing canon; they cannot ship.
-- `A` rows cite real-world sources in `source_ref`.

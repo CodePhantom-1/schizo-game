@@ -7,7 +7,7 @@ Where everything comes from:
 - **Content — 100% the notes** ([docs/world-bible.md](docs/world-bible.md), archived verbatim at [db/sources/notes.md](db/sources/notes.md)): the world, the story, the factions, the cities, the pantheon, the magick, the endings, the tone. Nothing is invented and **nothing is imported from any other project — including no storyline**.
 - **Mechanics — imported systems** ([docs/mechanics.md](docs/mechanics.md)): the game's systems are carried unchanged from the earlier Age of Bronze blueprint ([../docs/](../docs/)) by the designer's instruction. **Systems only** — no story, setting, tone or content crosses over with them.
 
-> **Status: Phase 2 complete — the world kernel runs.** Phase 0 locked, Phase 1 foundation green, Phase 2 kernel complete (Wave 0 scaffold + Wave 1 fleet of 8 GLM-5.3-Flash module builders + Wave 2 integration; 12/12 test suites green; ten-year determinism proven). Next: Phase 3 — UE5 engine bring-up, and the Phase 5 canon content storms. No engine project exists yet.
+> **Status: Phase 2 complete; content storm running.** Kernel done (12/12 suites, ten-year determinism proven); UE5 bring-up deferred pending engine install (D-012c — designer action item); the seven-table content storm is running on GLM-5.3-Flash. No engine project exists yet.
 
 ## The blueprint set
 
@@ -39,6 +39,8 @@ Where everything comes from:
 5. Docs are versioned with the game; every change ships code + data + docs + tests together ([docs/plan.md](docs/plan.md), the ten rules).
 
 ## Changelog
+
+- **2026-09-24 — content storm launched; Phase 3 sequenced.** No UE5 on this machine (D-012c: designer action item — install needs Epic/GitHub access), so the seven-table content storm (items, foods, laws, customs, events, schedules, names) is pulled forward and is running on GLM-5.3-Flash (`tools/workflows/storm_canon_content.ts`). Content policy gains the `INVENTED` tag (D-012); the D-011 conventions became real columns (events.repeat, rites.purity_required, quests.deadline_days).
 
 - **2026-09-24 — Phase 2 begun.** **Wave 0 complete** (commit `adc8d9c`): the headless C++20 kernel scaffolded — common layer (Types, deterministic Rng, Db canon loader, Test harness), the Time spine implemented + tested, the integration seam (`Context.hpp`, fixed tick order), `World.hpp` contract, ten frozen module contracts. **Wave 1 running**: the fleet workflow (`tools/workflows/wave1_kernel_modules.ts`) fans out 8 GLM-5.3-Flash build agents (Economy, Population, Faction, Magic, Justice, Events, Property, Quests) → deterministic cmake+ctest gate → per-module contract reviews → fix pass → final gate.
 - **2026-09-24 — plan v2: the agent fleet.** Multi-agent execution model adopted (D-010): coordinator + fleet of subagents pinned to **GLM-5.3-Flash** from the first build wave (Phase 2). Three fan-out patterns (contract-then-flock, table storms, world sweeps), fleet rules, and revised honest timelines (kernel in weeks; Early Access ~1–1.5 years; v1.0 ~2–3.5 years). Phases 0–1 marked COMPLETE in the plan. Plan only — nothing built since Phase 1.

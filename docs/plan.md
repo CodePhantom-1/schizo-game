@@ -90,11 +90,9 @@ kernel/
 
 **DoD:** a headless run of **ten in-game years** — prices move with the drought, raid chance responds to hunger and defence, a rite fails when performed impure, a rumour crosses the city at walking speed — deterministic, in CI.
 
-## 6. Phase 3 — engine bring-up (UE5)
+## 6. Phase 3 — engine bring-up (UE5) — **DEFERRED pending the engine** (D-012c)
 
-- `unreal/Plugins/SimRuntime/` — binds the kernel to UE (daily tick on the game clock, DataTables import from `db/canon/`). **Serial, coordinator** — the one contract every UE module stands on.
-- Then **parallel build agents**: `Player/` (first-person, the interaction verb set: touch, sit, eat, drink, carry, open, knock, pray, work) · `NPC/` (StateTree behaviour, Smart Object tasks, Mass crowds — L0/L1/L2) · `UI/` (diegetic: working scales, the drawn map, the codex) · `World/` (World Partition, PCG) · `Audio/`.
-- **DoD:** walk a grey-box street at noon and midnight; doors open; a scheduled NPC does a full day's tasks; silver weighed on real scales; one readable tablet; day/night; save/load through the kernel snapshot.
+No Unreal install exists on this machine; the install needs the designer's Epic/GitHub access (action item). The content storms (§8's pattern) are pulled forward while the engine is out — they are engine-independent and everything downstream consumes them.
 
 ## 7. Phase 4 — the vertical slice: "one street" → gate
 

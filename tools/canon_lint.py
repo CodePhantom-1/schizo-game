@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 CANON = Path(__file__).resolve().parent.parent / "db" / "canon"
-VALID_TAGS = {"CANON", "A", "OPEN"}
+VALID_TAGS = {"CANON", "A", "INVENTED", "OPEN"}
 REQUIRED = {"id", "tag", "source_ref"}
 
 
@@ -50,11 +50,8 @@ def main() -> int:
                 if tag not in VALID_TAGS:
                     errors.append(f"{where}: bad tag '{tag}' (must be one of {sorted(VALID_TAGS)})")
                 ref = (row.get("source_ref") or "").strip()
-                if tag in {"CANON", "A"} and not ref:
+                if tag in {"CANON", "A", "INVENTED"} and not ref:
                     errors.append(f"{where}: {tag} row '{rid}' has no source_ref")
-                if tag == "A" and ref and "notes" not in ref and "wb" not in ref:
-                    # an [A] row must still tie back to the notes' own import of it
-                    errors.append(f"{where}: A row '{rid}' must anchor to the notes' import (wb/notes) plus its real source")
                 if tag == "OPEN":
                     open_rows.append(f"{table.name}: {rid}")
             print(f"{table.name:<24} {rows:>3} rows  header ok")

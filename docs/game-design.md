@@ -140,7 +140,7 @@ The notes give three views of the same deity — the Empire worships the lady of
 
 The parent's binding accuracy policy (parent game-design §9) adapts to a canon-first world:
 
-1. **The content database still runs** (architecture §3 pattern). Every row carries its tag: `[A]` (sourced to the real Sumerian/Akkadian record, with citations, as the parent does), `[CANON]` (from the notes), `OPEN` (unresolved). The player-facing codex still tells the player which is which.
+1. **The content database still runs** (architecture §3 pattern). Every row carries its tag: `[A]` (sourced to the real Sumerian/Akkadian record, with citations, as the parent does), `[CANON]` (from the notes), `INVENTED` (authored glue — schedules, event rules, flavor — shown to the player as authored; D-012), `OPEN` (unresolved). The player-facing codex still tells the player which is which.
 2. **Canon lint replaces anachronism lint:** nothing enters the game that contradicts the notes; contradictions *between* notes are listed as `OPEN`, never silently resolved.
 3. **Real sources where the notes import them:** the pantheon names, the city lists, Barûtu, zisurru, astragalomancy, pessomancy, aeromancy and the rest of §8 are `[A]` and get the parent's full research treatment (the Mesopotamian law codes are the natural research target for the law table — a research pointer, not a decision).
 4. **Content warnings:** war violence, famine, displacement, slavery-era economies, death-cult and demonic-deity themes, and the eradication content of the Sumerian ending — present as the notes wrote it, with its hidden price, never as spectacle. The parent's tone rule survives because it came **from these notes in the first place**: *each ending has a price* (parent endings §1.3).
