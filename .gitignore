@@ -1,0 +1,16 @@
+# build artifacts
+build/
+*.pyc
+__pycache__/
+
+# engine (phases 3+) — Unreal
+unreal/DerivedDataCache/
+unreal/Intermediate/
+unreal/Binaries/
+unreal/Saved/
+unreal/.vs/
+*.uasset.tmp
+
+# OS
+.DS_Store
+Thumbs.db
