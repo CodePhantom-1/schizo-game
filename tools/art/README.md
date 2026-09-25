@@ -45,6 +45,72 @@ Imports every `mesh_kit_piece` row of `art/assets.csv` to
 `/Game/Art/Kit/Materials`, assigned onto the meshes' material slots by name
 (D-023: flat colours, no PBR textures).
 
+## Characters (ART-2: the cylinders become people)
+
+`ASimNpc`'s tinted cylinder and `ASimCharacter`'s cylinder + sphere are
+replaced at runtime by a low-poly rigged cast (Quaternius "Ultimate
+Animated Character Pack", CC0, flat vertex colours, ~2.5-7k tris, 23
+bones, 17 embedded animations each). Two steps, both from the repo root:
+
+```
+python3 tools/art/fetch_characters.py
+
+~/UnrealEngine/Engine/Binaries/Linux/UnrealEditor-Cmd \
+    "$PWD/unreal/SchizoGame.uproject" -run=pythonscript \
+    -script=tools/art/ue_import_characters.py
+```
+
+- `fetch_characters.py` (plain Python, mirrors `fetch_textures.py`)
+  downloads the ten selected `.gltf` files (~19 MB, gitignored, per
+  machine) into `art/source/characters/` and records them in
+  `art/assets.csv` as `kind == character_model` rows keyed by UE asset id:
+  `Player` + `Npc0..Npc8` (the cast mapping and licence live in
+  `docs/proposals/invented-ledger-humans.md`). Anonymous Google Drive
+  downloads are rate-limited — if the fetcher reports "Drive quota
+  exceeded", wait ~an hour and re-run (it is idempotent and never writes
+  a failed payload to disk).
+- `ue_import_characters.py` (UE's own Python, mirrors `ue_import_kit.py`)
+  imports each glTF via `AssetImportTask` (glTF routes through Interchange
+  in 5.8) into a private `_staging` folder, then normalizes the layout the
+  C++ side `LoadObject`s:
+
+  | Asset | Path |
+  |---|---|
+  | SkeletalMesh | `/Game/Art/Characters/<id>.<id>` |
+  | walk loop | `/Game/Art/Characters/<id>/Anims/Walk.Walk` |
+  | idle loop | `/Game/Art/Characters/<id>/Anims/Idle.Idle` |
+
+  Skeletons / physics assets / materials stay under `_staging` (referenced
+  by object, not path — do not delete it). Idempotent: re-running deletes
+  and re-imports each `<id>`.
+
+  **Untested by the art agent** — it writes into the live project
+  `Content`, so only the coordinator runs it. If the glTF import misfires
+  (e.g. skeletal import through headless Interchange), the FBX fallback:
+  convert with the installed Blender, then import with the
+  `ue_import_kit.py` `FbxImportUI` pattern (`import_as_skeletal = True`,
+  `import_animations = True`):
+
+  ```
+  ~/opt/blender/blender -b --factory-startup -P - <<'EOF'   # glTF -> FBX, one file
+  import bpy, sys, os
+  bpy.ops.wm.read_factory_settings(use_empty=True)
+  bpy.ops.import_scene.gltf(filepath="art/source/characters/Worker_Male.gltf")
+  bpy.ops.export_scene.fbx(filepath="/tmp/Worker_Male.fbx",
+      add_leaf_bones=False, bake_space_transform=True,
+      export_apply_scale_options='FBX_SCALE_ALL', use_metadata=False)
+  EOF
+  ```
+
+  (loop over `art/source/characters/*.gltf`; then point
+  `ue_import_characters.py`'s task at the FBX with an `unreal.FbxImportUI`
+  options object, `import_as_skeletal`/`import_animations` True.)
+
+The C++ side degrades gracefully: `SimNpc.cpp` / `SimCharacter.cpp` try
+`LoadObject` for the skeletal mesh, then a static mesh at the same path,
+and keep the tinted cylinder programmer art when neither exists — the
+import can be run at any point without a code change.
+
 ## What's in the kit
 
 Grid module = 1.0 m = 100 UE units (Blender stays in metres; FBX/GLB export
