@@ -404,6 +404,16 @@ void ASimStreetBuilder::BuildGroundAndLighting(const FVector2D& BoundsMin, const
 				Mesh->SetWorldScale3D(Scale);
 				Mesh->SetMobility(EComponentMobility::Movable);
 				Mesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+				// Packed earth, not the engine's checkerboard — without this
+				// the whole quarter floats on a grid texture.
+				if (UMaterial* Base = LoadObject<UMaterial>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial")))
+				{
+					if (UMaterialInstanceDynamic* GroundMic = Mesh->CreateDynamicMaterialInstance(0, Base))
+					{
+						GroundMic->SetVectorParameterValue(TEXT("Color"),
+							FLinearColor::FromSRGBColor(FColor(168, 138, 96)));
+					}
+				}
 			}
 #if WITH_EDITOR
 			Ground->SetActorLabel(TEXT("MoonGateQuarter_Ground"));

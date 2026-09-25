@@ -12,9 +12,13 @@
 #include "SimWell.h"
 
 #include "Components/SceneComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "HAL/IConsoleManager.h"
+#include "Materials/Material.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "UObject/UObjectGlobals.h"
 
 namespace
@@ -143,6 +147,30 @@ void USimVerbSpawner::SpawnDoorsAtSlots()
 	}
 }
 
+namespace
+{
+	// The demo props are engine cubes/cylinders; without this they wear the
+	// engine's checkerboard grid. Flat mud-and-clay colours until the kit
+	// gives them real meshes.
+	void ApplyPropColor(AActor* Prop, const FColor& Color)
+	{
+		if (Prop == nullptr)
+		{
+			return;
+		}
+		if (UStaticMeshComponent* Mesh = Prop->FindComponentByClass<UStaticMeshComponent>())
+		{
+			if (UMaterial* Base = LoadObject<UMaterial>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial")))
+			{
+				if (UMaterialInstanceDynamic* Mic = Mesh->CreateAndSetMaterialInstanceDynamic(0))
+				{
+					Mic->SetVectorParameterValue(TEXT("Color"), FLinearColor::FromSRGBColor(Color));
+				}
+			}
+		}
+	}
+}  // namespace
+
 void USimVerbSpawner::SpawnDemoProps()
 {
 	UWorld* World = GetWorld();
@@ -171,6 +199,7 @@ void USimVerbSpawner::SpawnDemoProps()
 		}
 		if (ASimWell* Well = World->SpawnActor<ASimWell>(WellLocation, FRotator::ZeroRotator, Params))
 		{
+			ApplyPropColor(Well, FColor(150, 143, 128));  // worn limestone rim
 #if WITH_EDITOR
 			Well->SetActorLabel(TEXT("GreyBox_Well"));
 #endif
@@ -186,6 +215,7 @@ void USimVerbSpawner::SpawnDemoProps()
 		// The mat is a 100-cube scaled (2, 0.9, 0.1): 10 tall, centre at 5.
 		if (ASimBed* Bed = World->SpawnActor<ASimBed>(FVector(1800, 350, 5), FRotator::ZeroRotator, Params))
 		{
+			ApplyPropColor(Bed, FColor(126, 100, 62));  // a reed mat, roughly
 #if WITH_EDITOR
 			Bed->SetActorLabel(TEXT("GreyBox_Bed"));
 #endif
@@ -214,6 +244,12 @@ void USimVerbSpawner::SpawnDemoProps()
 		{
 			Pickup->ItemId = Demo.ItemId;
 			Pickup->Quantity = Demo.Quantity;
+			const FColor PickupColor = FCString::Strcmp(Demo.ItemId, TEXT("grain")) == 0
+				? FColor(196, 168, 90)   // straw-gold grain
+				: FCString::Strcmp(Demo.ItemId, TEXT("bread")) == 0
+					? FColor(176, 128, 72)  // baked crust
+					: FColor(112, 76, 32);  // beer in a dark jar
+			ApplyPropColor(Pickup, PickupColor);
 #if WITH_EDITOR
 			Pickup->SetActorLabel(FString::Printf(TEXT("GreyBox_Pickup_%s"), Demo.ItemId));
 #endif

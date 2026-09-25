@@ -148,7 +148,7 @@ void ASimDayNight::FindOrSpawnLights()
 		{
 			if (UExponentialHeightFogComponent* Fog = Haze->GetComponent())
 			{
-				Fog->SetFogDensity(0.015f);
+				Fog->SetFogDensity(0.008f);
 				Fog->SetFogHeightFalloff(0.4f);
 			}
 		}
