@@ -138,6 +138,22 @@ public:
             throw std::runtime_error("snapshot: bad integer '" + s + "'");
         }
     }
+    // W4-A: the tag (first field) of the next line without consuming it; ""
+    // at the end of the data. Lets an optional trailing section be detected
+    // by name, whatever other optional sections precede or follow it.
+    std::string peek_tag() {
+        in_ >> std::ws;
+        const std::streampos pos = in_.tellg();
+        std::string line;
+        if (!std::getline(in_, line)) {
+            in_.clear();
+            return {};
+        }
+        in_.seekg(pos);
+        const std::size_t tab = line.find('\t');
+        return unesc(tab == std::string::npos ? line : line.substr(0, tab));
+    }
+
     static bool parse_bool(const std::string& s) {
         if (s == "1") return true;
         if (s == "0") return false;
@@ -330,6 +346,34 @@ std::string save_world(const WorldState& w) {
         wr.line({"RITE_OMENS", s64(static_cast<std::int64_t>(w.rite_effects.omens.size()))});
         for (const Omen& o : w.rite_effects.omens)
             wr.line({s64(o.day), o.rite_id, o.subject, o.sign, s64(o.confidence_pct)});
+    }
+
+    // W4-A CHARACTER (additive trailing sections, detected by tag on load so
+    // a save written before W4-A still loads): the player's sheet and the
+    // npcs' light sheets. The derived bonuses are not saved — they are
+    // rebuilt from the talents and callings against the canon catalog.
+    {
+        const CharacterState& c = w.character;
+        wr.line({"CHAR_CORE", s64(c.level), s64(c.xp), s64(c.talent_points), c.calling,
+                 c.specialisation, c.second_calling});
+        wr.line({"CHAR_ATTRS", s64(static_cast<std::int64_t>(c.attributes.size()))});
+        for (const auto& [attr, base] : c.attributes) {
+            const auto ex = c.attr_exercise.find(attr);
+            wr.line({attr, s64(base), s64(ex == c.attr_exercise.end() ? 0 : ex->second)});
+        }
+        wr.line({"CHAR_SKILLS", s64(static_cast<std::int64_t>(c.skills.size()))});
+        for (const auto& [skill, sp] : c.skills) wr.line({skill, s64(sp.value), s64(sp.progress)});
+        wr.line({"CHAR_TALENTS", s64(static_cast<std::int64_t>(c.talents.size()))});
+        for (const Id& t : c.talents) wr.line({t});
+        wr.line({"CHAR_RANKS", s64(static_cast<std::int64_t>(c.rank_by_polity.size()))});
+        for (const auto& [polity, tier] : c.rank_by_polity) wr.line({polity, s64(tier)});
+        wr.line({"CHAR_NPCS", s64(static_cast<std::int64_t>(w.npc_sheets.size()))});
+        for (const auto& [npc, sheet] : w.npc_sheets) {
+            wr.line({npc, s64(static_cast<std::int64_t>(sheet.attributes.size())),
+                     s64(static_cast<std::int64_t>(sheet.skills.size()))});
+            for (const auto& [attr, v] : sheet.attributes) wr.line({attr, s64(v)});
+            for (const auto& [skill, v] : sheet.skills) wr.line({skill, s64(v)});
+        }
     }
 
     return wr.str();
@@ -706,6 +750,70 @@ void load_world(WorldState& out, const std::string& canon_dir, const std::string
                 o.sign = f[3];
                 o.confidence_pct = static_cast<int>(Reader::parse_i64(f[4]));
                 w.rite_effects.omens.push_back(std::move(o));
+            }
+        }
+
+        // W4-A CHARACTER — absent in a pre-W4-A save: the fresh init() sheets
+        // (a level-1 prisoner; residents seeded from their roles) stand.
+        if (rd.peek_tag() == "CHAR_CORE") {
+            std::vector<std::string> f = rd.next();
+            if (f.size() != 7) throw std::runtime_error("snapshot: bad character core row");
+            CharacterState c = new_character(w.progression);
+            c.level = static_cast<int>(Reader::parse_i64(f[1]));
+            c.xp = static_cast<int>(Reader::parse_i64(f[2]));
+            c.talent_points = static_cast<int>(Reader::parse_i64(f[3]));
+            c.calling = f[4];
+            c.specialisation = f[5];
+            c.second_calling = f[6];
+            std::size_t n = rd.section("CHAR_ATTRS");
+            for (std::size_t i = 0; i < n; ++i) {
+                std::vector<std::string> r = rd.next();
+                if (r.size() != 3) throw std::runtime_error("snapshot: bad character attribute row");
+                c.attributes[r[0]] = static_cast<int>(Reader::parse_i64(r[1]));
+                const int ex = static_cast<int>(Reader::parse_i64(r[2]));
+                if (ex != 0) c.attr_exercise[r[0]] = ex;
+            }
+            n = rd.section("CHAR_SKILLS");
+            for (std::size_t i = 0; i < n; ++i) {
+                std::vector<std::string> r = rd.next();
+                if (r.size() != 3) throw std::runtime_error("snapshot: bad character skill row");
+                SkillProgress& sp = c.skills[r[0]];
+                sp.value = static_cast<int>(Reader::parse_i64(r[1]));
+                sp.progress = Reader::parse_i64(r[2]);
+            }
+            n = rd.section("CHAR_TALENTS");
+            for (std::size_t i = 0; i < n; ++i) {
+                std::vector<std::string> r = rd.next();
+                if (r.size() != 1) throw std::runtime_error("snapshot: bad character talent row");
+                c.talents.push_back(r[0]);
+            }
+            n = rd.section("CHAR_RANKS");
+            for (std::size_t i = 0; i < n; ++i) {
+                std::vector<std::string> r = rd.next();
+                if (r.size() != 2) throw std::runtime_error("snapshot: bad character rank row");
+                c.rank_by_polity[r[0]] = static_cast<int>(Reader::parse_i64(r[1]));
+            }
+            refresh_derived(w.progression, c);
+            w.character = std::move(c);
+
+            w.npc_sheets.clear();
+            n = rd.section("CHAR_NPCS");
+            for (std::size_t i = 0; i < n; ++i) {
+                std::vector<std::string> r = rd.next();
+                if (r.size() != 3) throw std::runtime_error("snapshot: bad npc sheet row");
+                NpcSheet& sheet = w.npc_sheets[r[0]];
+                const std::size_t na = static_cast<std::size_t>(Reader::parse_u64(r[1]));
+                const std::size_t ns = static_cast<std::size_t>(Reader::parse_u64(r[2]));
+                for (std::size_t j = 0; j < na; ++j) {
+                    std::vector<std::string> a = rd.next();
+                    if (a.size() != 2) throw std::runtime_error("snapshot: bad npc sheet attribute row");
+                    sheet.attributes[a[0]] = static_cast<int>(Reader::parse_i64(a[1]));
+                }
+                for (std::size_t j = 0; j < ns; ++j) {
+                    std::vector<std::string> k = rd.next();
+                    if (k.size() != 2) throw std::runtime_error("snapshot: bad npc sheet skill row");
+                    sheet.skills[k[0]] = static_cast<int>(Reader::parse_i64(k[1]));
+                }
             }
         }
 

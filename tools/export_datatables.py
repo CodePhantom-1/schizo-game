@@ -22,6 +22,7 @@ TABLES = [
     "names", "pantheons", "planetary_powers", "places", "ranks", "regions",
     "rite_teachings", "rites", "schedules", "seasons", "skills", "story", "world_lore",
     "festivals", "person_schedules",  # K-2
+    "attributes", "callings", "talents", "skill_teachings", "work_roles",  # W4-A (skills above)
 ]
 
 

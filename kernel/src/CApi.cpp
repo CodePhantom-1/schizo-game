@@ -12,12 +12,14 @@
 #include "sim/Population.hpp"
 #include "sim/Schedule.hpp"
 #include "sim/Rites.hpp"
+#include "sim/Progression.hpp"  // W4-A
 
 #include <algorithm>
 #include <climits>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <map>
 #include <optional>
 #include <set>
 #include <sstream>
@@ -27,12 +29,22 @@ using namespace sim;
 
 struct SimWorld {
     WorldState world;
+    std::string w4a_refusal;  // W4-A: why the last progression verb refused ("" = it didn't)
 };
 
 namespace {
 // A canon directory is one that holds seasons.csv (WorldState::init builds the
 // calendar from it). Db::load skips absent tables, so without this check a
 // wrong path yields a valid-but-empty world instead of the documented nullptr.
+// W4-A: hunger shows (Needs' own "hungry"/"starving" effects), before a meal.
+bool hungry(const WorldState& w, const Id& actor) {
+    const auto it = w.needs.by_actor.find(actor);
+    if (it == w.needs.by_actor.end()) return false;
+    for (const std::string& e : need_effects(it->second))
+        if (e == "hungry" || e == "starving") return true;
+    return false;
+}
+
 bool canon_present(const char* canon_dir) {
     std::error_code ec;
     return std::filesystem::is_regular_file(std::filesystem::path(canon_dir) / "seasons.csv", ec);
@@ -300,8 +312,11 @@ int sim_world_eat(SimWorld* world, const char* actor, const char* item) {
         if (have < 0) return -1;  // internal failure, not "none held"
         if (have < 1) return -2;
         std::string reason;
+        const bool was_hungry = hungry(world->world, Id(actor));  // W4-A
         if (!eat(world->world.db, world->world.needs, Id(actor), Id(item), &reason)) return -3;
         world->world.inventories[actor].counts[item] = have - 1;
+        // W4-A: a hungry meal is use of survival (rationing, knowing what is safe to eat).
+        if (was_hungry) (void)note_use(world->world, Id(actor), "verb:eat", kEatXp);
         return 0;
     } catch (...) {
         return -1;
@@ -391,6 +406,7 @@ int sim_world_craft(SimWorld* world, const char* actor, const char* recipe,
         std::string reason;
         if (craft(world->world.db, inv, Id(recipe), stations, times, &reason)) {
             world->world.inventories[actor] = std::move(inv);
+            (void)note_craft(world->world, Id(actor), Id(recipe), times);  // W4-A: craft skills by use
             return 0;
         }
         if (reason.rfind("unknown, OPEN or malformed recipe", 0) == 0) return -2;
@@ -581,4 +597,320 @@ int sim_world_npc_schedule_at(const SimWorld* world, const char* npc, int hour, 
                               int cap) {
     const std::optional<ScheduledTask> t = npc_now(world, npc, hour);
     return t ? write_str(out, cap, t->schedule_id) : -1;
+}
+
+// Character progression (W4-A) -------------------------------------------------
+namespace {
+int w4a_code(const std::string& why) {
+    static const std::map<std::string, int> kCodes = {
+        {"unknown_skill", -2},        {"unknown_talent", -2},        {"unknown_calling", -2},
+        {"unknown_teacher", -2},      {"unknown_employer", -2},      {"unknown_market", -2},
+        {"unknown_polity", -2},       {"unknown_patron", -2},        {"level_too_low", -3},
+        {"skill_too_low", -3},        {"calling_required", -3},      {"cannot_read", -3},
+        {"standing_too_low", -3},     {"no_calling", -3},            {"outlawed", -3},
+        {"practice_capped", -4},      {"teacher_surpassed", -4},     {"text_exhausted", -4},
+        {"already_taken", -4},        {"already_chosen", -4},        {"at_highest_rank", -4},
+        {"same_calling", -4},         {"cannot_afford", -5},         {"not_held", -5},
+        {"text_not_held", -5},        {"out_of_stock", -5},          {"no_talent_point", -5},
+        {"exhausted", -6},            {"not_taught_by_teacher", -7}, {"not_taught_in_text", -7},
+        {"not_an_employer", -7},      {"not_sold_here", -7},         {"market_closed", -7},
+        {"not_a_calling", -7},        {"not_a_specialisation", -7},  {"not_of_your_calling", -7},
+        {"patron_not_of_polity", -7}, {"bad_hours", -7},             {"bad_quantity", -7},
+    };
+    const auto it = kCodes.find(why);
+    return it == kCodes.end() ? -1 : it->second;
+}
+
+// Records the refusal (or clears it) and returns the verb's C result.
+int choice_result(SimWorld* world, const std::string& why) {
+    world->w4a_refusal = why;
+    return why.empty() ? 0 : w4a_code(why);
+}
+
+int progress_result(SimWorld* world, const ProgressResult& r) {
+    world->w4a_refusal = r.refusal;
+    return r.ok ? r.gain.points : w4a_code(r.refusal);
+}
+
+int read_code(int v) { return v < 0 ? -2 : v; }  // unknown actor/attribute/skill -> -2
+
+std::string join_teachings(const std::vector<Teaching>& ts, bool by_source) {
+    std::string out;
+    for (std::size_t i = 0; i < ts.size(); ++i) {
+        if (i != 0) out += ';';
+        out += (by_source ? ts[i].source : ts[i].skill) + ":" + std::to_string(ts[i].max_level) + ":" +
+               std::to_string(ts[i].fee_per_hour);
+    }
+    return out;
+}
+}  // namespace
+
+int sim_world_attribute(const SimWorld* world, const char* actor, const char* attr) {
+    try {
+        if (world == nullptr || actor == nullptr || attr == nullptr) return -1;
+        return read_code(actor_attribute(world->world, Id(actor), Id(attr)));
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_skill(const SimWorld* world, const char* actor, const char* skill) {
+    try {
+        if (world == nullptr || actor == nullptr || skill == nullptr) return -1;
+        return read_code(actor_skill(world->world, Id(actor), Id(skill)));
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_effective_skill(const SimWorld* world, const char* actor, const char* skill) {
+    try {
+        if (world == nullptr || actor == nullptr || skill == nullptr) return -1;
+        return read_code(actor_effective_skill(world->world, Id(actor), Id(skill)));
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_level(const SimWorld* world) { return world ? world->world.character.level : -1; }
+
+int sim_world_character_xp(const SimWorld* world) { return world ? world->world.character.xp : -1; }
+
+int sim_world_xp_for_next_level(const SimWorld* world) {
+    if (world == nullptr) return -1;
+    const int level = world->world.character.level;
+    return level >= kLevelCap ? 0 : xp_for_level(level + 1);
+}
+
+int sim_world_talent_points(const SimWorld* world) {
+    return world ? world->world.character.talent_points : -1;
+}
+
+int sim_world_talents(const SimWorld* world, char* out, int cap) {
+    try {
+        if (world == nullptr) return -1;
+        return write_str(out, cap, join_ids(world->world.character.talents));
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_talents_available(const SimWorld* world, char* out, int cap) {
+    try {
+        if (world == nullptr) return -1;
+        return write_str(out, cap,
+                         join_ids(available_talents(world->world.progression, world->world.character)));
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_choose_talent(SimWorld* world, const char* talent) {
+    try {
+        if (world == nullptr || talent == nullptr) return -1;
+        return choice_result(world,
+                             choose_talent(world->world.progression, world->world.character, Id(talent)));
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_calling(const SimWorld* world, int slot, char* out, int cap) {
+    try {
+        if (world == nullptr) return -1;
+        const CharacterState& c = world->world.character;
+        if (slot == 0) return write_str(out, cap, c.calling);
+        if (slot == 1) return write_str(out, cap, c.specialisation);
+        if (slot == 2) return write_str(out, cap, c.second_calling);
+        return -1;
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_choose_calling(SimWorld* world, const char* calling) {
+    try {
+        if (world == nullptr || calling == nullptr) return -1;
+        return choice_result(world,
+                             choose_calling(world->world.progression, world->world.character, Id(calling)));
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_choose_specialisation(SimWorld* world, const char* specialisation) {
+    try {
+        if (world == nullptr || specialisation == nullptr) return -1;
+        return choice_result(world, choose_specialisation(world->world.progression, world->world.character,
+                                                          Id(specialisation)));
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_choose_second_calling(SimWorld* world, const char* calling) {
+    try {
+        if (world == nullptr || calling == nullptr) return -1;
+        return choice_result(world, choose_second_calling(world->world.progression, world->world.character,
+                                                          Id(calling)));
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_practice_skill(SimWorld* world, const char* skill, int hours) {
+    try {
+        if (world == nullptr || skill == nullptr) return -1;
+        return progress_result(world, practice_skill(world->world, Id(skill), hours));
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_train_skill(SimWorld* world, const char* skill, const char* teacher, int hours) {
+    try {
+        if (world == nullptr || skill == nullptr || teacher == nullptr) return -1;
+        return progress_result(world, train_with_teacher(world->world, Id(skill), Id(teacher), hours));
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_study_skill(SimWorld* world, const char* skill, const char* item, int hours) {
+    try {
+        if (world == nullptr || skill == nullptr || item == nullptr) return -1;
+        return progress_result(world, study_text(world->world, Id(skill), Id(item), hours));
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_work(SimWorld* world, const char* employer, int hours) {
+    try {
+        if (world == nullptr || employer == nullptr) return -1;
+        return progress_result(world, work_for(world->world, Id(employer), hours));
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_skill_teachers(const SimWorld* world, const char* skill, char* out, int cap) {
+    try {
+        if (world == nullptr || skill == nullptr) return -1;
+        return write_str(out, cap, join_teachings(teachers_of(world->world, Id(skill)), true));
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_skills_taught_by(const SimWorld* world, const char* npc, char* out, int cap) {
+    try {
+        if (world == nullptr || npc == nullptr) return -1;
+        return write_str(out, cap, join_teachings(skills_taught_by(world->world, Id(npc)), false));
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_skill_ids(const SimWorld* world, char* out, int cap) {
+    try {
+        if (world == nullptr) return -1;
+        std::vector<Id> ids;
+        for (const auto& [id, def] : world->world.progression.skills) ids.push_back(id);
+        return write_str(out, cap, join_ids(ids));
+    } catch (...) {
+        return -1;
+    }
+}
+
+int64_t sim_world_purse(const SimWorld* world, const char* actor) {
+    try {
+        if (world == nullptr || actor == nullptr) return -1;
+        return purse(world->world.property, Id(actor));
+    } catch (...) {
+        return -1;
+    }
+}
+
+int64_t sim_world_buy(SimWorld* world, const char* actor, const char* city, const char* item, int qty) {
+    try {
+        if (world == nullptr || actor == nullptr || city == nullptr || item == nullptr) return -1;
+        const ProgressResult r = buy_from_market(world->world, Id(actor), Id(city), Id(item), qty);
+        world->w4a_refusal = r.refusal;
+        return r.ok ? r.silver : w4a_code(r.refusal);
+    } catch (...) {
+        return -1;
+    }
+}
+
+int64_t sim_world_sell(SimWorld* world, const char* actor, const char* city, const char* item, int qty) {
+    try {
+        if (world == nullptr || actor == nullptr || city == nullptr || item == nullptr) return -1;
+        const ProgressResult r = sell_to_market(world->world, Id(actor), Id(city), Id(item), qty);
+        world->w4a_refusal = r.refusal;
+        return r.ok ? r.silver : w4a_code(r.refusal);
+    } catch (...) {
+        return -1;
+    }
+}
+
+int64_t sim_world_buy_quote(const SimWorld* world, const char* actor, const char* city,
+                            const char* item, int qty) {
+    try {
+        if (world == nullptr || actor == nullptr || city == nullptr || item == nullptr) return -1;
+        const Silver q = quote_buy(world->world, Id(actor), Id(city), Id(item), qty);
+        return q < 0 ? -7 : q;
+    } catch (...) {
+        return -1;
+    }
+}
+
+int64_t sim_world_sell_quote(const SimWorld* world, const char* actor, const char* city,
+                             const char* item, int qty) {
+    try {
+        if (world == nullptr || actor == nullptr || city == nullptr || item == nullptr) return -1;
+        const Silver q = quote_sell(world->world, Id(actor), Id(city), Id(item), qty);
+        return q < 0 ? -7 : q;
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_rank(const SimWorld* world, const char* polity) {
+    try {
+        if (world == nullptr || polity == nullptr) return -1;
+        return rank(world->world.character, Id(polity));
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_raise_rank(SimWorld* world, const char* polity, const char* patron) {
+    try {
+        if (world == nullptr || polity == nullptr) return -1;
+        const ProgressResult r =
+            raise_rank(world->world, Id(polity), patron == nullptr ? Id() : Id(patron));
+        world->w4a_refusal = r.refusal;
+        return r.ok ? rank(world->world.character, Id(polity)) : w4a_code(r.refusal);
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_character_summary(const SimWorld* world, char* out, int cap) {
+    try {
+        if (world == nullptr) return -1;
+        return write_str(out, cap, character_summary(world->world.progression, world->world.character));
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_progression_refusal(const SimWorld* world, char* out, int cap) {
+    try {
+        if (world == nullptr) return -1;
+        return write_str(out, cap, world->w4a_refusal);
+    } catch (...) {
+        return -1;
+    }
 }

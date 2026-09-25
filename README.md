@@ -40,6 +40,16 @@ Where everything comes from:
 
 ## Changelog
 
+- **2026-09-25 — W4-A: character progression.** mechanics.md rows 20 to 24 are now in the kernel (`sim/Character.hpp`, `sim/Progression.hpp`; [module_Character.md](kernel/contracts/module_Character.md)):
+  - six attributes, which rise with exercise;
+  - 27 skills in six groups. They grow by use (crafting, rites, trade, hungry meals, reading, unseen deeds, work), from teachers among the street's residents (fee and cap in `skill_teachings.csv`), from texts (literacy needed), and by practice up to 25;
+  - levels from skill points, capped at 40, with one talent per level (41 talents, each with a real effect);
+  - 8 callings and 18 specialisations with perks, at levels 5, 15 and 25, giving +50% growth;
+  - rank per polity, raised by standing plus a patron's act and dropped to 0 by outlawry;
+  - work for wages (rations as wages).
+
+  All of it uses integer and basis-point maths (D-022). Nothing gates on story or quests (D-021): `test_scenario_progression` shows a fresh player reaching every calling and talent through C API play alone. Saves carry a trailing optional section, so old saves still load. All new content is `INVENTED` and listed in [docs/proposals/invented-ledger-character.md](docs/proposals/invented-ledger-character.md).
+
 - **2026-09-25 — K-2: festivals and per-person schedules.** The D-018 festival days are live on the kernel calendar through the new `festivals.csv` table. Each festival bends the street's day: non-exempt townspeople go to the gathering at the temple (or at home for the kispum feast), and the market opens or closes as the row says. The festival also counts as the festival day that Magic's time power checks, and Events can trigger on `festival:<id>`. Each person now gets their own day plan: role rows, plus their own `person_schedules.csv` rows, bent by season and festival, with `home`/`work` resolved to `places.csv` ids. New C API: `sim_world_is_festival`/`_festival`/`_festival_on`/`_market_open` and `sim_world_npc_id`/`_npc_task_at`/`_npc_place_at`/`_npc_schedule_at`. No new save state. All placeholder content is `INVENTED` and listed in [docs/proposals/invented-ledger-festivals.md](docs/proposals/invented-ledger-festivals.md).
 - **2026-09-25 — K-1: the magic loop closes.** Rites are now learned (from the priest of the moon, or by reading a held text — new INVENTED table `rite_teachings.csv`), offered (materials debited from the player's inventory on every performed rite) and answered (the four canon effect families applied on success: favour, favour with the god a hymn addresses, a 30-day ward, a 75%-true omen — all `INVENTED: EFFECT`, ledgered in [docs/proposals/invented-ledger-rites.md](docs/proposals/invented-ledger-rites.md)). Magic still writes only MagicState; the fixed formula is untouched. Save/load and the C API carry it all.
 

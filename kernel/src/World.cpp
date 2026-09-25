@@ -4,6 +4,7 @@
 #include "sim/World.hpp"
 
 #include "sim/Actions.hpp"
+#include "sim/Progression.hpp"  // W4-A
 
 #include <cstdlib>
 
@@ -58,6 +59,13 @@ void WorldState::init(const std::string& canon_dir, std::uint64_t world_seed) {
     seed_people(ctx, population);
     load_rules(ctx, events);  // events.csv is canon-empty at Wave 1: zero rules
     load_defs(ctx, quests);   // quests.csv likewise
+
+    // W4-A: the progression catalog from canon, a fresh prisoner's sheet
+    // (every attribute 5, no skill, level 1), and every resident's light
+    // sheet seeded from its role.
+    progression = load_progression(db);
+    character = new_character(progression);
+    seed_npc_sheets(*this);
 }
 
 void WorldState::advance_days(int days) {
