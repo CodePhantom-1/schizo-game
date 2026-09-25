@@ -257,9 +257,10 @@ RiteOutcome perform_rite_in_world(WorldState& w, const Id& rite_id, const Id& ta
         // with favour (favour >= the neutral 50)? The sign reads true only
         // kOmenTruthPct of the time — never a certainty.
         const bool truth = favour(w.magic, out.addressed) >= 50;
-        const double draw =
-            w.rng.fork(static_cast<std::uint64_t>(w.day) ^ kOmenSalt).unit();
-        const bool reads_true = draw < static_cast<double>(kOmenTruthPct) / 100.0;
+        // Integer draw (D-022): identical on every CPU.
+        const std::uint64_t draw =
+            w.rng.fork(static_cast<std::uint64_t>(w.day) ^ kOmenSalt).below(100);
+        const bool reads_true = draw < static_cast<std::uint64_t>(kOmenTruthPct);
         Omen omen;
         omen.day = w.day;
         omen.rite_id = rite_id;
