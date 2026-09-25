@@ -50,12 +50,21 @@ public:
 	static int32 GetSimDrought();
 
 	/**
-	 * Real minutes of engine time per sim day (parent architecture §4.2 default:
-	 * 45). Overridable at runtime by the console variable sim.DaysPerRealMinute
-	 * (debug pacing; 0 = use this property).
+	 * Real minutes of engine time per sim day (default: 24). Overridable at
+	 * runtime by the console variable sim.DaysPerRealMinute (debug pacing;
+	 * 0 = use this property).
 	 */
 	UPROPERTY(Config, EditAnywhere, Category = "Sim")
-	float SimDaysPerRealMinute = 45.0f;
+	float SimDaysPerRealMinute = 24.0f;
+
+	/**
+	 * Sim hour (0..24) a NEW world starts at, so a fresh game begins in the
+	 * morning rather than at midnight. Ignored on a loaded save — the save's
+	 * own hour (sidecar, see GetSimHour) wins. Overridable by console variable
+	 * sim.StartHour (negative = use this property).
+	 */
+	UPROPERTY(Config, EditAnywhere, Category = "Sim")
+	float SimStartHour = 7.0f;
 
 	/**
 	 * The live kernel world of the current play world, for game code that
@@ -76,10 +85,60 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Sim")
 	static void AdvanceSimDays(int32 Days);
 
+	// --- needs (hunger/thirst/fatigue, 0..100; -1 = no world yet) -----------
+	UFUNCTION(BlueprintPure, Category = "Sim|Needs")
+	static int32 GetSimHunger(const FString& Actor);
+	UFUNCTION(BlueprintPure, Category = "Sim|Needs")
+	static int32 GetSimThirst(const FString& Actor);
+	UFUNCTION(BlueprintPure, Category = "Sim|Needs")
+	static int32 GetSimFatigue(const FString& Actor);
+	/** Semicolon-joined named effects at the actor's current thresholds (e.g. "hungry;parched"). */
+	UFUNCTION(BlueprintPure, Category = "Sim|Needs")
+	static FString GetSimNeedEffects(const FString& Actor);
+	/** Advances one actor's needs by Hours game-hours; the day tick itself stays daily. */
+	UFUNCTION(BlueprintCallable, Category = "Sim|Needs")
+	static void AdvanceSimNeeds(const FString& Actor, int32 Hours, bool bSleeping);
+	/** sim_world_eat return codes: 0 ok, -1 null args, -2 not held, -3 not edible. */
+	UFUNCTION(BlueprintCallable, Category = "Sim|Needs")
+	static int32 EatSimItem(const FString& Actor, const FString& Item);
+	/** sim_world_drink return codes: 0 ok, -1 null args, -2 not held, -3 not drinkable ("water" always available). */
+	UFUNCTION(BlueprintCallable, Category = "Sim|Needs")
+	static int32 DrinkSimItem(const FString& Actor, const FString& Item);
+
+	// --- inventory ------------------------------------------------------------
+	UFUNCTION(BlueprintPure, Category = "Sim|Inventory")
+	static int32 GetSimItemCount(const FString& Actor, const FString& Item);
+	/** Adds Qty (may be negative, clamped at 0) to the actor's count; returns the resulting count. */
+	UFUNCTION(BlueprintCallable, Category = "Sim|Inventory")
+	static int32 GiveSimItem(const FString& Actor, const FString& Item, int32 Qty);
+
+	// --- crafting ---------------------------------------------------------------
+	/** sim_world_craft return codes: 0 ok, -1 bad args, -2 unknown recipe, -3 missing station, -4 missing inputs. */
+	UFUNCTION(BlueprintCallable, Category = "Sim")
+	static int32 CraftSim(const FString& Actor, const FString& Recipe, const FString& StationsSemicolonList, int32 Times);
+
+	// --- schedule -----------------------------------------------------------------
+	/** The task in force for Role at Hour (0..23) today; empty if no schedule rows. */
+	UFUNCTION(BlueprintPure, Category = "Sim")
+	static FString GetSimTaskAt(const FString& Role, int32 Hour);
+
+	// --- population -----------------------------------------------------------------
+	UFUNCTION(BlueprintPure, Category = "Sim")
+	static int32 GetSimNpcCount();
+
+	// --- save / load ------------------------------------------------------------
+	/** Saves to Saved/SaveGames/<Slot>.simsave (kernel snapshot + the sub-day hour sidecar). */
+	UFUNCTION(BlueprintCallable, Category = "Sim")
+	static bool SaveSimGame(const FString& Slot);
+	/** Loads Saved/SaveGames/<Slot>.simsave, replacing the current world. False on any failure (world unchanged). */
+	UFUNCTION(BlueprintCallable, Category = "Sim")
+	static bool LoadSimGame(const FString& Slot);
+
 private:
 	/** The opaque kernel world (sim/CApi.h). Owned; never null after Initialize. */
 	struct SimWorld* SimHandle = nullptr;
 	bool bCanonFailed = false;  // one-shot: canon missing — stop retrying creation
 	double SecondsSinceLastDay = 0.0;
 	float SecondsPerDay() const;
+	static FString SaveSlotPath(const FString& Slot);
 };
