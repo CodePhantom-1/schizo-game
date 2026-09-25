@@ -33,8 +33,8 @@
 |---|---|---|
 | DQ1 | Camera | **Third-person only.** |
 | DQ2 | Sim day length | **Adjustable** (setting + cvar); the default is 48 real minutes. |
-| DQ3 | How much of the city is simulated | **Only the core quarter:** the Moon Gate Quarter, the market, the temple precinct and the lighthouse wharf. That is ~60 enterable buildings, **~80 full NPCs and ~250 light residents**. Tommy's ~500 other houses stay scenery (shut doors, lamps at night, ambient crowds). A district is added only when it earns its place. |
-| DQ4 | The magick opt-ins | **The agent's choice, lore-accurate to the attested Mesopotamian record:** the divine numbers (An 60, Enlil 50, Enki 40, Nanna 30, Utu 20, Inanna 15); the sky as "heavenly writing" (omen-series astrology, MUL.APIN constellations: the notes' primitive astrology and their "as above, so below"); the planetary power lists as rite modifiers; dream divination and incubation as the Moon powers, with mind-binding as sorcery and wrath; the Venus rites as the sacred marriage and ŠÀ.ZI.GA incantations, handled off-screen. **Not built** (not in the record): kabbalah proper, pathworking, astral travel, psychometry, telepathy. Taurus-D stays lore. |
+| DQ3 | The city | **Rebuilt (D-025):** a compact crescent of ~110 buildings around the sacred lagoon, nine quarters, **every building simulated**, ~160 named people. Design: [city-of-the-moon.md](city-of-the-moon.md). Built in Stage AA. |
+| DQ4 | The magick | **Everything the notes name is built (D-025)**: numerology, primitive kabbalah/hermeticism, 12-zodiac astrology plus extra constellations, hymns, sex magick (off-screen), astrotheology, demonology, amulets, zisurru, every divination form, and the Earth, Moon (incl. animal telepathy, mind control as bad karma, astral travel, telepathy, psychometry), Mercury (incl. pathworking) and Venus lists. The notes are the canon; the historical record is used where it has something. |
 | DQ5 | Voices | **Tommy records them later.** No TTS. The voice-line hooks and the player-voice on/off setting are built now. |
 | DQ6 | Git LFS | **On** (done: binaries are in LFS from commit 2 of this plan). Every clone needs git-lfs. |
 | DQ7 | The calendar | **On:** moon phases, new-moon and full-moon rites to Nanna, lucky and unlucky days, on top of the existing 12×30 months and 4 festival days. Moved forward to step A14. |
@@ -63,6 +63,19 @@
 | A15 | **Third-person camera polish** (DQ1): collision-aware boom, shoulder swap, aim zoom, interior auto-shorten | The camera never clips through walls in interiors |
 
 **Stage A gate:** start from the menu, change a setting, play, save, load, quit. CI is green.
+
+---
+
+## Stage AA: The City of the Moon rebuilt (D-025; design: [city-of-the-moon.md](city-of-the-moon.md))
+
+| # | Step | Done when |
+|---|---|---|
+| AA1 | **Agree the change with Tommy**: show him city-of-the-moon.md; he keeps the look (materials, light, the ziggurat, lighthouse and gate builders), and the layout becomes data | Tommy agrees, or the design is adjusted |
+| AA2 | **The layout as canon**: `city_districts.csv` (the 9 quarters) and `places.csv` extended to all ~110 buildings with district, kind, owner household and footprint (x, y, yaw, size); `canon_lint` checks footprints don't overlap and every building has an owner | The lint passes; a top-down plot (`tools/plot_city.py` → PNG) reads as a crescent moon |
+| AA3 | **The kernel reads it**: every place has an owner household and kind; schedules resolve to the new places | Kernel tests pass with the new places |
+| AA4 | **`SimEnvironment` builds the crescent from the data**: the crescent wall and the lagoon shore as curves; the Moon Pool; the reed quarter on stilts and islands; bridges, stairs to the water, rooftop walkways; courtyard gardens and palms; the grid `BuildCity` removed | Screenshots from the ziggurat top and the lighthouse show the crescent; 30+ fps on the iGPU |
+| AA5 | **`SimStreetBuilder` generalised to every place**: a door, a registry entry and a door slot for all ~110 buildings; the old single street folded into the Moon Gate quarter | `sim.Places` lists every building; `sim.Teleport` reaches each one |
+| AA6 | **The prisoner start moved** to the quayside prison barracks (quarter 1) | New Game starts there |
 
 ---
 
@@ -137,7 +150,7 @@
 | F4 | **Memory and relationships** (missing): each memory has a source, date, place and certainty; opinion of the player and of other NPCs (friendship, rivalry, love, grudges, debts owed) | NPCs greet you differently after what they saw or heard |
 | F5 | **Rumour at walking speed** along social links (the kernel has it; it needs wiring and UI): overheard gossip lines, and the rumours you hear in the journal | A crime you commit at the gate reaches the wharf hours later, not instantly |
 | F6 | **Simulation layers in UE**: L0 full AI within ~150 m, L1 scheduled (NPCs appear where their schedule puts them), L2 statistical; promotion of light residents to full NPCs when you get involved | Walking across the city never shows pop-in contradictions |
-| F7 | **Population to target** (DQ3): the `people.csv` storm to ~80 full NPCs and ~250 light residents in the core quarter; `person_schedules.csv` from 4 rows to one per full NPC | Every simulated house has occupants who live there |
+| F7 | **Population to target** (DQ3): the `people.csv` storm to ~160 named people across the nine quarters, with a household for every building; `person_schedules.csv` from 4 rows to one per full NPC | Every simulated house has occupants who live there |
 | F8 | **Crowds** (Mass) for market days and festivals, at historical density | The market at noon on market day is packed and stays at 60 fps |
 | F9 | **NPC animation and presence**: task animations, sitting, eating, sleeping, conversations between NPCs, greetings by rank (bows), barks | You can watch a street of people doing real things |
 | F10 | **Life events**: weddings (bride-price, contract), births, funerals, divorce and inheritance quarrels, a missing child, aging; the world responds to you (the smith you supplied opens a second forge; a village names a child after you) | Over a season, the street visibly lives through events |
@@ -201,7 +214,7 @@
 | J3 | **Divination in play**: all 9 forms (haruspicy/Barûtu, astragalomancy, cleromancy, pessomancy, aeromancy and its five sub-types, astrology with 12 zodiac signs plus a few extra constellations), answers as **omens with probabilities, never certainties**, clarity scaled by skill | A liver reading before a journey gives a probabilistic warning that matters |
 | J4 | **The deity network**: per-god favour meters (UI), domain, cult sites, festivals and **taboos** (missing); **equated gods** share part of their favour (Inanna/Ishtar, Enki/Ea/Mercury, Nanna/Sîn, Utu/Shamash) (missing); **neglected gods get angry** (missing: misfortune events); **choosing a patron god** with a unique high rite and taboos to keep | Neglecting a god produces misfortune; a patron's taboo matters |
 | J5 | **Guard rails enforced**: rites take hours to days and cost real goods; no combat spells (wards and blessings prepared beforehand, amulets); **magic cannot change the historical clock** | A test asserts no rite alters the clock |
-| J6 | **The opt-ins as chosen in DQ4**: divine-number numerology; heavenly-writing astrology (omens, MUL.APIN constellations); planetary rite modifiers from the Earth, Moon, Mercury, Venus, Sun and Saturn lists; dream divination and incubation; mind-binding as sorcery with divine wrath; the Venus sacred-marriage and ŠÀ.ZI.GA rites off-screen | Each has a table, a rite and a test; the codex cites its source |
+| J6 | **The notes' full magick (DQ4, D-025)**, each as a working system with a table, rites and tests: numerology (basic and advanced: the gods' numbers, name numbers modifying rites); the primitive kabbalah and hermeticism ("as above, so below": sky omens mirrored in earthly events, correspondences between planets, gods, metals, days and directions); astrology (12 primitive zodiac signs plus extra constellations, birth signs, auspicious hours); astrotheology (Sun, Moon, Saturn, Ishtar/Venus, Mercury-Enki as rite powers); the Earth list (wealth, crop-yield and nature rites on fields and herds); the Moon list (dream reading and incubation, fortune telling, psychological magic on NPC moods, **animal telepathy** with herds and mounts, **telepathy** reading an NPC's intent, **psychometry** reading an object's history and owner (crime evidence!), **astral travel** as a trance that scouts a distant place on the region map, **mind control** that works but carries divine wrath and is sorcery); the Mercury list (high ceremonial rituals, invocations of a god, **pathworking** as guided visions that teach rites or reveal lore); the Venus list (love, allure, fertility, unions and alliances, the binding of hearts as bad karma, the morning-star and evening-star rites; sex magick off-screen) | Every form named in notes L188–L207 is playable and has a codex page |
 | J7 | **Chronicle mode**: the same rites and costs, but effects become statistical and deniable | The toggle changes outcomes and never costs |
 | J8 | **Sorcery is a crime**: curse rites seen by a witness go to justice (H3) | Casting a curse in view leads to a trial |
 | J9 | **Divine wrath and cataclysm in play** (the kernel has it): omens, the curse tiers, atonement, shown in the world (a failed harvest, lightning striking a temple, a plague) | Wrath has visible world consequences |
@@ -338,7 +351,7 @@
 |---|---|---|
 | S1 | **Every place usable**: every simulated building has a door that opens, an owner, and something to do (houses: visit by invitation, trade, rent, buy, rob, sleep as a guest, marry in; workshops; fields and presses; the temple of sun and moon: offer, pray, rites, ritual goods, festivals, purification, vows, temple service; the governor's seat: petitions, court, rank, grants, the archives, dues, ilku calls; the lighthouse scholars' school: scripts, scribes, tablets; the wharf: loading work, selling to ships, imports, ventures, sailors, foreigners; family tombs; wells and springs as gossip spots) | A place-by-place checklist is 100% green |
 | S2 | **Interiors** for every building kind, built with the kit in the D-023 style | Every enterable door leads somewhere |
-| S3 | **The core quarter complete** (DQ3): ~60 enterable buildings registered in `places.csv`; every other house is scenery with a shut door (a knock gets a refusal bark) | Every enterable door works; no scenery door pretends to be one |
+| S3 | **Every building of the crescent finished** (DQ3, Stage AA): all ~110 buildings have an interior, an owner household and something to do | The place-by-place checklist is 100% green |
 | S4 | **The ziggurat and the Great Lighthouse** as usable places, not only scenery | Both host rites, work, and events |
 | S5 | **Clothing set v1** (plan.md §7 art risk): rank and origin clothing (Sumerian, imperial Akkadian, barbarian, Suti, Kaldunai prisoner), since dress drives reactions | Each community reads visually |
 | S6 | **Weapons, armour, shields and helmets** as meshes for all 20 arms and the cultural styles | Every equipped item is visible |
@@ -381,7 +394,7 @@
 Dependencies decide the order. Inside a stage, steps without shared files run in parallel (one agent per step or per table). Each stage ends with the merge → bug review → fix → push cycle and a **designer play session**.
 
 ```
-A Foundation ──► B Body ──► C Trade ──► D Craft ──► E Character
+A Foundation ──► AA City rebuilt ──► B Body ──► C Trade ──► D Craft ──► E Character
                                   │
                                   ├──► F People ──► G Reaction ──► H Justice ──► I Death
                                   │                     │

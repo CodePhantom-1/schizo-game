@@ -19,6 +19,7 @@ Where everything comes from:
 | [docs/mechanics.md](docs/mechanics.md) | The audit: every imported system with its source section, what gets reskinned with notes-content, what is open, and the gaps the notes ask for that have no imported mechanic |
 | [docs/plan.md](docs/plan.md) | The build plan: how the agent creates the game 100% solo, step by step — the decision gate, the canon database, the headless world kernel, the engine phases, milestones with gates, and the ten working rules that keep it clean |
 | [docs/completion-plan.md](docs/completion-plan.md) | The completion plan (2026-09-25): every system, the world, the UI, audio and ship quality, down to the smallest detail, as stages A–U with a playable "done when" per step; the main quest is parked until the designer says go |
+| [docs/city-of-the-moon.md](docs/city-of-the-moon.md) | The City of the Moon redesigned (D-025): a compact crescent of ~110 living buildings around the sacred lagoon of the two waters, in nine quarters |
 
 ## The database (the product's backbone)
 
