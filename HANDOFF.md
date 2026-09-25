@@ -50,13 +50,14 @@ Both lost pieces rebuilt and merged; 40/40 kernel tests. Divine wrath (`sim/Divi
     -Dllvm=disabled -Dplatforms=x11,wayland -Dbuildtype=debugoptimized -Dbuild-tests=true \
     -Dprefix="$HOME/.local/mesa-radv-test" && ninja -C build && ninja -C build install
   ```
-  Then launch windowed with the patched driver:
+  **Status on this machine (2026-09-25): even the patched RADV did not save the 5700 XT — the kernel amdgpu driver (6.17) wedges on UE's workload into a GPU-reset storm (journal: "GPU reset … device wedged"), regardless of Mesa version. The game runs STABLE on the iGPU the monitor is wired to.** Playable launch today:
   ```
-  export VK_DRIVER_FILES="$HOME/.local/mesa-radv-test/share/vulkan/icd.d/radeon_icd.x86_64.json"
-  SDL_VIDEODRIVER=x11 ~/UnrealEngine/Engine/Binaries/Linux/UnrealEditor \
-    "$PWD/unreal/SchizoGame.uproject" -game -windowed -ResX=1280 -ResY=720
+  VK_DRIVER_FILES=/usr/share/vulkan/icd.d/intel_icd.json SDL_VIDEODRIVER=x11 \
+    ~/UnrealEngine/Engine/Binaries/Linux/UnrealEditor "$PWD/unreal/SchizoGame.uproject" \
+    -game -windowed -ResX=1280 -ResY=720
   ```
-  The renderer is already configured conservatively for this (`DefaultEngine.ini` [/SystemSettings]: no Lumen/RT/reflections/virtual shadows, no split barriers). **Never launch with `-opengl4`** on this hybrid-GPU box — it hard-crashed the whole machine once (2026-09-25). The first window can sit black a couple of minutes while modules load — that is loading, not a hang.
+  To return to the 5700 XT: install an LTS kernel (e.g. `sudo apt install linux-generic-hwe-24.04` style — needs the designer's sudo) and retry the plain launch; the patched RADV above is still worth keeping. **Never launch with `-opengl4`** on this hybrid-GPU box — it hard-crashed the whole machine once (2026-09-25). The first window can sit black a few minutes while pipelines compile — that is loading, not a hang.
+  The renderer is already configured conservatively (`DefaultEngine.ini` [/SystemSettings]: no Lumen/RT/reflections/virtual shadows, no split barriers).
 - Known-unfinished in the slice: placeholder demo props for well/bed/pickups (`sim.VerbDemoProps 0` hides them), no sky ambient light (runtime sky capture is the GPU-hang path; return with an offline cubemap), NPC names show kernel ids, wave-6 review findings to be triaged next session.
 
 ## How to proceed
