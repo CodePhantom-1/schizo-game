@@ -40,7 +40,9 @@ def main() -> int:
         for r in rows:
             tag = (r.get("tag") or "").strip()
             label = r.get("name") or r.get("id")
-            detail = r.get("canon") or r.get("domain_and_role") or r.get("effects") or r.get("method") or r.get("epithet_and_role") or r.get("canon_summary") or r.get("player_beat") or r.get("basis") or ""
+            if name == "dialogues" and r.get("speaker"):
+                label = f"{r['speaker']} ({r['id']})"
+            detail = r.get("canon") or r.get("domain_and_role") or r.get("effects") or r.get("method") or r.get("epithet_and_role") or r.get("canon_summary") or r.get("player_beat") or r.get("basis") or r.get("text") or ""
             mark = "" if tag == "CANON" else f" `[{tag}]`"
             lines.append(f"- **{label}**{mark} — {detail}" if detail else f"- **{label}**{mark}")
         lines.append("")
