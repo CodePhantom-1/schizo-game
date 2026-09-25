@@ -303,8 +303,13 @@ std::string save_world(const WorldState& w) {
     return wr.str();
 }
 
-void load_world(WorldState& w, const std::string& canon_dir, const std::string& data) {
+void load_world(WorldState& out, const std::string& canon_dir, const std::string& data) {
     try {
+        // Parsed into a local so a truncated/corrupt save throws with the
+        // caller's live world (`out`) left byte-for-byte untouched; `out` is
+        // only overwritten by the std::move below, once every section has
+        // parsed successfully.
+        WorldState w;
         Reader rd(data);
 
         std::vector<std::string> header = rd.next();
@@ -608,6 +613,8 @@ void load_world(WorldState& w, const std::string& canon_dir, const std::string& 
                 }
             }
         }
+
+        out = std::move(w);  // atomic: only reached once parsing fully succeeded
     } catch (const std::runtime_error&) {
         throw;
     } catch (const std::exception& e) {
