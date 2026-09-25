@@ -211,6 +211,26 @@ std::string save_world(const WorldState& w) {
             wr.line({deity, s64(val)});
         wr.line({"MAGIC_PURITY", s64(w.magic.purity)});
         wr.line({"MAGIC_PLACE", w.magic.place});
+
+        // K-1: durable rite knowledge + the effect surfaces (protection/
+        // blessing/curse wards, divination omens).
+        wr.line({"MAGIC_KNOWN_RITES", s64(static_cast<std::int64_t>(w.magic.known_rites.size()))});
+        for (const Id& rite_id : w.magic.known_rites) wr.line({rite_id});
+
+        wr.line({"MAGIC_WARDS", s64(static_cast<std::int64_t>(w.magic.active_wards.size()))});
+        for (const Ward& wd : w.magic.active_wards)
+            wr.line({wd.id, wd.rite_id, wd.deity, wd.target, wd.kind, s64(wd.cast_day),
+                     s64(wd.expires_day)});
+
+        wr.line({"MAGIC_OMENS", s64(static_cast<std::int64_t>(w.magic.omens.size()))});
+        for (const Omen& o : w.magic.omens) {
+            std::ostringstream prob;
+            prob.precision(17);
+            prob << o.probability;
+            wr.line({o.id, o.rite_id, o.deity, s64(o.day), o.reading, prob.str()});
+        }
+
+        wr.line({"MAGIC_NEXT_EFFECT_ID", s64(w.magic.next_effect_id)});
     }
 
     // JUSTICE
@@ -442,6 +462,52 @@ void load_world(WorldState& out, const std::string& canon_dir, const std::string
             }
             w.magic.purity = static_cast<int>(Reader::parse_i64(rd.scalar("MAGIC_PURITY")));
             w.magic.place = rd.scalar("MAGIC_PLACE");
+
+            w.magic.known_rites.clear();
+            n = rd.section("MAGIC_KNOWN_RITES");
+            for (std::size_t i = 0; i < n; ++i) {
+                std::vector<std::string> f = rd.next();
+                if (f.size() != 1) throw std::runtime_error("snapshot: bad known-rite row");
+                w.magic.known_rites.insert(f[0]);
+            }
+
+            w.magic.active_wards.clear();
+            n = rd.section("MAGIC_WARDS");
+            for (std::size_t i = 0; i < n; ++i) {
+                std::vector<std::string> f = rd.next();
+                if (f.size() != 7) throw std::runtime_error("snapshot: bad ward row");
+                Ward wd;
+                wd.id = f[0];
+                wd.rite_id = f[1];
+                wd.deity = f[2];
+                wd.target = f[3];
+                wd.kind = f[4];
+                wd.cast_day = Reader::parse_i64(f[5]);
+                wd.expires_day = Reader::parse_i64(f[6]);
+                w.magic.active_wards.push_back(std::move(wd));
+            }
+
+            w.magic.omens.clear();
+            n = rd.section("MAGIC_OMENS");
+            for (std::size_t i = 0; i < n; ++i) {
+                std::vector<std::string> f = rd.next();
+                if (f.size() != 6) throw std::runtime_error("snapshot: bad omen row");
+                Omen o;
+                o.id = f[0];
+                o.rite_id = f[1];
+                o.deity = f[2];
+                o.day = Reader::parse_i64(f[3]);
+                o.reading = f[4];
+                try {
+                    o.probability = std::stod(f[5]);
+                } catch (...) {
+                    throw std::runtime_error("snapshot: bad omen probability '" + f[5] + "'");
+                }
+                w.magic.omens.push_back(std::move(o));
+            }
+
+            w.magic.next_effect_id =
+                static_cast<int>(Reader::parse_i64(rd.scalar("MAGIC_NEXT_EFFECT_ID")));
         }
 
         // JUSTICE
