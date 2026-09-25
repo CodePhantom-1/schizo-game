@@ -144,6 +144,22 @@ static bool test_unknown_role_returns_nullopt() {
     return true;
 }
 
+// Batch-1 review: on day 1, before a role's first hour, the world's first night
+// is day 1's own evening — never nullopt for a known role.
+static bool test_day_one_before_first_hour_is_not_empty() {
+    const Db db = load_fixture_db();
+    const Calendar cal = real_calendar();
+    for (const std::string& role : schedule_roles(db)) {
+        const auto plan = day_plan(db, cal, role, 1);
+        if (plan.empty()) continue;  // a seasonal-only role out of season has no task on day 1
+        const auto t = task_at(db, cal, role, 1, 0);
+        SIM_CHECK(t.has_value());
+        SIM_CHECK_EQ(t->schedule_id,
+                     plan.front().hour == 0 ? plan.front().schedule_id : plan.back().schedule_id);
+    }
+    return true;
+}
+
 static bool test_open_row_never_surfaces() {
     const Db db = load_fixture_db();
     const Calendar cal = real_calendar();
@@ -208,5 +224,6 @@ SIM_MAIN(test_schedule_roles_sorted_unique_skips_open, test_role_matching_is_cas
          test_seasonal_row_wins_tie_over_all_season_row, test_seasonal_bend_across_each_season,
          test_carry_over_before_first_hour_same_day, test_carry_over_crosses_a_season_boundary,
          test_task_at_exact_and_between_hours, test_unknown_role_returns_nullopt,
+         test_day_one_before_first_hour_is_not_empty,
          test_open_row_never_surfaces, test_every_fixture_row_reachable,
          test_every_real_canon_row_reachable, test_determinism_same_inputs_same_outputs)

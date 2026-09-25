@@ -195,6 +195,9 @@ void seed_market(const WorldContext& ctx, EconomyState& state, const Id& city) {
     // so their stock starts empty. OPEN rows are treated as absent.
     for (const Row& row : ctx.db.rows("items")) {
         if (row.get("tag") == "OPEN") continue;
+        // Stations (quern, oven, vat) are fixtures, not goods; water is drawn
+        // at the well (Needs/Crafting) — neither sits on a market shelf.
+        if (row.get("category") == "station" || row.at("id") == "water") continue;
         const Id item = row.at("id");
         if (book.silver_by_item.find(item) != book.silver_by_item.end()) continue;
         book.silver_by_item[item] =

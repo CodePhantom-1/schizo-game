@@ -40,17 +40,24 @@ std::vector<std::string> schedule_roles(const Db& db) {
     return out;
 }
 
-std::vector<ScheduledTask> day_plan(const Db& db, const Calendar& cal, const std::string& role,
-                                     DayNumber day) {
-    const std::string wanted = normalize(role);
-    const std::string season_now = cal.season_id(day);
+namespace {
 
+// The role's non-OPEN rows — one table scan; task_at reuses it across days.
+std::vector<const Row*> role_rows(const Db& db, const std::string& role) {
+    const std::string wanted = normalize(role);
+    std::vector<const Row*> out;
+    for (const Row& row : db.rows("schedules"))
+        if (!is_open(row) && normalize(row.get("role")) == wanted) out.push_back(&row);
+    return out;
+}
+
+std::vector<ScheduledTask> plan_from_rows(const std::vector<const Row*>& rows,
+                                          const std::string& season_now) {
     std::map<int, ScheduledTask> by_hour;  // hour -> chosen row (seasonal beats all-season)
     std::map<int, bool> seasonal_at_hour;
 
-    for (const Row& row : db.rows("schedules")) {
-        if (is_open(row)) continue;
-        if (normalize(row.get("role")) != wanted) continue;
+    for (const Row* rp : rows) {
+        const Row& row = *rp;
         const std::string season = trim(row.get("season"));
         const bool is_seasonal = !season.empty();
         if (is_seasonal && season != season_now) continue;
@@ -81,34 +88,36 @@ std::vector<ScheduledTask> day_plan(const Db& db, const Calendar& cal, const std
     return out;
 }
 
+}  // namespace
+
+std::vector<ScheduledTask> day_plan(const Db& db, const Calendar& cal, const std::string& role,
+                                     DayNumber day) {
+    return plan_from_rows(role_rows(db, role), cal.season_id(day));
+}
+
 std::optional<ScheduledTask> task_at(const Db& db, const Calendar& cal, const std::string& role,
                                       DayNumber day, int hour) {
-    const std::string wanted = normalize(role);
-    bool role_known = false;
-    for (const std::string& r : schedule_roles(db)) {
-        if (normalize(r) == wanted) {
-            role_known = true;
-            break;
-        }
-    }
-    if (!role_known) return std::nullopt;
+    const std::vector<const Row*> rows = role_rows(db, role);
+    if (rows.empty()) return std::nullopt;  // the only nullopt: a role with no rows
 
-    DayNumber d = day;
+    auto last_at_or_before = [&](DayNumber d, int h) -> std::optional<ScheduledTask> {
+        std::optional<ScheduledTask> best;
+        for (const ScheduledTask& t : plan_from_rows(rows, cal.season_id(d)))
+            if (t.hour <= h) best = t;  // plan is hour-ascending
+        return best;
+    };
+
+    // Walk back through earlier days for the task that carries over. Day 1 has
+    // no yesterday: the world's first night is taken as day 1's own evening.
+    DayNumber d = day < 1 ? 1 : day;
     int h = hour;
-    // Bounded walk-back: a known role always has at least one row somewhere,
-    // and Calendar's own day numbering starts at 1 (Time.hpp), so we stop
-    // there rather than call the calendar with an out-of-contract day.
-    for (int steps = 0; steps <= 366 && d >= 1; ++steps) {
-        const std::vector<ScheduledTask> plan = day_plan(db, cal, role, d);
-        const ScheduledTask* best = nullptr;
-        for (const ScheduledTask& t : plan) {
-            if (t.hour <= h && (best == nullptr || t.hour > best->hour)) best = &t;
-        }
-        if (best != nullptr) return *best;
-        d -= 1;
+    for (int steps = 0; steps <= 366; ++steps) {
+        if (auto t = last_at_or_before(d, h)) return t;
+        if (d > 1) --d;
+        else if (h == 23) break;  // day 1's evening already checked
         h = 23;
     }
-    return std::nullopt;
+    return std::nullopt;  // unreachable for a role with rows in some season of the year
 }
 
 }  // namespace sim

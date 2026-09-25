@@ -5,6 +5,8 @@
 #include "sim/Db.hpp"
 #include "sim/Test.hpp"
 
+#include <filesystem>
+#include <fstream>
 #include <set>
 #include <string>
 
@@ -30,11 +32,10 @@ static bool test_bread_chain_end_to_end() {
     // bake_bread needs flour:2, so mill a second batch first.
     SIM_CHECK(craft(db, inv, "mill_flour", stations));
     SIM_CHECK_EQ(inv.counts["barley_flour"], 2);
-    inv.counts["water"] = 1;
 
     SIM_CHECK(craft(db, inv, "bake_bread", stations, 1, &reason));
     SIM_CHECK_EQ(inv.counts["barley_flour"], 0);
-    SIM_CHECK_EQ(inv.counts["water"], 0);
+    SIM_CHECK(inv.counts.count("water") == 0);  // water is drawn at the well, never held
     SIM_CHECK_EQ(inv.counts["bread"], 1);
     return true;
 }
@@ -43,7 +44,6 @@ static bool test_beer_chain_end_to_end() {
     const Db db = load_canon();
     Inventory inv;
     inv.counts["grain"] = 4;
-    inv.counts["water"] = 3;
     const std::set<Id> stations = {"quern", "oven", "brewing_vat"};
 
     SIM_CHECK(craft(db, inv, "malt_barley", stations, 2));  // grain:2 x2 = 4
@@ -52,12 +52,11 @@ static bool test_beer_chain_end_to_end() {
 
     SIM_CHECK(craft(db, inv, "bake_bappir", stations));  // malted_barley:2; water:1
     SIM_CHECK_EQ(inv.counts["malted_barley"], 0);
-    SIM_CHECK_EQ(inv.counts["water"], 2);
     SIM_CHECK_EQ(inv.counts["bappir"], 1);
 
     SIM_CHECK(craft(db, inv, "brew_beer", stations));  // bappir:1; water:2
     SIM_CHECK_EQ(inv.counts["bappir"], 0);
-    SIM_CHECK_EQ(inv.counts["water"], 0);
+    SIM_CHECK(inv.counts.count("water") == 0);
     SIM_CHECK_EQ(inv.counts["beer"], 1);
     return true;
 }
@@ -66,7 +65,7 @@ static bool test_missing_input_refused_no_partial_effects() {
     const Db db = load_canon();
     Inventory inv;
     inv.counts["grain"] = 1;  // mill_flour needs grain:1, so this alone would pass...
-    inv.counts["water"] = 5;  // ...but bake_bread needs flour:2, which we don't have.
+    // ...but bake_bread needs flour:2, which we don't have.
     const Inventory before = inv;
     const std::set<Id> stations = {"quern", "oven"};
 
@@ -144,7 +143,40 @@ static bool test_load_recipes_is_deterministic() {
     return true;
 }
 
-SIM_MAIN(test_bread_chain_end_to_end, test_beer_chain_end_to_end,
+// Batch-1 review: malformed rows are absent (never free/output-less), duplicate
+// inputs are summed, and a huge batch is refused instead of overflowing.
+static bool test_malformed_and_duplicate_rows() {
+    namespace fs = std::filesystem;
+    const fs::path dir = fs::temp_directory_path() / "sim_crafting_fixture";
+    fs::create_directories(dir);
+    {
+        std::ofstream f(dir / "recipes.csv");
+        f << "id,name,inputs,outputs,station,hours,tag,source_ref\n"
+          << "no_qty,x,grain:1,bread,,1,INVENTED,t\n"
+          << "bad_qty,x,grain:x,bread:1,,1,INVENTED,t\n"
+          << "no_output,x,grain:1,,,1,INVENTED,t\n"
+          << "dup_in,x,grain:1;grain:1,bread:1,,1,INVENTED,t\n";
+    }
+    const Db db = Db::load(dir.string());
+    Inventory inv;
+    inv.counts["grain"] = 1;
+    const std::set<Id> none;
+    for (const char* id : {"no_qty", "bad_qty", "no_output"}) {
+        SIM_CHECK(!craft(db, inv, id, none));
+        SIM_CHECK_EQ(inv.counts["grain"], 1);
+    }
+    SIM_CHECK(!craft(db, inv, "dup_in", none));  // needs grain:2 in total
+    SIM_CHECK_EQ(inv.counts["grain"], 1);
+    inv.counts["grain"] = 2;
+    SIM_CHECK(craft(db, inv, "dup_in", none));
+    SIM_CHECK_EQ(inv.counts["grain"], 0);
+    SIM_CHECK(!craft(db, inv, "dup_in", none, 1'100'000'000));
+    SIM_CHECK_EQ(load_recipes(db).size(), 1u);
+    fs::remove_all(dir);
+    return true;
+}
+
+SIM_MAIN(test_malformed_and_duplicate_rows, test_bread_chain_end_to_end, test_beer_chain_end_to_end,
           test_missing_input_refused_no_partial_effects,
           test_missing_station_refused_no_partial_effects,
           test_unknown_recipe_refused, test_every_recipe_item_exists_in_items_csv,

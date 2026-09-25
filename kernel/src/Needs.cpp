@@ -108,9 +108,10 @@ bool eat(const Db& db, NeedsState& s, const Id& actor, const Id& item_id, std::s
 }
 
 bool drink(const Db& db, NeedsState& s, const Id& actor, const Id& item_id, std::string* reason) {
-    Needs& n = needs_of(s, actor);
     if (item_id == "water") {
-        // Always drinkable — infrastructure, not a canon/market good (INVENTED, see header).
+        // Always drinkable — drawn at the well, never held (INVENTED, see header;
+        // items.csv now carries a `water` row for recipes, Crafting treats it the same way).
+        Needs& n = needs_of(s, actor);
         n.thirst = clamp0_100(n.thirst - 40);
         return true;
     }
@@ -124,6 +125,7 @@ bool drink(const Db& db, NeedsState& s, const Id& actor, const Id& item_id, std:
         if (reason) *reason = "not_drink";
         return false;
     }
+    Needs& n = needs_of(s, actor);
     n.thirst = clamp0_100(n.thirst - thirst_restore_for_category(category));
     if (category == "staple drink") {
         // "Beer and wine give some water and calories" (rpg-systems §6).
