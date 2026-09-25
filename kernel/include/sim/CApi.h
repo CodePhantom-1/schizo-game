@@ -23,6 +23,7 @@ typedef struct SimWorld SimWorld;  // opaque — one deterministic world
 
 // Lifecycle ---------------------------------------------------------------
 SimWorld* sim_world_create(const char* canon_dir, uint64_t seed);
+// Frees the world. A null world is a no-op; never throws.
 void sim_world_destroy(SimWorld* world);
 
 // Clock -------------------------------------------------------------------
@@ -185,7 +186,8 @@ void sim_world_set_purity(SimWorld* world, int purity);
 //  -3   the player does not know the rite
 //  -4   nothing addressed (an "any" rite with no god, a ward with no place)
 //  -5   target names no live deities.csv row
-// A negative code changes no state.
+// A negative code changes no state, except a -1 from an internal failure
+// (e.g. out of memory), which may leave the rite partly applied.
 int sim_world_perform_rite(SimWorld* world, const char* rite, const char* target,
                            char* effect_out, int cap);
 
@@ -194,7 +196,8 @@ int64_t sim_world_ward_until(const SimWorld* world, const char* place);
 // 1 if a ward holds on `place` today, else 0; -1 on null.
 int sim_world_warded(const SimWorld* world, const char* place);
 
-// Omens read so far, oldest first. sim_world_omen writes omen `index` as
+// Omens read so far, oldest first: sim_world_omen_count returns how many, or
+// -1 on a null world. sim_world_omen writes omen `index` as
 // "day;rite;subject;sign;confidence_pct" (buffer convention); -1 on a null
 // argument or an index out of range.
 int sim_world_omen_count(const SimWorld* world);

@@ -7,15 +7,18 @@
 // festival-demanding time_window, an OPEN-tagged row). Fixture rows are test
 // scaffolding only — they are not canon and ship nowhere.
 //
-// Verified rng draws (Rng{seed}.fork(day).unit(), see Magic.hpp:15):
-//   seed  1, day 5 -> 0.099786  (< 0.8: the full-good rite succeeds)
-//   seed 42, day 5 -> 0.662594  (>= 0.5: the weakened rite fails)
-//   seed  7, day 5 -> 0.809882  (any outcome; used for consistency only)
-//   seed 11, day 9 -> 0.418463  (determinism pair)
+// Verified rolls (D-022: Rng{seed}.fork(day).fork(stable_hash(rite)).below(10000),
+// see Magic.hpp), in basis points:
+//   seed  1, day 5, sacrifice_fish_sea_gems -> 3493  (< 8000: the full-good rite succeeds)
+//   seed  1, day 5, any_god_blessing        -> 4729  (< 8000: succeeds)
+//   seed 14, day 5, sacrifice_fish_sea_gems -> 9589  (>= 5000 and >= 3000: the weakened rite fails)
+//   seed  7, day 5, sacrifice_fish_sea_gems -> 5807  (any outcome; used for consistency only)
+//   seed 11, day 9, sacrifice_fish_sea_gems -> 5913  (determinism pair)
 #include "sim/Context.hpp"
 
 #include "sim/Test.hpp"
 
+#include <climits>
 #include <cmath>
 #include <cstdint>
 #include <filesystem>
@@ -175,9 +178,10 @@ static bool test_rite_needs_knowledge() {
     return true;
 }
 
-// The fixed formula (Magic.hpp:8-15) with every power satisfied and neutral
-// favour: 0.40*0.50 + 0.20 + 0.20 + 0.10 + 0.10 = 0.80; the draw is exactly
-// Rng{seed}.fork(day).unit() and success is draw < score.
+// The fixed formula (Magic.hpp) with every power satisfied and neutral
+// favour: 50*4000/100 + 2000 + 2000 + 1000 + 1000 = 8000 bp; the roll is
+// exactly Rng{seed}.fork(day).fork(stable_hash(rite)).below(10000) and
+// success is roll < score_bp (D-022).
 static bool test_full_formula_and_draw() {
     World w{7, 5, "../db/canon"};
     w.magic.place = "temple:city_of_the_moon";
@@ -185,18 +189,23 @@ static bool test_full_formula_and_draw() {
 
     const RiteResult r = perform_rite(w.ctx, w.magic, "sacrifice_fish_sea_gems", inputs);
     SIM_CHECK(r.performed);
+    SIM_CHECK_EQ(r.score_bp, 8000);
     SIM_CHECK(close(r.score, 0.80));
     SIM_CHECK(r.refusal_reason.empty());
     SIM_CHECK_EQ(r.deity, std::string("the_two_waters"));
     SIM_CHECK_EQ(r.effect_family, std::string("offering (favour)"));
 
-    const double draw = Rng{7}.fork(5).unit();  // fork does not advance the parent (Rng.hpp:32-34)
-    SIM_CHECK_EQ(r.succeeded, draw < r.score);
+    // fork does not advance the parent (Rng.hpp), so a fresh Rng{7} replays it.
+    const std::uint64_t roll =
+        Rng{7}.fork(5).fork(stable_hash("sacrifice_fish_sea_gems")).below(10000);
+    SIM_CHECK_EQ(roll, std::uint64_t{5807});
+    SIM_CHECK_EQ(r.succeeded, roll < static_cast<std::uint64_t>(r.score_bp));
+    SIM_CHECK(r.succeeded);
     return true;
 }
 
 // Magic.hpp:17-18: "A performed rite raises favour with its deity by +2."
-// Score 0.80 with draw 0.099786 -> success; favour 50 -> 52.
+// Score 8000 bp with roll 3493 -> success; favour 50 -> 52.
 static bool test_performed_rite_raises_favour_by_two() {
     World w{1, 5, "../db/canon"};
     w.magic.place = "temple:city_of_the_moon";
@@ -212,10 +221,10 @@ static bool test_performed_rite_raises_favour_by_two() {
 // Magic.hpp:17-18: a performed rite raises +2 AND a failed rite angers -5
 // (the header says "performed", and its RiteResult distinguishes performed
 // from succeeded; the fixed formula provides only the one draw). Weakened to
-// score 0.50 (neutral favour, no materials, wrong place) with draw 0.662594:
-// failure nets 50 -> 47.
+// score 5000 bp (neutral favour, no materials, wrong place) with seed 14's
+// day-5 roll 9589: failure nets 50 -> 47.
 static bool test_failed_rite_angers_the_deity() {
-    World w{42, 5, "../db/canon"};
+    World w{14, 5, "../db/canon"};
     w.magic.place = "riverbank";  // rite wants "the first great temple (origin myth)"
 
     const RiteResult r = perform_rite(w.ctx, w.magic, "sacrifice_fish_sea_gems",
@@ -226,7 +235,7 @@ static bool test_failed_rite_angers_the_deity() {
     SIM_CHECK_EQ(favour(w.magic, "the_two_waters"), 47);  // +2 performed, -5 angered
 
     // Clamping holds on the anger path too: a hated deity (0) cannot go below 0.
-    World w2{42, 5, "../db/canon"};
+    World w2{14, 5, "../db/canon"};  // score 3000 bp, roll 9589
     w2.magic.place = "riverbank";
     add_favour(w2.magic, "the_two_waters", -50);  // 50 -> 0
     const RiteResult r2 = perform_rite(w2.ctx, w2.magic, "sacrifice_fish_sea_gems",
@@ -320,7 +329,7 @@ static bool test_empty_place_requirement_means_anywhere() {
 // "deities.csv id" (Magic.hpp:37) — so no favour entry appears at all.
 static bool test_deity_any_applies_no_favour() {
     TempCanon canon{"any_deity"};
-    World w{1, 5, canon.str()};  // draw 0.099786 < 0.80 -> succeeds
+    World w{1, 5, canon.str()};  // roll 4729 < 8000 bp -> succeeds
 
     const RiteResult r = perform_rite(w.ctx, w.magic, "any_god_blessing", prepared({{"honey", 1}}));
     SIM_CHECK(r.performed);
@@ -355,8 +364,8 @@ static bool test_festival_time_window() {
     return true;
 }
 
-// Magic.hpp:10 — the rite's purity requirement defaults to 0 (rites.csv carries
-// no purity column), so even a purely impure performer keeps the 0.20.
+// Magic.hpp:10 — the rite's purity requirement defaults to 0 (this canon row's
+// purity_required is blank), so even a purely impure performer keeps the 0.20.
 static bool test_purity_requirement_defaults_to_zero() {
     World w{1, 5, "../db/canon"};
     w.magic.purity = 0;
@@ -394,6 +403,128 @@ static bool test_determinism_same_seed_same_state_bytes() {
     // The draw came from a fork: the world rng stands exactly where it started.
     Rng probe{11};
     SIM_CHECK_EQ(a.rng.next(), probe.next());
+    return true;
+}
+
+// Follow-up review 2026-09-25: add_favour widens before clamping, so an
+// extreme delta (the C API passes the engine's int through) saturates instead
+// of overflowing int. 50 + INT_MAX used to wrap negative and clamp to 0.
+static bool test_add_favour_extreme_delta_saturates() {
+    MagicState state;
+    add_favour(state, "inanna", INT_MAX);
+    SIM_CHECK_EQ(favour(state, "inanna"), 100);
+    add_favour(state, "inanna", INT_MAX);  // already 100: stays 100
+    SIM_CHECK_EQ(favour(state, "inanna"), 100);
+    add_favour(state, "enki", INT_MIN);
+    SIM_CHECK_EQ(favour(state, "enki"), 0);
+    add_favour(state, "enki", INT_MIN);  // already 0: stays 0
+    SIM_CHECK_EQ(favour(state, "enki"), 0);
+    return true;
+}
+
+// Follow-up review 2026-09-25: the purity term reads rites.csv's
+// purity_required column (Magic.hpp:10 "purity >= rite's purity requirement,
+// default 0"); a blank cell is the default 0. Fixture rows are scaffolding.
+static bool test_purity_required_column_gates_the_purity_term() {
+    const std::filesystem::path dir =
+        std::filesystem::temp_directory_path() / "sim_test_magic_purity_required";
+    std::filesystem::remove_all(dir);
+    std::filesystem::create_directories(dir);
+    {
+        std::ofstream out(dir / "rites.csv");
+        out << "id,name,tradition,deity,materials,place,time_window,purity_required,"
+               "effect_family,effect_tag,tag,source_ref\n"
+            << "pure_rite_fixture,Fixture rite (test scaffolding),fixture,inanna,,,,60,"
+               "blessing (fixture),INVENTED: EFFECT,CANON,tests/test_magic.cpp\n"
+            << "blank_rite_fixture,Fixture rite (test scaffolding),fixture,inanna,,,,,"
+               "blessing (fixture),INVENTED: EFFECT,CANON,tests/test_magic.cpp\n";
+    }
+    // No materials/place/time demands: 0.40*0.50 + 0.20 + [purity 0.20] + 0.10 + 0.10.
+    const auto score_at = [&](const char* rite, int purity) {
+        World w{1, 5, dir.string()};
+        w.magic.purity = purity;
+        return perform_rite(w.ctx, w.magic, rite, known_with_nothing()).score;
+    };
+    SIM_CHECK(close(score_at("pure_rite_fixture", 59), 0.60));   // below 60: the term is lost
+    SIM_CHECK(close(score_at("pure_rite_fixture", 60), 0.80));   // at the requirement: kept
+    SIM_CHECK(close(score_at("pure_rite_fixture", 100), 0.80));
+    SIM_CHECK(close(score_at("blank_rite_fixture", 0), 0.80));   // blank = default 0
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+    return true;
+}
+
+// D-022: each rite gets its own roll, Rng.fork(day).fork(stable_hash(rite_id)),
+// so two rites on the same day no longer succeed or fail together.
+// Seed 1, day 5 (probed): d022_rite_a rolls 4717, d022_rite_b rolls 9031, and
+// both fixture rites score 8000 bp — so a succeeds and b fails.
+static bool test_d022_each_rite_gets_its_own_roll() {
+    const std::filesystem::path dir =
+        std::filesystem::temp_directory_path() / "sim_test_magic_d022_rolls";
+    std::filesystem::remove_all(dir);
+    std::filesystem::create_directories(dir);
+    {
+        std::ofstream out(dir / "rites.csv");
+        out << kRitesHeader
+            << "d022_rite_a,Fixture rite (test scaffolding),fixture,any,,,,"
+               "blessing (fixture),INVENTED: EFFECT,CANON,tests/test_magic.cpp\n"
+            << "d022_rite_b,Fixture rite (test scaffolding),fixture,any,,,,"
+               "blessing (fixture),INVENTED: EFFECT,CANON,tests/test_magic.cpp\n";
+    }
+    World w{1, 5, dir.string()};
+    const RiteResult a = perform_rite(w.ctx, w.magic, "d022_rite_a", known_with_nothing());
+    const RiteResult b = perform_rite(w.ctx, w.magic, "d022_rite_b", known_with_nothing());
+    SIM_CHECK(a.performed && b.performed);
+    SIM_CHECK(a.score == b.score);  // same powers, same score...
+    SIM_CHECK(a.succeeded);         // ...but a's roll 4717 < 8000
+    SIM_CHECK(!b.succeeded);        // and b's roll 9031 >= 8000
+
+    // The rolls are exactly the documented draw.
+    for (const RiteResult* r : {&a, &b}) {
+        const std::uint64_t roll =
+            Rng{1}.fork(5).fork(stable_hash(r->rite_id)).below(10000);
+        SIM_CHECK_EQ(r->succeeded, roll < 8000u);
+    }
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+    return true;
+}
+
+// D-022: the score is integer basis points (0..10000), weights 4000/2000/2000/
+// 1000/1000 and favour*4000/100 in integer maths, so it is exact on every CPU.
+static bool test_d022_score_is_exact_basis_points() {
+    World full{1, 5, "../db/canon"};
+    full.magic.place = "temple:city_of_the_moon";
+    const RiteResult r = perform_rite(full.ctx, full.magic, "sacrifice_fish_sea_gems",
+                                      prepared({{"fish", 1}, {"sea_gems", 1}}));
+    SIM_CHECK_EQ(r.score_bp, 8000);  // 50*40 + 2000 + 2000 + 1000 + 1000
+    SIM_CHECK(r.score == 0.8);       // bit-exact: derived as score_bp / 10000.0
+
+    World weak{1, 5, "../db/canon"};
+    weak.magic.place = "riverbank";
+    add_favour(weak.magic, "the_two_waters", -17);  // 33: 33*4000/100 = 1320 exactly
+    const RiteResult w2 = perform_rite(weak.ctx, weak.magic, "sacrifice_fish_sea_gems",
+                                       known_with_nothing());
+    SIM_CHECK_EQ(w2.score_bp, 1320 + 2000 + 1000);  // favour + purity + time
+    return true;
+}
+
+// D-022: Rng::below(n) is an unbiased draw in [0, n) and consumes the stream
+// deterministically.
+static bool test_d022_bounded_draw() {
+    Rng a{99};
+    Rng b{99};
+    for (int i = 0; i < 1000; ++i) {
+        const std::uint64_t x = a.below(10000);
+        SIM_CHECK(x < 10000u);
+        SIM_CHECK_EQ(x, b.below(10000));
+    }
+    Rng one{3};
+    SIM_CHECK_EQ(one.below(1), std::uint64_t{0});
+    SIM_CHECK_EQ(one.below(0), std::uint64_t{0});
+    // FNV-1a 64 reference values (the empty string is the offset basis).
+    SIM_CHECK_EQ(stable_hash(""), std::uint64_t{14695981039346656037ull});
+    SIM_CHECK_EQ(stable_hash("a"), std::uint64_t{0xaf63dc4c8601ec8cull});
     return true;
 }
 
@@ -437,4 +568,9 @@ SIM_MAIN(test_favour_defaults_and_clamps,
          test_festival_time_window,
          test_purity_requirement_defaults_to_zero,
          test_determinism_same_seed_same_state_bytes,
-         test_rite_knowledge_state)
+         test_rite_knowledge_state,
+         test_add_favour_extreme_delta_saturates,
+         test_purity_required_column_gates_the_purity_term,
+         test_d022_each_rite_gets_its_own_roll,
+         test_d022_score_is_exact_basis_points,
+         test_d022_bounded_draw)

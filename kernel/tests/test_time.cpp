@@ -68,6 +68,20 @@ static bool test_festival_days() {
     return true;
 }
 
+// Follow-up review 2026-09-25: festival_days comes from config in any order
+// (and may repeat); is_festival must still find every entry.
+static bool test_unsorted_festival_days() {
+    CalendarConfig cfg;
+    cfg.festival_days = {200, 10, 200, 55};
+    Calendar cal(cfg);
+    SIM_CHECK(cal.is_festival(10));
+    SIM_CHECK(cal.is_festival(55));
+    SIM_CHECK(cal.is_festival(200));
+    SIM_CHECK(!cal.is_festival(11));
+    SIM_CHECK(!cal.is_festival(199));
+    return true;
+}
+
 // K-2: yearly named festivals recur on their day_of_year, every year.
 static bool test_yearly_festivals() {
     CalendarConfig cfg;
@@ -122,4 +136,5 @@ SIM_MAIN(test_yearly_festivals,
          test_day_of_year,
          test_seasons_wrap,
          test_unnamed_months_by_default,
-         test_festival_days)
+         test_festival_days,
+         test_unsorted_festival_days)

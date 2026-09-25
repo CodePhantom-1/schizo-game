@@ -198,3 +198,25 @@ Additive throughout — no existing C API signature changed; no new save state.
 
 - `tests/test_festivals.cpp` (new), plus additions to `test_time.cpp`, `test_schedule.cpp`,
   `test_events.cpp`.
+
+# Kernel review follow-up + D-022 (2026-09-25)
+
+## Rng.hpp (additive)
+
+- `Rng::below(n)`: an unbiased uniform integer in `[0, n)` (rejection sampling), pure integer
+  maths. `int_in` keeps its modulo draw because Events' existing rolls depend on it.
+- `sim::stable_hash(std::string_view)`: FNV-1a 64, the same on every standard library, for
+  `fork()` salts.
+
+## Magic.hpp
+
+- D-022: the fixed formula is now integer basis points with one roll per rite
+  (module_Magic.md). `RiteResult` gains `int score_bp`; `double score` is kept as
+  `score_bp / 10000.0`. Outcomes for a given seed and day changed, so tests that pinned exact
+  draws were re-derived.
+
+## CApi.h / CApi.cpp
+
+- Every K-1/K-2 entry point and `sim_world_destroy` now catches everything and returns its
+  documented error value. `sim_world_omen_count`'s -1 and `sim_world_destroy`'s no-throw are
+  now documented.
