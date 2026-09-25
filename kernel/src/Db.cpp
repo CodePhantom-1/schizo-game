@@ -8,6 +8,14 @@
 namespace sim {
 namespace {
 
+// Python's str.strip() whitespace set, as canon_lint.py applies it.
+std::string strip(const std::string& s) {
+    const char* ws = " \t\r\n\f\v";
+    const std::size_t b = s.find_first_not_of(ws);
+    if (b == std::string::npos) return {};
+    return s.substr(b, s.find_last_not_of(ws) - b + 1);
+}
+
 std::vector<std::vector<std::string>> parse_csv(std::istream& in) {
     std::vector<std::vector<std::string>> out;
     std::string line;
@@ -63,7 +71,10 @@ std::vector<std::vector<std::string>> parse_csv(std::istream& in) {
             row.back() += c;
             ++i;
         }
-        if (in_quotes) continue;  // quoted newline: keep reading
+        if (in_quotes) {  // quoted newline: part of the field (RFC 4180); keep reading
+            row.back() += '\n';
+            continue;
+        }
         if (!row_started) end_field();
         end_row();
     }
@@ -98,6 +109,12 @@ Db Db::load(const std::string& canon_dir) {
             Row row;
             for (std::size_t c = 0; c < header.size() && c < parsed[r].size(); ++c)
                 row.fields[header[c]] = parsed[r][c];
+            // canon_lint.py reads id and tag with .strip(): " OPEN " passes the
+            // lint as OPEN, so the kernel must see it as OPEN too.
+            for (const char* col : {"id", "tag"}) {
+                auto f = row.fields.find(col);
+                if (f != row.fields.end()) f->second = strip(f->second);
+            }
             if ((row.fields["id"]).empty()) continue;
             db.tables_[table].push_back(std::move(row));
         }

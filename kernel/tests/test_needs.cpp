@@ -4,6 +4,7 @@
 
 #include "sim/Db.hpp"
 #include "sim/Test.hpp"
+#include <climits>
 
 using namespace sim;
 
@@ -137,6 +138,21 @@ static bool test_per_actor_independent() {
     return true;
 }
 
+
+// Bug-review 2026-09-25: hours * rate overflowed int (UB; in practice it
+// wrapped negative and *restored* the meters).
+static bool test_huge_hours_saturate_not_wrap() {
+    NeedsState s;
+    advance_needs(s, "player", INT_MAX, /*sleeping=*/false);
+    SIM_CHECK_EQ(needs_of(s, "player").hunger, 100);
+    SIM_CHECK_EQ(needs_of(s, "player").thirst, 100);
+    SIM_CHECK_EQ(needs_of(s, "player").fatigue, 100);
+    advance_needs(s, "player", 200000000, /*sleeping=*/true);  // 2.4e9 restore
+    SIM_CHECK_EQ(needs_of(s, "player").fatigue, 0);
+    return true;
+}
+
 SIM_MAIN(test_decay_over_hours, test_refused_drink_creates_no_actor, test_bread_is_food, test_sleeping_restores_fatigue, test_eat_reduces_hunger,
           test_drink_reduces_thirst, test_refuses_non_food_non_drink, test_effect_thresholds,
-          test_clamping_0_100, test_determinism, test_per_actor_independent)
+          test_clamping_0_100, test_determinism, test_per_actor_independent,
+         test_huge_hours_saturate_not_wrap)

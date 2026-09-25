@@ -6,6 +6,8 @@
 #include "sim/Snapshot.hpp"
 #include "sim/Schedule.hpp"
 
+#include <algorithm>
+#include <climits>
 #include <cstring>
 #include <fstream>
 #include <optional>
@@ -173,29 +175,27 @@ void sim_world_advance_needs(SimWorld* world, const char* actor, int hours, int 
 
 int sim_world_eat(SimWorld* world, const char* actor, const char* item) {
     if (world == nullptr || actor == nullptr || item == nullptr) return -1;
-    Inventory& inv = world->world.inventories[actor];
-    auto it = inv.counts.find(item);
-    const int have = it == inv.counts.end() ? 0 : it->second;
+    // Look up, never insert: a refused call must not add an inventory (and
+    // so change the save bytes) for an actor the world has never seen.
+    const int have = sim_world_item_count(world, actor, item);
     if (have < 1) return -2;
     std::string reason;
     if (!eat(world->world.db, world->world.needs, Id(actor), Id(item), &reason)) return -3;
-    inv.counts[item] = have - 1;
+    world->world.inventories[actor].counts[item] = have - 1;
     return 0;
 }
 
 int sim_world_drink(SimWorld* world, const char* actor, const char* item) {
     if (world == nullptr || actor == nullptr || item == nullptr) return -1;
     const bool is_water = std::strcmp(item, "water") == 0;
-    Inventory& inv = world->world.inventories[actor];
     int have = 0;
     if (!is_water) {
-        auto it = inv.counts.find(item);
-        have = it == inv.counts.end() ? 0 : it->second;
+        have = sim_world_item_count(world, actor, item);  // look up, never insert
         if (have < 1) return -2;
     }
     std::string reason;
     if (!drink(world->world.db, world->world.needs, Id(actor), Id(item), &reason)) return -3;
-    if (!is_water) inv.counts[item] = have - 1;
+    if (!is_water) world->world.inventories[actor].counts[item] = have - 1;
     return 0;
 }
 
@@ -224,8 +224,9 @@ int sim_world_item_count(const SimWorld* world, const char* actor, const char* i
 int sim_world_give_item(SimWorld* world, const char* actor, const char* item, int qty) {
     if (world == nullptr || actor == nullptr || item == nullptr) return -1;
     Inventory& inv = world->world.inventories[actor];
-    int cur = inv.counts[item] + qty;
-    if (cur < 0) cur = 0;
+    // Widened and saturated: count + qty must not overflow int.
+    const long long sum = static_cast<long long>(inv.counts[item]) + qty;
+    const int cur = static_cast<int>(std::clamp<long long>(sum, 0, INT_MAX));
     inv.counts[item] = cur;
     return cur;
 }
@@ -241,9 +242,16 @@ int sim_world_craft(SimWorld* world, const char* actor, const char* recipe,
         while (std::getline(ss, entry, ';'))
             if (!entry.empty()) stations.insert(entry);
     }
-    Inventory& inv = world->world.inventories[actor];
+    // Craft on a copy and write back only on success: a refused craft must
+    // not add an empty inventory for an unseen actor (craft() itself leaves
+    // the inventory untouched on failure).
+    const auto found = world->world.inventories.find(actor);
+    Inventory inv = found == world->world.inventories.end() ? Inventory{} : found->second;
     std::string reason;
-    if (craft(world->world.db, inv, Id(recipe), stations, times, &reason)) return 0;
+    if (craft(world->world.db, inv, Id(recipe), stations, times, &reason)) {
+        world->world.inventories[actor] = std::move(inv);
+        return 0;
+    }
     if (reason.rfind("unknown, OPEN or malformed recipe", 0) == 0) return -2;
     if (reason.rfind("station not at hand", 0) == 0) return -3;
     if (reason.rfind("missing input", 0) == 0) return -4;

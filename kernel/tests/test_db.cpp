@@ -2,6 +2,8 @@
 #include "sim/Db.hpp"
 
 #include "sim/Test.hpp"
+#include <fstream>
+#include <filesystem>
 
 using namespace sim;
 
@@ -48,4 +50,40 @@ static bool test_open_rows_are_readable() {
     return true;
 }
 
-SIM_MAIN(test_loads_every_table, test_finds_rows_by_id, test_quoted_fields_parse, test_open_rows_are_readable)
+
+// Bug-review 2026-09-25: CSV edge cases against the lint's own reading
+// (tools/canon_lint.py: python csv + .strip() on id and tag).
+static std::string write_fixture(const char* name, const std::string& events_csv) {
+    const std::filesystem::path dir = std::filesystem::temp_directory_path() / name;
+    std::filesystem::create_directories(dir);
+    std::ofstream(dir / "events.csv", std::ios::binary) << events_csv;
+    return dir.string();
+}
+
+static bool test_quoted_newline_is_kept() {
+    // RFC 4180: a line break inside a quoted field is part of the field.
+    const Db db = Db::load(write_fixture("sim_db_fixture_newline",
+        "id,summary,tag,source_ref\r\n"
+        "e1,\"first line\r\nsecond line\",INVENTED,test\r\n"));
+    const auto e1 = db.find("events", "e1");
+    SIM_CHECK(e1.has_value());
+    SIM_CHECK_EQ(e1->at("summary"), std::string("first line\nsecond line"));
+    SIM_CHECK_EQ(e1->at("tag"), std::string("INVENTED"));
+    return true;
+}
+
+static bool test_padded_id_and_tag_are_trimmed() {
+    // canon_lint strips id and tag, so " OPEN" and " e2 " pass the lint; the
+    // kernel must read them the same way or an OPEN row ships.
+    const Db db = Db::load(write_fixture("sim_db_fixture_padded",
+        "id,summary,tag,source_ref\n"
+        " e2 ,x, OPEN ,test\n"));
+    const auto e2 = db.find("events", "e2");
+    SIM_CHECK(e2.has_value());
+    SIM_CHECK_EQ(e2->at("tag"), std::string("OPEN"));
+    return true;
+}
+
+SIM_MAIN(test_loads_every_table, test_finds_rows_by_id, test_quoted_fields_parse, test_open_rows_are_readable,
+         test_quoted_newline_is_kept,
+         test_padded_id_and_tag_are_trimmed)

@@ -45,6 +45,14 @@ constexpr int kExhaustedAt = 70;
 
 int clamp0_100(int v) { return std::max(0, std::min(100, v)); }
 
+// hours * rate * severity, computed in double and bounded to +/-200 before the
+// int cast: any delta past 100 saturates a 0..100 meter anyway, and an int
+// product of a large engine-supplied `hours` would overflow (UB).
+int climb(int hours, int per_hour, double severity) {
+    const double v = static_cast<double>(hours) * per_hour * severity;
+    return static_cast<int>(std::llround(std::clamp(v, -200.0, 200.0)));
+}
+
 // items.csv `category` -> hunger points restored by eating one unit.
 // Only these categories count as food; everything else is refused.
 int hunger_restore_for_category(const std::string& category) {
@@ -78,15 +86,15 @@ void advance_needs(NeedsState& s, const Id& actor, int hours, bool sleeping, dou
     if (hours <= 0) return;
     Needs& n = needs_of(s, actor);
 
-    const int hunger_climb = static_cast<int>(std::llround(hours * kHungerPerHour * severity));
-    const int thirst_climb = static_cast<int>(std::llround(hours * kThirstPerHour * severity));
+    const int hunger_climb = climb(hours, kHungerPerHour, severity);
+    const int thirst_climb = climb(hours, kThirstPerHour, severity);
     n.hunger = clamp0_100(n.hunger + hunger_climb);
     n.thirst = clamp0_100(n.thirst + thirst_climb);
 
     if (sleeping) {
-        n.fatigue = clamp0_100(n.fatigue - hours * kFatigueAsleepRestorePerHour);
+        n.fatigue = clamp0_100(n.fatigue - climb(hours, kFatigueAsleepRestorePerHour, 1.0));
     } else {
-        const int fatigue_climb = static_cast<int>(std::llround(hours * kFatigueAwakePerHour * severity));
+        const int fatigue_climb = climb(hours, kFatigueAwakePerHour, severity);
         n.fatigue = clamp0_100(n.fatigue + fatigue_climb);
     }
 }

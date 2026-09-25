@@ -3,6 +3,7 @@
 #include "sim/CApi.h"
 
 #include "sim/Test.hpp"
+#include <climits>
 
 #include <cstdio>
 #include <cstring>
@@ -204,6 +205,35 @@ static bool test_save_load_null_and_bad_path() {
     return ok;
 }
 
+
+// Bug-review 2026-09-25: count + qty overflowed int (UB; wrapped negative
+// and the clamp then zeroed the stack).
+static bool test_give_item_saturates() {
+    SimWorld* w = sim_world_create("../db/canon", 42);
+    if (!w) return false;
+    bool ok = sim_world_give_item(w, "player", "grain", INT_MAX) == INT_MAX;
+    ok = ok && sim_world_give_item(w, "player", "grain", 1) == INT_MAX;
+    ok = ok && sim_world_give_item(w, "player", "grain", INT_MIN) == 0;
+    sim_world_destroy(w);
+    return ok;
+}
+
+// Bug-review 2026-09-25: refused eat/drink/craft calls created an empty
+// inventory for the actor, so a no-op changed the save bytes.
+static bool test_refused_calls_leave_the_save_untouched() {
+    SimWorld* w = sim_world_create("../db/canon", 42);
+    if (!w) return false;
+    static char before[1 << 16], after[1 << 16];
+    sim_world_save_to_buffer(w, before, sizeof(before));
+    bool ok = sim_world_eat(w, "ghost", "grain") == -2;
+    ok = ok && sim_world_drink(w, "ghost", "beer") == -2;
+    ok = ok && sim_world_craft(w, "ghost", "mill_flour", "quern", 1) == -4;
+    sim_world_save_to_buffer(w, after, sizeof(after));
+    ok = ok && std::strcmp(before, after) == 0;
+    sim_world_destroy(w);
+    return ok;
+}
+
 SIM_MAIN(test_lifecycle_and_clock,
          test_prices_and_the_drought_through_c,
          test_standing_and_favour_clamps,
@@ -214,4 +244,6 @@ SIM_MAIN(test_lifecycle_and_clock,
          test_craft_chain_and_eat_through_c,
          test_task_at_through_c,
          test_save_load_continue_through_c,
-         test_save_load_null_and_bad_path)
+         test_save_load_null_and_bad_path,
+         test_give_item_saturates,
+         test_refused_calls_leave_the_save_untouched)
