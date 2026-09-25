@@ -161,7 +161,7 @@ FVector ASimNpcDirector::ResolveDestination(const ASimNpc& Npc, int32 Hour, FStr
 	// literal "market for trader"/"gate for gatekeeper"/etc examples), else
 	// the resident's own place (bakery for the baker, ...), else the
 	// deterministic fallback.
-	const FString RoleKey = Npc.Role.ToLower();
+	const FString RoleKey = Npc.ResidentRole.ToLower();
 	if (const FString* Place = DayPlaceByRole().Find(RoleKey))
 	{
 		return ResolvePlaceLocation(*Place);

@@ -6,6 +6,7 @@
 // The kernel's C API through SimRuntime's public include path.
 #include "SimPlayerController.h"
 #include "SimTablet.h"
+#include "SimNpcDirector.h"  // UE-4: the street lives (residents + the sun; see its own file)
 #include "sim/CApi.h"
 
 #include "Engine/StaticMeshActor.h"
@@ -48,6 +49,12 @@ void ASimGameMode::SpawnBox(const FVector& Location, const FVector& Scale, const
 		Mesh->SetMobility(EComponentMobility::Movable);
 	}
 	Box->SetActorLabel(FString::Printf(TEXT("GreyBox_%s"), *Color.ToString()));
+}
+
+void ASimGameMode::BeginPlay()
+{
+	Super::BeginPlay();
+	GetWorld()->SpawnActor<ASimNpcDirector>();  // UE-4: residents + the sun (SimNpcDirector.cpp spawns ASimDayNight itself)
 }
 
 void ASimGameMode::StartPlay()

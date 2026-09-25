@@ -37,7 +37,7 @@ public:
 	FString ResidentName;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Sim")
-	FString Role;
+	FString ResidentRole;
 
 protected:
 	virtual void BeginPlay() override;

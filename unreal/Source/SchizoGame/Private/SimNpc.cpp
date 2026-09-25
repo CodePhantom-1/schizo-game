@@ -57,7 +57,7 @@ void ASimNpc::InitResident(const FString& InNpcId, const FString& InResidentName
 {
 	NpcId = InNpcId;
 	ResidentName = InResidentName;
-	Role = InRole;
+	ResidentRole = InRole;
 	SetActorLabel(*FString::Printf(TEXT("Npc_%s"), *InNpcId));
 
 	// Per-role tint: deterministic hash of the role string -> hue. Best
@@ -68,7 +68,7 @@ void ASimNpc::InitResident(const FString& InNpcId, const FString& InResidentName
 		UMaterialInstanceDynamic* Dyn = BodyMesh->CreateAndSetMaterialInstanceDynamic(0);
 		if (Dyn != nullptr)
 		{
-			const uint32 Hash = GetTypeHash(Role);
+			const uint32 Hash = GetTypeHash(ResidentRole);
 			const float Hue = static_cast<float>(Hash % 360u);
 			const FLinearColor Tint = FLinearColor::MakeFromHSV8(
 				static_cast<uint8>(Hue * 255.f / 360.f), 200, 200);
@@ -88,7 +88,7 @@ void ASimNpc::SetCurrentTask(const FString& ScheduleId, const FString& TaskText)
 	if (ScheduleId == CurrentScheduleId) return;  // no change — nothing to log
 	CurrentScheduleId = ScheduleId;
 	CurrentTaskText = TaskText;
-	UE_LOG(LogSimNpc, Log, TEXT("%s (%s, %s): %s [%s]"), *ResidentName, *NpcId, *Role, *TaskText, *ScheduleId);
+	UE_LOG(LogSimNpc, Log, TEXT("%s (%s, %s): %s [%s]"), *ResidentName, *NpcId, *ResidentRole, *TaskText, *ScheduleId);
 }
 
 void ASimNpc::Tick(float DeltaSeconds)
