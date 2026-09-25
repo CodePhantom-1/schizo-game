@@ -110,36 +110,38 @@ def build_room_walls(w, d, door_side="south", window_sides=("east",), x0=0, y0=0
 
 
 def build_flat_roof(w, d, height, access_at=None, x0=0, y0=0):
-    """Tile the roof. Parapet only runs on true perimeter tiles, on the
-    single side that faces outward (a corner tile that touches two outer
-    edges only gets a parapet on one of them — the roof_slab piece has a
-    parapet on one edge only; ponytail: simplification, upgrade to a
-    2-edge corner piece if the silhouette needs it). Interior tiles use the
-    no-parapet slab so the roof reads flat, not a checkerboard of walls."""
+    """Tile the roof surface only (no parapet — see build_parapet_ring,
+    which wraps the whole footprint's outer edge in one continuous run
+    instead of stitching per-tile parapet fragments together)."""
     objs = []
     for i in range(w):
         for j in range(d):
             if access_at == (i, j):
                 r = hk.build_roof_access()
-                rot = 0
-            elif j == d - 1:
-                r = hk.build_roof_slab(True)
-                rot = 0
-            elif j == 0:
-                r = hk.build_roof_slab(True)
-                rot = 180
-            elif i == w - 1:
-                r = hk.build_roof_slab(True)
-                rot = 270
-            elif i == 0:
-                r = hk.build_roof_slab(True)
-                rot = 90
             else:
                 r = hk.build_roof_slab(False)
-                rot = 0
-            objs.append(place(r, (x0 + i) * G, (y0 + j) * G, height, rot, CELL_SIZE))
+            objs.append(place(r, (x0 + i) * G, (y0 + j) * G, height, 0, CELL_SIZE))
             bpy.data.objects.remove(r, do_unlink=True)
     return objs
+
+
+def build_parapet_ring(w, d, roof_z, x0=0, y0=0):
+    """One continuous mudbrick parapet wrapping the roof footprint's full
+    outer perimeter (all 4 sides + corners), built directly rather than
+    from per-tile roof_slab parapet edges — a parapet tile per roof tile
+    left gaps at every interior-facing tile edge and a broken look at
+    corners (only one of a corner tile's two outer edges had a parapet)."""
+    bm = kc.new_bmesh()
+    t = kc.PARAPET_T
+    z0 = roof_z + kc.ROOF_THICK
+    z1 = z0 + kc.PARAPET_H
+    x_min, x_max = x0 * G, (x0 + w) * G
+    y_min, y_max = y0 * G, (y0 + d) * G
+    kc.add_box(bm, (x_min, y_min, z0), (x_max, y_min + t, z1), mat_index=0)  # south
+    kc.add_box(bm, (x_min, y_max - t, z0), (x_max, y_max, z1), mat_index=0)  # north
+    kc.add_box(bm, (x_min, y_min, z0), (x_min + t, y_max, z1), mat_index=0)  # west
+    kc.add_box(bm, (x_max - t, y_min, z0), (x_max, y_max, z1), mat_index=0)  # east
+    return kc.finalize_object(bm, "parapet_ring", ["M_Mudbrick"])
 
 
 def build_courtyard_floor(x0, y0, w, d):
@@ -163,15 +165,17 @@ def join_all(objs, name):
     return merged
 
 
-def house_small_single_room():
-    """3x3 single room, one door (south), one window (east), flat roof."""
+def house_small_single_room_objs():
+    """3x3 single room, one door (south), one window (east), flat roof with
+    a continuous parapet."""
     objs = build_room_walls(3, 3, door_side="south", window_sides=("east",))
     objs += build_flat_roof(3, 3, kc.WALL_HEIGHT)
+    objs.append(build_parapet_ring(3, 3, kc.WALL_HEIGHT))
     objs += build_courtyard_floor(0, 0, 3, 3)
-    return join_all(objs, "House_SmallSingleRoom")
+    return objs
 
 
-def house_two_room_courtyard():
+def house_two_room_courtyard_objs():
     """Two 2x2 rooms side by side, each opening onto a shared 4x2 open
     courtyard with a reed awning, per the real courtyard-house plan [A]:
     rooms arranged around an open-air yard, not a fully roofed block.
@@ -183,9 +187,11 @@ def house_two_room_courtyard():
     # room A at x[0..2], y[0..2]; door faces the courtyard (north)
     objs += build_room_walls(2, 2, door_side="north", window_sides=("west",), x0=0, y0=0)
     objs += build_flat_roof(2, 2, kc.WALL_HEIGHT, x0=0, y0=0)
+    objs.append(build_parapet_ring(2, 2, kc.WALL_HEIGHT, x0=0, y0=0))
     # room B at x[2..4], y[0..2]; door also faces the courtyard (north)
     objs += build_room_walls(2, 2, door_side="north", window_sides=("east",), x0=2, y0=0)
     objs += build_flat_roof(2, 2, kc.WALL_HEIGHT, x0=2, y0=0)
+    objs.append(build_parapet_ring(2, 2, kc.WALL_HEIGHT, x0=2, y0=0))
     # courtyard: 4x2 open yard to the north of both rooms
     objs += build_courtyard_floor(0, 2, 4, 2)
     objs += build_courtyard_floor(0, 0, 4, 2)
@@ -194,37 +200,58 @@ def house_two_room_courtyard():
     awning = hk.build_awning()
     objs.append(place(awning, 0.0, 2.0 * G, 0.0, 0, CELL_SIZE))
     bpy.data.objects.remove(awning, do_unlink=True)
-    return join_all(objs, "House_TwoRoomCourtyard")
+    return objs
 
 
-def house_roof_access():
-    """3x3 room with an external stair against the west wall rising to a
-    roof-access hole, for use of the flat roof as a sleeping/living space
-    [A] (standard in the hot Mesopotamian climate)."""
+def house_roof_access_objs():
+    """3x3 room with an external stair against the west wall, flush with
+    the wall face and rising the full storey height to exactly roof level,
+    leading to a roof-access hole one tile in from that wall. Flat roof
+    with a continuous parapet. A buttress pilaster stands against the
+    south wall's exterior face, clear of the door tile."""
     objs = build_room_walls(3, 3, door_side="south", window_sides=("east", "north"))
-    objs += build_flat_roof(3, 3, kc.WALL_HEIGHT, access_at=(1, 1))
+    objs += build_flat_roof(3, 3, kc.WALL_HEIGHT, access_at=(0, 1))
+    objs.append(build_parapet_ring(3, 3, kc.WALL_HEIGHT))
     objs += build_courtyard_floor(0, 0, 3, 3)
+    # stair runs flush against the west wall (x=0), full height, arriving
+    # at roof level right next to the access hole at tile (0,1)
     stair = hk.build_stair()
     objs.append(place(stair, -1.0 * G, 0.0, 0.0, 0, (G, 2 * G)))
     bpy.data.objects.remove(stair, do_unlink=True)
-    # a buttress pilaster projecting off the south wall's exterior face
-    # (decorative + structural reinforcement [A])
+    # buttress pilaster against the south wall's exterior face, on the
+    # tile away from the door (door is the middle tile, i=1) so it never
+    # stands in the doorway
     pil = hk.build_pilaster()
-    objs.append(place(pil, 1.35 * G, -0.15 * G, 0.0, 0, (0.3, 0.15)))
+    objs.append(place(pil, 2.35 * G, -0.15 * G, 0.0, 0, (0.3, 0.15)))
     bpy.data.objects.remove(pil, do_unlink=True)
-    # SM_Corner demonstrated as a standalone L-shaped exterior corner
-    # reinforcement, standing just outside the SW corner (not replacing
-    # any wall geometry, so it can't overlap the walls above).
-    corner = hk.build_corner()
-    objs.append(place(corner, -1.0 * G, -1.0 * G, 0.0, 0, CELL_SIZE))
-    bpy.data.objects.remove(corner, do_unlink=True)
-    return join_all(objs, "House_RoofAccess")
+    return objs
+
+
+def house_small_single_room():
+    return join_all(house_small_single_room_objs(), "House_SmallSingleRoom")
+
+
+def house_two_room_courtyard():
+    return join_all(house_two_room_courtyard_objs(), "House_TwoRoomCourtyard")
+
+
+def house_roof_access():
+    return join_all(house_roof_access_objs(), "House_RoofAccess")
 
 
 HOUSES = [
     ("house_small", house_small_single_room),
     ("house_courtyard", house_two_room_courtyard),
     ("house_roofaccess", house_roof_access),
+]
+
+# name -> pre-join objs builder, used by check_kit.py to validate the
+# assembly (overlap / floater checks) before geometry disappears into one
+# merged mesh.
+HOUSE_OBJS_BUILDERS = [
+    ("House_SmallSingleRoom", house_small_single_room_objs),
+    ("House_TwoRoomCourtyard", house_two_room_courtyard_objs),
+    ("House_RoofAccess", house_roof_access_objs),
 ]
 
 

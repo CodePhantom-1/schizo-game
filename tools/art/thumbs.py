@@ -13,6 +13,7 @@ import bpy
 import math
 import os
 import sys
+from mathutils import Vector
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import kit_common as kc  # noqa: E402
@@ -43,24 +44,43 @@ def setup_render_scene():
     return cam
 
 
-def frame_camera(cam, obj):
-    bbox = [obj.matrix_world @ __import__("mathutils").Vector(c) for c in obj.bound_box]
-    xs = [v.x for v in bbox]
-    ys = [v.y for v in bbox]
-    zs = [v.z for v in bbox]
-    cx, cy, cz = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2, (min(zs) + max(zs)) / 2
-    radius = max(max(xs) - min(xs), max(ys) - min(ys), max(zs) - min(zs), 0.3) / 2
+# Fixed 3/4 view direction (camera sits along +VIEW_DIR from the subject,
+# looking back along -VIEW_DIR) — the same angle for every render.
+_AZ, _EL = math.radians(-40), math.radians(28)
+VIEW_DIR = Vector((
+    math.cos(_EL) * math.sin(_AZ) * -1,
+    math.cos(_EL) * math.cos(_AZ) * -1,
+    math.sin(_EL),
+)).normalized()
+MARGIN = 1.2  # fraction of headroom around the tight projected bounding box
 
-    az, el = math.radians(-40), math.radians(28)
-    dist = radius * 3.2
-    cam.location = (
-        cx + dist * math.cos(el) * math.sin(az) * -1,
-        cy + dist * math.cos(el) * math.cos(az) * -1,
-        cz + dist * math.sin(el),
-    )
-    direction = __import__("mathutils").Vector((cx, cy, cz)) - cam.location
-    cam.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
-    cam.data.ortho_scale = radius * 2.4
+
+def frame_camera(cam, obj):
+    """Frame obj fully in view: same fixed angle every time, but the
+    orthographic scale and camera distance are derived from obj's own
+    bounding box (projected into camera space), so nothing gets clipped
+    regardless of the object's size or aspect ratio."""
+    corners = [obj.matrix_world @ Vector(c) for c in obj.bound_box]
+    center = sum(corners, Vector((0.0, 0.0, 0.0))) / 8
+    radius = max((c - center).length for c in corners)
+    dist = max(radius * 4.0, 2.0)
+
+    cam.location = center + VIEW_DIR * dist
+    cam.rotation_euler = (-VIEW_DIR).to_track_quat("-Z", "Y").to_euler()
+    cam.data.clip_end = dist * 4.0 + radius * 4.0
+
+    # project the bounding box into the camera's own local space to get
+    # the exact width/height that must fit in frame (a single "radius"
+    # heuristic under-fits elongated objects like the stair or a 3-room
+    # house), then apply a margin.
+    bpy.context.view_layer.update()
+    inv = cam.matrix_world.inverted()
+    local_pts = [inv @ c for c in corners]
+    us = [p.x for p in local_pts]
+    vs = [p.y for p in local_pts]
+    width = max(us) - min(us)
+    height = max(vs) - min(vs)
+    cam.data.ortho_scale = max(width, height, 0.3) * MARGIN
 
 
 def render_object(obj, cam, out_path):

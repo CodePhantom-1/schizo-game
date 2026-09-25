@@ -11,18 +11,33 @@ Re-imports each exported piece (both FBX and GLB must exist) and checks:
   4. UV0 (texturing) and UV1 (lightmap) are both present
   5. material slots are named (all M_* slots, matching kit_common.MAT_DEFS)
 
+Then, for each of the 3 example houses, rebuilds it pre-join (via
+assemble_house.HOUSE_OBJS_BUILDERS) and checks the assembly itself:
+  6. no floaters — every placed piece's bounding box must touch another
+     piece's bounding box (or the ground, z=0), within a small tolerance
+  7. no volumetric overlap — no two pieces' bounding boxes may genuinely
+     overlap in all 3 axes beyond a small tolerance (flush/touching faces,
+     which have ~zero overlap in at least one axis, are fine)
+These are bounding-box proxies, not exact mesh boolean checks (ponytail:
+good enough to catch duplicated/misplaced geometry and disconnected
+pieces; upgrade to a real mesh intersection test if a false negative
+shows up).
+
 Exits non-zero if anything fails.
 """
 import bpy
 import os
 import sys
+from mathutils import Vector
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import kit_common as kc  # noqa: E402
 import house_kit as hk  # noqa: E402
+import assemble_house as ah  # noqa: E402
 
 REPO_ROOT = hk.REPO_ROOT
 TOL = 0.05  # metres
+BBOX_EPS = 0.01  # metres, for the house-assembly touch/overlap checks
 
 # Documented expected footprint (x, y, z) in metres for each piece, derived
 # from the same constants house_kit.py builds with.
@@ -98,6 +113,58 @@ def check_piece(name, budget_key, out_dir, failures):
           f"uvs={len(mesh.uv_layers)}, mats={[m.name for m in mesh.materials]}")
 
 
+def world_bbox(obj):
+    corners = [obj.matrix_world @ Vector(c) for c in obj.bound_box]
+    xs = [c.x for c in corners]
+    ys = [c.y for c in corners]
+    zs = [c.z for c in corners]
+    return (min(xs), max(xs), min(ys), max(ys), min(zs), max(zs))
+
+
+def check_house_assembly(house_name, objs, failures):
+    bpy.context.view_layer.update()
+    boxes = [world_bbox(o) for o in objs]
+    n = len(boxes)
+
+    # overlap check: real volumetric overlap in all 3 axes, beyond BBOX_EPS
+    for i in range(n):
+        ax0, ax1, ay0, ay1, az0, az1 = boxes[i]
+        for j in range(i + 1, n):
+            bx0, bx1, by0, by1, bz0, bz1 = boxes[j]
+            ox = min(ax1, bx1) - max(ax0, bx0)
+            oy = min(ay1, by1) - max(ay0, by0)
+            oz = min(az1, bz1) - max(az0, bz0)
+            if ox > BBOX_EPS and oy > BBOX_EPS and oz > BBOX_EPS:
+                failures.append(
+                    f"{house_name}: {objs[i].name} overlaps {objs[j].name} "
+                    f"by ({ox:.3f}, {oy:.3f}, {oz:.3f}) m"
+                )
+
+    # floater check: every piece must touch another piece or the ground
+    for i in range(n):
+        ax0, ax1, ay0, ay1, az0, az1 = boxes[i]
+        if abs(az0) <= BBOX_EPS:
+            continue  # sits on the ground
+        touches = False
+        for j in range(n):
+            if i == j:
+                continue
+            bx0, bx1, by0, by1, bz0, bz1 = boxes[j]
+            ox = min(ax1, bx1) - max(ax0, bx0)
+            oy = min(ay1, by1) - max(ay0, by0)
+            oz = min(az1, bz1) - max(az0, bz0)
+            # touching (or overlapping) in all 3 axes, with at least one
+            # axis at ~zero gap (a real face/edge contact, not just two
+            # bounding boxes that happen to overlap through empty space)
+            if ox > -BBOX_EPS and oy > -BBOX_EPS and oz > -BBOX_EPS:
+                touches = True
+                break
+        if not touches:
+            failures.append(f"{house_name}: {objs[i].name} is a floater (touches nothing)")
+
+    print(f"checked {house_name} assembly: {n} pieces")
+
+
 def main():
     args = kc.parse_args(sys.argv)
     out_dir = args.get("out", "art/generated")
@@ -116,6 +183,12 @@ def main():
 
     for name, budget_key in name_to_budget.items():
         check_piece(name, budget_key, out_dir, failures)
+
+    for house_name, build_objs_fn in ah.HOUSE_OBJS_BUILDERS:
+        kc.clear_scene()
+        objs = build_objs_fn()
+        check_house_assembly(house_name, objs, failures)
+    kc.clear_scene()
 
     if failures:
         print("\nFAILURES:")
