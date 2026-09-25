@@ -18,6 +18,10 @@ static bool test_init_seeds_the_world() {
     SIM_CHECK(find_npc(w.population, "law_giver") != nullptr);
     SIM_CHECK(find_npc(w.population, "the_warchief") != nullptr);
     SIM_CHECK_EQ(w.day, DayNumber{1});
+    // The approved seasons (D-015) are live in the calendar:
+    SIM_CHECK_EQ(w.cal.season_id(1), std::string("rains"));
+    SIM_CHECK_EQ(w.cal.season_id(200), std::string("harvest"));
+    SIM_CHECK_EQ(w.cal.season_id(280), std::string("vintage"));
     return true;
 }
 

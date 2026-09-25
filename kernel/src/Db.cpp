@@ -80,8 +80,8 @@ Db Db::load(const std::string& canon_dir) {
         "dialogues", "divination_forms", "endings", "events", "factions",
         "foods", "items", "laws", "magick_forms", "names", "pantheons",
         "people", "planetary_powers", "quests", "ranks", "regions", "rites",
-        "schedules", "skills", "story", "talents", "terrain_schemes",
-        "treaties", "world_lore"};
+        "schedules", "seasons", "skills", "story", "talents",
+        "terrain_schemes", "treaties", "world_lore"};
 
     for (const std::string& table : tables) {
         std::ifstream in(canon_dir + "/" + table + ".csv");

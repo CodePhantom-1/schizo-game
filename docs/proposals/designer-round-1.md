@@ -1,4 +1,4 @@
-# PROPOSALS — designer round 1
+# PROPOSALS — designer round 1 · **APPROVED 2026-09-25, applied as D-015**
 
 Two content gaps are blocking live systems. Both are mechanics-level data ratified through the decisions process (like D-011's constants) — **nothing here becomes canon until you approve it**. Reply "approve both", or edit freely; edits get applied and logged as D-014.
 

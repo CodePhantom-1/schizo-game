@@ -1,5 +1,5 @@
 id,subject,value,tag,source_ref
 months_count,months per year,(unwritten — INVENTED default shape: 12 months x 30 days),OPEN,notes (no calendar in the notes)
 month_names,the month names,(unwritten — INVENTED default: unnamed months 1..12),OPEN,notes (unwritten)
-season_names,the season names,(unwritten — INVENTED default: unnamed seasons),OPEN,notes (unwritten)
+season_names,the season names,rains; sowing; harvest; vintage (start days in seasons.csv),CANON,designer approval 2026-09-25 (D-015); proposals P2
 festival_days,festival days,(unwritten — arrives with rites/festival content in later phases),OPEN,notes (unwritten)

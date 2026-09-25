@@ -40,6 +40,8 @@ Where everything comes from:
 
 ## Changelog
 
+- **2026-09-25 — designer round 1 approved (D-015).** The rank ladder is canon: 0 the Outsider · 1 Sojourner · 2 Householder · 3 Éren (King's Man) · 4 Gigir (Chariot Warrior) · 5 Sukkal (Intimate of the King) · 6 Lugal (King) — D-007 resolved. The calendar's four seasons are canon (rains/sowing/harvest/vintage, new `seasons.csv`); `WorldState::init` builds the calendar from canon so `season_id()` is live in the tick; first season-gated event authored. Months and festival days stay OPEN.
+
 - **2026-09-25 — content storm integrated; database is alive.** 147 rows authored across items, foods, laws, customs, events, schedules and names (run `dwfrun-27338ee5`, seven GLM-5.3-Flash authors + reviewers). The kernel gate went red on stale Wave-1 test assumptions (empty-table assertions) — fixed canon-robustly, 12/12 suites green with the new canon loaded; the storm workflow now gates on the kernel suite too. Law severity grounded in the real codes (D-013: Hammurabi/Eshnunna/Ur-Nammu penalties; the retune lever is the designer's). Items now sit on real shelves: markets stock 24 goods at canon price bands.
 
 - **2026-09-24 — content storm launched; Phase 3 sequenced.** No UE5 on this machine (D-012c: designer action item — install needs Epic/GitHub access), so the seven-table content storm (items, foods, laws, customs, events, schedules, names) is pulled forward and is running on GLM-5.3-Flash (`tools/workflows/storm_canon_content.ts`). Content policy gains the `INVENTED` tag (D-012); the D-011 conventions became real columns (events.repeat, rites.purity_required, quests.deadline_days).

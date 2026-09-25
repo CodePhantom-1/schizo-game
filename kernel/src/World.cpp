@@ -1,7 +1,9 @@
 // World.cpp — Wave 2 integration: the deterministic daily tick (coordinator).
-// Tick order is fixed in Context.hpp; every module reads the other states as
-// of the same morning and writes only its own.
+// Tick order is fixed in Context.hpp; every module reads the other states as of
+// the same morning and writes only its own.
 #include "sim/World.hpp"
+
+#include <cstdlib>
 
 namespace sim {
 
@@ -9,7 +11,17 @@ void WorldState::init(const std::string& canon_dir, std::uint64_t world_seed) {
     db = Db::load(canon_dir);
     seed = world_seed;
     rng = Rng(world_seed);
-    cal = Calendar{};  // default shape; month/season/festival names are OPEN canon
+    // The calendar's shape is ratified machinery; its seasons are canon data
+    // (seasons.csv, D-015). Months stay unnamed and festival days stay OPEN.
+    CalendarConfig cfg;
+    for (const Row& r : db.rows("seasons")) {
+        if (r.get("tag") == "OPEN") continue;
+        SeasonDef s;
+        s.id = r.at("id");
+        s.start_day_of_year = std::strtol(r.get("start_day_of_year", "1").c_str(), nullptr, 10);
+        if (s.start_day_of_year >= 1) cfg.seasons.push_back(s);
+    }
+    cal = Calendar{cfg};
     facts = WorldFacts{};
     day = 1;
 

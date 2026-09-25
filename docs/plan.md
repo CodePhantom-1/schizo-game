@@ -52,7 +52,7 @@ Decision gates · contract authorship · integration milestones · golden-test c
 
 ## 3. Phase 0 — the decision gate · **COMPLETE** (2026-09-24)
 
-Locked as D-001…D-009 in [../DECISIONS.md](../DECISIONS.md): **UE5** · **map Option A** (one city + region, ~20 km²) · **heirs + past life as story** · **ambiguous-leaning-literal cosmology** · **City of the Moon** as slice/v1 city · repo `schizo-game/` · single prisoner start (notes-dictated) · rank labels drafted by the coordinator, approved by the designer before Phase 4.
+Locked as D-001…D-009 in [../DECISIONS.md](../DECISIONS.md): **UE5** · **map Option A** (one city + region, ~20 km²) · **heirs + past life as story** · **ambiguous-leaning-literal cosmology** · **City of the Moon** as slice/v1 city · repo `schizo-game/` · single prisoner start (notes-dictated) · rank labels approved by the designer (D-015: the Outsider / Sojourner / Householder / Éren / Gigir / Sukkal / Lugal) and applied to ranks.csv.
 
 **Dev-machine assumption (confirm at Phase 4):** the parent's target — the designer's own PC as minimum spec (60 fps / 1080p / medium in the densest market scene).
 
