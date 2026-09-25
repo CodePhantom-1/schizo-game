@@ -244,10 +244,10 @@ int sim_world_craft(SimWorld* world, const char* actor, const char* recipe,
     Inventory& inv = world->world.inventories[actor];
     std::string reason;
     if (craft(world->world.db, inv, Id(recipe), stations, times, &reason)) return 0;
-    if (reason.rfind("unknown or OPEN recipe", 0) == 0) return -2;
+    if (reason.rfind("unknown, OPEN or malformed recipe", 0) == 0) return -2;
     if (reason.rfind("station not at hand", 0) == 0) return -3;
     if (reason.rfind("missing input", 0) == 0) return -4;
-    return -1;  // times <= 0 guarded above; anything else falls back here
+    return -1;  // times <= 0/out of range guarded above and by check(); anything else falls back here
 }
 
 // Schedule ---------------------------------------------------------------

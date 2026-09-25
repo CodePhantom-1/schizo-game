@@ -108,6 +108,29 @@ static bool test_malformed_save_throws() {
     return true;
 }
 
+// load_world must be atomic: a truncated/corrupt save throws without
+// disturbing the caller's live world.
+static bool test_load_world_is_atomic_on_failure() {
+    WorldState live;
+    live.init("../db/canon", 42);
+    touch_everything(live);
+    live.advance_days(50);
+    const std::string before = save_world(live);
+
+    bool threw = false;
+    try {
+        // Well-formed header and a few fields, then truncated mid-stream —
+        // reaches deep into the parse before failing.
+        load_world(live, "../db/canon",
+                    "SIMSAVE 1\nday\t5\nseed\t42\nrng\t1\ndrought_stage\t0\n");
+    } catch (const std::runtime_error&) {
+        threw = true;
+    }
+    SIM_CHECK(threw);
+    SIM_CHECK(save_world(live) == before);
+    return true;
+}
+
 // A field-coverage guard: mutating each module's state changes the save
 // bytes. A field the writer forgot would leave the save identical.
 static bool test_every_module_changes_the_save_bytes() {
@@ -171,4 +194,5 @@ static bool test_every_module_changes_the_save_bytes() {
 SIM_MAIN(test_save_load_round_trips,
          test_restored_world_advances_identically,
          test_malformed_save_throws,
+         test_load_world_is_atomic_on_failure,
          test_every_module_changes_the_save_bytes)

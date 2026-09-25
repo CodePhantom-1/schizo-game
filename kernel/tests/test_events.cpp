@@ -33,6 +33,8 @@ struct World {
     EventsState events;
     PropertyState property;
     QuestState quests;
+    NeedsState needs;
+    std::map<Id, Inventory> inventories;
 
     World() = default;
     // Calendar is non-movable (const member), so configured calendars are
@@ -41,7 +43,8 @@ struct World {
 
     WorldContext ctx(DayNumber day = 1) {
         return WorldContext{db,   rng,      day,      cal,     facts,    economy, population,
-                            faction, magic, justice, events, property, quests};
+                            faction, magic, justice, events, property, quests,
+                            needs, inventories};
     }
 };
 

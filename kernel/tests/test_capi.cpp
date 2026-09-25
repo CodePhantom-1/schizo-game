@@ -111,13 +111,10 @@ static bool test_eat_drink_error_codes_through_c() {
 static bool test_craft_chain_and_eat_through_c() {
     SimWorld* w = sim_world_create("../db/canon", 42);
     if (!w) return false;
+    // Water is free well-water infrastructure (Crafting.cpp): never given
+    // here, and bake_bread's water input is drawn without touching the
+    // inventory.
     bool ok = sim_world_give_item(w, "player", "grain", 2) == 2;
-    // Crafting.cpp still treats "water" as an ordinary recipe input as of
-    // this commit (coordinator note: it is becoming free well-water
-    // infrastructure, same as Needs::drink, in a follow-up to Crafting.cpp
-    // — not this seam). Provisioned here so bake_bread succeeds either way;
-    // drop this line once Crafting stops charging inventory for it.
-    ok = ok && sim_world_give_item(w, "player", "water", 1) == 1;
 
     // 2 grain -> 2 barley_flour (quern)
     ok = ok && sim_world_craft(w, "player", "mill_flour", "quern", 2) == 0;
@@ -134,6 +131,7 @@ static bool test_craft_chain_and_eat_through_c() {
     // unknown recipe
     ok = ok && sim_world_craft(w, "player", "no_such_recipe", "oven", 1) == -2;
 
+    sim_world_advance_needs(w, "player", 10, 0);  // work up an appetite first
     const int hunger_before = sim_world_hunger(w, "player");
     ok = ok && sim_world_eat(w, "player", "bread") == 0;
     ok = ok && sim_world_hunger(w, "player") < hunger_before;

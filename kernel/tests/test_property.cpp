@@ -32,12 +32,14 @@ struct Rig {
     EventsState events;
     PropertyState property;
     QuestState quests;
+    NeedsState needs;
+    std::map<Id, Inventory> inventories;
     WorldContext ctx;
 
     explicit Rig(std::uint64_t seed = 7, DayNumber day = 1)
         : db(Db::load("../db/canon")), rng(seed),
           ctx{db,       rng,      day,      cal,      facts,    economy, population,
-              faction,  magic,    justice,  events,   property, quests} {}
+              faction,  magic,    justice,  events,   property, quests, needs, inventories} {}
 };
 
 // A deterministic serialization of the state: same bytes => same state.
