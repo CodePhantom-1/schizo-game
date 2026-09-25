@@ -39,3 +39,14 @@ M_Plinth_Color,art/source/Rock035/Rock035_2K-JPG_Color.jpg,texture_map,CC0,https
 M_Plinth_NormalGL,art/source/Rock035/Rock035_2K-JPG_NormalGL.jpg,texture_map,CC0,https://ambientcg.com/a/Rock035,A
 M_Plinth_Roughness,art/source/Rock035/Rock035_2K-JPG_Roughness.jpg,texture_map,CC0,https://ambientcg.com/a/Rock035,A
 M_Plinth_AmbientOcclusion,art/source/Rock035/Rock035_2K-JPG_AmbientOcclusion.jpg,texture_map,CC0,https://ambientcg.com/a/Rock035,A
+SM_PropAmphora,art/generated/props/meshes/SM_PropAmphora.fbx,mesh_street_prop,"original (procedural, generated code)",docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
+SM_PropJarStack,art/generated/props/meshes/SM_PropJarStack.fbx,mesh_street_prop,"original (procedural, generated code)",docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
+SM_PropBasket,art/generated/props/meshes/SM_PropBasket.fbx,mesh_street_prop,"original (procedural, generated code)",docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
+SM_PropMatRoll,art/generated/props/meshes/SM_PropMatRoll.fbx,mesh_street_prop,"original (procedural, generated code)",docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
+SM_PropBench,art/generated/props/meshes/SM_PropBench.fbx,mesh_street_prop,"original (procedural, generated code)",docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
+SM_PropDatesTray,art/generated/props/meshes/SM_PropDatesTray.fbx,mesh_street_prop,"original (procedural, generated code)",docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
+SM_PropBreadTray,art/generated/props/meshes/SM_PropBreadTray.fbx,mesh_street_prop,"original (procedural, generated code)",docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
+SM_PropBreadLoaves,art/generated/props/meshes/SM_PropBreadLoaves.fbx,mesh_street_prop,"original (procedural, generated code)",docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
+SM_PropBrazier,art/generated/props/meshes/SM_PropBrazier.fbx,mesh_street_prop,"original (procedural, generated code)",docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
+SM_PropWaterSkin,art/generated/props/meshes/SM_PropWaterSkin.fbx,mesh_street_prop,"original (procedural, generated code)",docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
+SM_SkyDome,art/generated/props/meshes/SM_SkyDome.fbx,mesh_street_prop,"original (procedural, generated code)",docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
