@@ -3132,4 +3132,9 @@
   Runtime/Core/Public/CoreGlobals.h \
   Runtime/Core/Public/Modules/Boilerplate/ModuleBoilerplate.h \
   /home/codephantom/Desktop/game/schizo-game/unreal/Plugins/SimRuntime/Source/SimRuntime/Private/SimRuntimeModule.cpp \
-  /home/codephantom/Desktop/game/schizo-game/unreal/Plugins/SimRuntime/Source/SimRuntime/Public/SimRuntimeModule.h
+  /home/codephantom/Desktop/game/schizo-game/unreal/Plugins/SimRuntime/Source/SimRuntime/Public/SimRuntimeModule.h \
+  /home/codephantom/Desktop/game/schizo-game/unreal/Plugins/SimRuntime/Source/SimRuntime/Private/SimWorldSubsystem.cpp \
+  /home/codephantom/Desktop/game/schizo-game/kernel/include/sim/CApi.h \
+  Runtime/Engine/Classes/Engine/World.h \
+  Runtime/Core/Public/HAL/IConsoleManager.h \
+  Runtime/Core/Public/Misc/Paths.h

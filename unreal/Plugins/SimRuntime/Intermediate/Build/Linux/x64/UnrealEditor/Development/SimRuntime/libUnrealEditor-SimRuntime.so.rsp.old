@@ -3,8 +3,8 @@
 -soname="libUnrealEditor-SimRuntime.so"
 -rpath="${ORIGIN}/../../../../../../../../UnrealEngine/Engine/Binaries/Linux"
 -rpath-link="/home/codephantom/Desktop/game/schizo-game/unreal/Plugins/SimRuntime/Binaries/Linux"
--L"/home/codephantom/Desktop/game/schizo-game/kernel/build"
+-L"/home/codephantom/Desktop/game/schizo-game/kernel/build-ue"
 -L"../Binaries/Linux"
 --start-group
-"/home/codephantom/Desktop/game/schizo-game/kernel/build/libsim_core.a"
+"/home/codephantom/Desktop/game/schizo-game/kernel/build-ue/libsim_core.a"
 --end-group
