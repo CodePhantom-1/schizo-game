@@ -483,4 +483,5 @@ int sim_world_death_count(const SimWorld* world);
 // --- W6-A: the player's verbs (carried-goods enumeration, best food/drink) ------
 #include "sim/CApiVerbs.h"
 #include "sim/CApiQuests.h"  // A7: quests, the journal, dialogue
+#include "sim/CApiPeople.h"  // A7: npc names, memories, the events feed
 // --- end W6-A
