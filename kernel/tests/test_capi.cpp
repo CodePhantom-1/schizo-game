@@ -347,7 +347,74 @@ static bool test_missing_canon_dir_is_refused() {
     return ok;
 }
 
-SIM_MAIN(test_rites_through_c,
+static bool test_calendar_through_c() {
+    SimWorld* w = sim_world_create("../db/canon", 42);
+    if (!w) return false;
+    int y = 0, m = 0, d = 0;
+    SIM_CHECK_EQ(sim_world_date(w, &y, &m, &d), 0);
+    SIM_CHECK(y == 1 && m == 1 && d == 1);
+    char buf[128];
+    SIM_CHECK(sim_world_month_name(w, buf, sizeof buf) > 0);
+    SIM_CHECK_EQ(std::string(buf), "Rains-Coming");
+    sim_world_moon_phase(w, buf, sizeof buf);
+    SIM_CHECK_EQ(std::string(buf), "new");
+    SIM_CHECK_EQ(sim_world_moon_illumination(w), 0);
+    sim_world_day_omen(w, buf, sizeof buf);
+    SIM_CHECK_EQ(std::string(buf), "favourable");
+    SIM_CHECK(sim_world_day_observance(w, buf, sizeof buf) > 0);
+    SIM_CHECK(std::strstr(buf, "Nanna") != nullptr);
+
+    sim_world_advance_days(w, 1);  // day 2: an ordinary day
+    SIM_CHECK_EQ(sim_world_day_omen(w, buf, sizeof buf), 0);
+    SIM_CHECK_EQ(sim_world_day_observance(w, buf, sizeof buf), 0);
+
+    sim_world_advance_days(w, 13);  // day 15: full moon
+    sim_world_moon_phase(w, buf, sizeof buf);
+    SIM_CHECK_EQ(std::string(buf), "full");
+    SIM_CHECK_EQ(sim_world_moon_illumination(w), 100);
+
+    sim_world_advance_days(w, 4);  // day 19: ibbu
+    sim_world_day_omen(w, buf, sizeof buf);
+    SIM_CHECK_EQ(std::string(buf), "unfavourable");
+    sim_world_destroy(w);
+    return true;
+}
+
+static bool test_calendar_null_and_small_buffers() {
+    int y, m, d;
+    char buf[4];
+    SIM_CHECK_EQ(sim_world_date(nullptr, &y, &m, &d), -1);
+    SIM_CHECK_EQ(sim_world_moon_illumination(nullptr), -1);
+    SIM_CHECK_EQ(sim_world_moon_phase(nullptr, buf, sizeof buf), -1);
+    SimWorld* w = sim_world_create("../db/canon", 42);
+    SIM_CHECK_EQ(sim_world_date(w, nullptr, nullptr, nullptr), -1);
+    const int len = sim_world_month_name(w, buf, sizeof buf);  // "Rains-Coming" truncated
+    SIM_CHECK_EQ(len, 12);
+    SIM_CHECK_EQ(std::string(buf), "Rai");
+    sim_world_destroy(w);
+    return true;
+}
+
+static bool test_calendar_survives_save_load() {
+    SimWorld* w = sim_world_create("../db/canon", 42);
+    sim_world_advance_days(w, 44);  // day 45 = month 2, day 15
+    const std::string path = (std::filesystem::temp_directory_path() / "sim_cal_save.txt").string();
+    SIM_CHECK_EQ(sim_world_save(w, path.c_str()), 0);
+    SimWorld* l = sim_world_load("../db/canon", path.c_str());
+    SIM_CHECK(l != nullptr);
+    int y, m, d;
+    sim_world_date(l, &y, &m, &d);
+    SIM_CHECK(m == 2 && d == 15);
+    char buf[64];
+    sim_world_month_name(l, buf, sizeof buf);
+    SIM_CHECK_EQ(std::string(buf), "Waters-Rising");
+    SIM_CHECK_EQ(sim_world_moon_illumination(l), 100);
+    sim_world_destroy(l);
+    sim_world_destroy(w);
+    return true;
+}
+
+SIM_MAIN(test_calendar_through_c, test_calendar_null_and_small_buffers, test_calendar_survives_save_load,test_rites_through_c,
          test_lifecycle_and_clock,
          test_prices_and_the_drought_through_c,
          test_standing_and_favour_clamps,

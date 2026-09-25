@@ -219,6 +219,21 @@ int sim_world_festival_on(const SimWorld* world, int64_t day, char* out, int cap
 // null world.
 int sim_world_market_open(const SimWorld* world);
 
+// Calendar (A14, D-024 §7) ---------------------------------------------------
+// Today's date: year (1-based), month 1..12, day of month 1..30. Returns 0,
+// or -1 on a null world or any null out-pointer.
+int sim_world_date(const SimWorld* world, int* year, int* month, int* day_of_month);
+// Today's month name (months.csv), "" when the canon names no months.
+int sim_world_month_name(const SimWorld* world, char* out, int cap);
+// Today's moon: "new" | "waxing" | "full" | "waning".
+int sim_world_moon_phase(const SimWorld* world, char* out, int cap);
+// Today's moon illumination, 0 (new) .. 100 (full); -1 on a null world.
+int sim_world_moon_illumination(const SimWorld* world);
+// Today's omen from calendar_days.csv: "favourable" | "unfavourable" | "".
+int sim_world_day_omen(const SimWorld* world, char* out, int cap);
+// Today's named day of the month (e.g. the eššešu of Nanna), "" when none.
+int sim_world_day_observance(const SimWorld* world, char* out, int cap);
+
 // People and their day (K-2) ------------------------------------------------------
 // The id of the npc at `index` (0..sim_world_npc_count-1). Writes at most
 // cap-1 bytes plus NUL; returns the untruncated length, or -1 on a null

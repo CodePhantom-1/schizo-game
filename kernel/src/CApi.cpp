@@ -658,6 +658,68 @@ int sim_world_market_open(const SimWorld* world) {
     }
 }
 
+// Calendar (A14) -------------------------------------------------------------
+int sim_world_date(const SimWorld* world, int* year, int* month, int* day_of_month) {
+    try {
+        if (world == nullptr || year == nullptr || month == nullptr || day_of_month == nullptr) return -1;
+        const sim::Date d = world->world.cal.to_date(world->world.day);
+        *year = d.year;
+        *month = d.month;
+        *day_of_month = d.day;
+        return 0;
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_month_name(const SimWorld* world, char* out, int cap) {
+    try {
+        if (world == nullptr) return -1;
+        const auto& cal = world->world.cal;
+        return write_str(out, cap, cal.month_name(cal.to_date(world->world.day)));
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_moon_phase(const SimWorld* world, char* out, int cap) {
+    try {
+        if (world == nullptr) return -1;
+        return write_str(out, cap, sim::moon_phase_id(world->world.cal.moon_phase(world->world.day)));
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_moon_illumination(const SimWorld* world) {
+    try {
+        if (world == nullptr) return -1;
+        return world->world.cal.moon_illumination(world->world.day);
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_day_omen(const SimWorld* world, char* out, int cap) {
+    try {
+        if (world == nullptr) return -1;
+        const sim::CalendarDayDef* d = world->world.cal.month_day(world->world.day);
+        return write_str(out, cap, d ? d->omen : std::string());
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_day_observance(const SimWorld* world, char* out, int cap) {
+    try {
+        if (world == nullptr) return -1;
+        const sim::CalendarDayDef* d = world->world.cal.month_day(world->world.day);
+        return write_str(out, cap, d ? d->name : std::string());
+    } catch (...) {
+        return -1;
+    }
+}
+
 // People and their day (K-2) -------------------------------------------------
 int sim_world_npc_id(const SimWorld* world, int index, char* out, int cap) {
     try {
