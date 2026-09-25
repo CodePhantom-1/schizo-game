@@ -283,11 +283,33 @@ std::string save_world(const WorldState& w) {
             wr.line({id});
     }
 
+    // NEEDS (W2-I; additive section — SIMSAVE 1 format tolerates it)
+    {
+        wr.line({"NEEDS", s64(static_cast<std::int64_t>(w.needs.by_actor.size()))});
+        for (const auto& [actor, n] : w.needs.by_actor)
+            wr.line({actor, s64(n.hunger), s64(n.thirst), s64(n.fatigue)});
+    }
+
+    // INVENTORIES (W2-I; additive section)
+    {
+        wr.line({"INVENTORIES", s64(static_cast<std::int64_t>(w.inventories.size()))});
+        for (const auto& [actor, inv] : w.inventories) {
+            wr.line({actor, s64(static_cast<std::int64_t>(inv.counts.size()))});
+            for (const auto& [item, qty] : inv.counts)
+                wr.line({item, s64(qty)});
+        }
+    }
+
     return wr.str();
 }
 
-void load_world(WorldState& w, const std::string& canon_dir, const std::string& data) {
+void load_world(WorldState& out, const std::string& canon_dir, const std::string& data) {
     try {
+        // Parsed into a local so a truncated/corrupt save throws with the
+        // caller's live world (`out`) left byte-for-byte untouched; `out` is
+        // only overwritten by the std::move below, once every section has
+        // parsed successfully.
+        WorldState w;
         Reader rd(data);
 
         std::vector<std::string> header = rd.next();
@@ -559,6 +581,40 @@ void load_world(WorldState& w, const std::string& canon_dir, const std::string& 
                 w.quests.failed_list.push_back(f[0]);
             }
         }
+
+        // NEEDS
+        w.needs.by_actor.clear();
+        {
+            std::size_t n = rd.section("NEEDS");
+            for (std::size_t i = 0; i < n; ++i) {
+                std::vector<std::string> f = rd.next();
+                if (f.size() != 4) throw std::runtime_error("snapshot: bad needs row");
+                Needs& nd = w.needs.by_actor[f[0]];
+                nd.hunger = static_cast<int>(Reader::parse_i64(f[1]));
+                nd.thirst = static_cast<int>(Reader::parse_i64(f[2]));
+                nd.fatigue = static_cast<int>(Reader::parse_i64(f[3]));
+            }
+        }
+
+        // INVENTORIES
+        w.inventories.clear();
+        {
+            std::size_t n = rd.section("INVENTORIES");
+            for (std::size_t i = 0; i < n; ++i) {
+                std::vector<std::string> f = rd.next();
+                if (f.size() != 2) throw std::runtime_error("snapshot: bad inventory header row");
+                const Id actor = f[0];
+                std::size_t itemcount = static_cast<std::size_t>(Reader::parse_u64(f[1]));
+                Inventory& inv = w.inventories[actor];
+                for (std::size_t j = 0; j < itemcount; ++j) {
+                    std::vector<std::string> itf = rd.next();
+                    if (itf.size() != 2) throw std::runtime_error("snapshot: bad inventory item row");
+                    inv.counts[itf[0]] = static_cast<int>(Reader::parse_i64(itf[1]));
+                }
+            }
+        }
+
+        out = std::move(w);  // atomic: only reached once parsing fully succeeded
     } catch (const std::runtime_error&) {
         throw;
     } catch (const std::exception& e) {

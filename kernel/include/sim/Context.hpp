@@ -18,6 +18,10 @@
 #include "sim/Events.hpp"
 #include "sim/Property.hpp"
 #include "sim/Quests.hpp"
+#include "sim/Needs.hpp"
+#include "sim/Crafting.hpp"
+
+#include <map>
 
 namespace sim {
 
@@ -36,6 +40,12 @@ struct WorldContext {
     const EventsState& events;
     const PropertyState& property;
     const QuestState& quests;
+
+    // W2-I: not part of the fixed tick order (the engine owns hours, not
+    // days), but exposed here read-only so any module can see an actor's
+    // needs/inventory as of this morning if it ever needs to.
+    const NeedsState& needs;
+    const std::map<Id, Inventory>& inventories;
 };
 
 }  // namespace sim

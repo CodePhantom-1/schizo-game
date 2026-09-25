@@ -30,13 +30,15 @@ struct World {
     EventsState events{};
     PropertyState property{};
     QuestState quests{};
+    NeedsState needs{};
+    std::map<Id, Inventory> inventories{};
 
     World(std::uint64_t seed, Db loaded) : db(std::move(loaded)), rng(seed) {}
 
     WorldContext ctx(DayNumber day) {
         return WorldContext{db,       rng,       day,    cal,   facts,  economy,
                             population, faction, magic, justice, events, property,
-                            quests};
+                            quests, needs, inventories};
     }
 };
 

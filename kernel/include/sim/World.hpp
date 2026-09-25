@@ -28,6 +28,12 @@ struct WorldState {
     PropertyState property;
     QuestState quests;
 
+    // W2-I: needs (hunger/thirst/fatigue) and per-actor inventories. Not in
+    // the fixed daily tick order — the engine advances needs by the hour
+    // through the C API (sim_world_advance_needs), not here.
+    NeedsState needs;
+    std::map<Id, Inventory> inventories;  // actor id -> Inventory ("player" + npcs)
+
     // Loads canon from canon_dir, seeds markets and people, prepares the calendar.
     void init(const std::string& canon_dir, std::uint64_t world_seed);
 

@@ -54,6 +54,8 @@ the saved content, not init's fresh-seeded content plus the save.
 - EventsState: `rules` (every `EventRule` field incl. variable `triggers`), `fired`, `fire_count_by_rule`.
 - PropertyState: `assets`, `loans`, `purse_by_owner`, `steward_reports`, `next_id`.
 - QuestState: `defs`, `active`, `completed`, `failed_list`.
+- NeedsState (W2-I, additive section `NEEDS` after `QUESTS_*`): `by_actor` (hunger/thirst/fatigue per actor).
+- `WorldState::inventories` (W2-I, additive section `INVENTORIES` after `NEEDS`): actor id -> `Inventory::counts`.
 
 ## Errors
 
@@ -75,3 +77,10 @@ re-thrown as `std::runtime_error` so callers only ever need to catch one type.
 **Definition of done:** src/Snapshot.cpp implements every declaration in
 include/sim/Snapshot.hpp; tests/test_snapshot.cpp passes; save/load is
 byte-deterministic and a restored world advances identically to its source.
+
+## W2-I update (atomicity)
+
+`load_world` parses into a local `WorldState`, moved into the caller's
+reference only once every section has parsed without throwing. A
+truncated/malformed save now throws with the caller's live world left
+byte-for-byte untouched (see `test_load_world_is_atomic_on_failure`).

@@ -34,6 +34,10 @@ void WorldState::init(const std::string& canon_dir, std::uint64_t world_seed) {
     property = PropertyState{};
     quests = QuestState{};
 
+    needs = NeedsState{};
+    inventories.clear();
+    inventories["player"] = Inventory{};  // the prisoner start (D-009): empty-handed
+
     WorldContext ctx = context();
     for (const Row& city : db.rows("cities"))
         seed_market(ctx, economy, city.at("id"));
@@ -61,7 +65,8 @@ void WorldState::advance_days(int days) {
 WorldContext WorldState::context() {
     return WorldContext{db,  rng,      day,      cal,      facts,
                         economy, population, faction, magic,
-                        justice, events,     property, quests};
+                        justice, events,     property, quests,
+                        needs, inventories};
 }
 
 }  // namespace sim
