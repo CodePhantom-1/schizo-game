@@ -7,6 +7,8 @@
 #include "sim/CApi.h"
 
 #include "Misc/Paths.h"
+#include "Engine/GameInstance.h"
+#include "Engine/World.h"
 
 FString USimGameInstanceSubsystem::CanonDir()
 {
@@ -19,12 +21,8 @@ FString USimGameInstanceSubsystem::CanonDir()
 	return FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Sim/canon")));
 }
 
-bool USimGameInstanceSubsystem::CreateWorld()
+bool USimGameInstanceSubsystem::CanonReady()
 {
-	if (SimHandle != nullptr)
-	{
-		return true;
-	}
 	if (bCanonFailed)
 	{
 		return false;
@@ -38,15 +36,95 @@ bool USimGameInstanceSubsystem::CreateWorld()
 		bCanonFailed = true;
 		return false;
 	}
-	SimHandle = sim_world_create(TCHAR_TO_UTF8(*Dir), 1);
-	if (SimHandle == nullptr)
+	return true;
+}
+
+bool USimGameInstanceSubsystem::CreateWorld()
+{
+	if (SimHandle != nullptr)
 	{
-		UE_LOG(LogSimRuntime, Error, TEXT("sim_world_create failed on the canon at %s. Retries stopped."), *Dir);
-		bCanonFailed = true;
+		return true;
+	}
+	if (!NewWorld(1))
+	{
+		bCanonFailed = true;  // retries stopped: logged by NewWorld/CanonReady
 		return false;
 	}
+	return true;
+}
+
+bool USimGameInstanceSubsystem::NewWorld(uint64 Seed)
+{
+	if (!CanonReady())
+	{
+		return false;
+	}
+	SimWorld* Fresh = sim_world_create(TCHAR_TO_UTF8(*CanonDir()), Seed);
+	if (Fresh == nullptr)
+	{
+		UE_LOG(LogSimRuntime, Error, TEXT("sim_world_create failed on the canon at %s."), *CanonDir());
+		return false;
+	}
+	if (SimHandle != nullptr)
+	{
+		sim_world_destroy(SimHandle);
+	}
+	SimHandle = Fresh;
 	SecondsSinceLastDay = 0.0;
 	return true;
+}
+
+bool USimGameInstanceSubsystem::SaveToString(FString& Out) const
+{
+	if (SimHandle == nullptr)
+	{
+		return false;
+	}
+	const int Len = sim_world_save_to_buffer(SimHandle, nullptr, 0);
+	if (Len < 0)
+	{
+		return false;
+	}
+	TArray<ANSICHAR> Buf;
+	Buf.SetNumZeroed(Len + 1);
+	if (sim_world_save_to_buffer(SimHandle, Buf.GetData(), Len + 1) != Len)
+	{
+		return false;
+	}
+	Out = UTF8_TO_TCHAR(Buf.GetData());
+	return true;
+}
+
+bool USimGameInstanceSubsystem::LoadFromString(const FString& Data)
+{
+	if (!CanonReady())
+	{
+		return false;
+	}
+	SimWorld* Loaded = sim_world_load_from_buffer(TCHAR_TO_UTF8(*CanonDir()), TCHAR_TO_UTF8(*Data));
+	if (Loaded == nullptr)
+	{
+		UE_LOG(LogSimRuntime, Error, TEXT("Load refused: not a SchizoGame save (or made from a different canon). The current world continues."));
+		return false;
+	}
+	if (SimHandle != nullptr)
+	{
+		sim_world_destroy(SimHandle);
+	}
+	SimHandle = Loaded;
+	return true;
+}
+
+void USimGameInstanceSubsystem::SetSecondsSinceLastDay(double Seconds)
+{
+	SecondsSinceLastDay = FMath::Max(0.0, Seconds);
+}
+
+USimGameInstanceSubsystem* USimGameInstanceSubsystem::Get(const UObject* WorldContext)
+{
+	const UWorld* World = WorldContext ? WorldContext->GetWorld() : nullptr;
+	UGameInstance* GI = World ? World->GetGameInstance() : nullptr;
+	return GI ? GI->GetSubsystem<USimGameInstanceSubsystem>() : nullptr;
 }
 
 void USimGameInstanceSubsystem::Deinitialize()

@@ -69,7 +69,7 @@ SimWorld* sim_world_load(const char* canon_dir, const char* path);
 
 // Buffer variants (cheap: the save is already an in-memory string).
 // Writes at most cap-1 bytes plus NUL; returns the untruncated length, or
-// -1 on a null argument.
+// -1 on a null argument. (out = nullptr, cap = 0) asks for the length only.
 int sim_world_save_to_buffer(const SimWorld* world, char* out, int cap);
 // `data` is the NUL-terminated save text (as written by save_to_buffer or
 // read from a sim_world_save file). Returns a new SimWorld, or nullptr on a

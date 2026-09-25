@@ -414,7 +414,18 @@ static bool test_calendar_survives_save_load() {
     return true;
 }
 
-SIM_MAIN(test_calendar_through_c, test_calendar_null_and_small_buffers, test_calendar_survives_save_load,test_rites_through_c,
+static bool test_save_buffer_length_query() {
+    SimWorld* w = sim_world_create("../db/canon", 42);
+    const int len = sim_world_save_to_buffer(w, nullptr, 0);  // how big is the save?
+    SIM_CHECK(len > 100);
+    std::string buf(static_cast<std::size_t>(len) + 1, '\0');
+    SIM_CHECK_EQ(sim_world_save_to_buffer(w, buf.data(), len + 1), len);
+    SIM_CHECK_EQ(sim_world_save_to_buffer(nullptr, nullptr, 0), -1);
+    sim_world_destroy(w);
+    return true;
+}
+
+SIM_MAIN(test_save_buffer_length_query, test_calendar_through_c, test_calendar_null_and_small_buffers, test_calendar_survives_save_load,test_rites_through_c,
          test_lifecycle_and_clock,
          test_prices_and_the_drought_through_c,
          test_standing_and_favour_clamps,

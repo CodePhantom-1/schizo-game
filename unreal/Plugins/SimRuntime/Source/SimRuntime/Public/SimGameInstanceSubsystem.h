@@ -30,6 +30,18 @@ public:
 	/** Absolute path of the staged canon (Content/Sim/canon). */
 	static FString CanonDir();
 
+	// --- the world's lifecycle (A10/A12) -------------------------------------
+	/** Replaces the world with a fresh one from the canon. False (logged) keeps the old world. */
+	bool NewWorld(uint64 Seed);
+	/** The kernel snapshot as text (sim_world_save_to_buffer). False before the world exists. */
+	bool SaveToString(FString& Out) const;
+	/** Replaces the world with a saved one. False (bad data, logged) keeps the current world. */
+	bool LoadFromString(const FString& Data);
+	/** Restores the sub-day clock (engine seconds since the last day tick) after a load. */
+	void SetSecondsSinceLastDay(double Seconds);
+	/** The owner of the world that WorldContext lives in, or nullptr. */
+	static USimGameInstanceSubsystem* Get(const UObject* WorldContext);
+
 private:
 	/**
 	 * Creates the world from the staged canon. Fails loudly (error log, no
@@ -37,6 +49,8 @@ private:
 	 * tables, so without this check a wrong path gives an empty world.
 	 */
 	bool CreateWorld();
+	/** The staged canon exists (a sentinel table); logs and latches bCanonFailed when not. */
+	bool CanonReady();
 
 	/** The opaque kernel world (sim/CApi.h). Owned; destroyed in Deinitialize. */
 	struct SimWorld* SimHandle = nullptr;

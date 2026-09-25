@@ -249,7 +249,9 @@ SimWorld* sim_world_load(const char* canon_dir, const char* path) {
 int sim_world_save_to_buffer(const SimWorld* world, char* out, int cap) {
     try {
         if (world == nullptr) return -1;
-        return write_str(out, cap, save_world(world->world));
+        const std::string save = save_world(world->world);
+        if (out == nullptr && cap == 0) return static_cast<int>(save.size());  // length query
+        return write_str(out, cap, save);
     } catch (...) {
         return -1;
     }
