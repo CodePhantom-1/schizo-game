@@ -19,8 +19,8 @@ OUT = ROOT / "data" / "ue"
 # Tables the engine consumes as DataTables at bring-up (the rest join per phase).
 TABLES = [
     "cities", "deities", "endings", "events", "factions", "items", "laws",
-    "names", "pantheons", "planetary_powers", "ranks", "regions", "rites",
-    "schedules", "seasons", "skills", "story", "world_lore",
+    "names", "pantheons", "planetary_powers", "places", "ranks", "regions",
+    "rites", "schedules", "seasons", "skills", "story", "world_lore",
 ]
 
 

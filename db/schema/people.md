@@ -1,6 +1,6 @@
 # people
 
-**Rows:** 3 · **Source:** canon rows authored from the designer's notes ([world-bible](../../docs/world-bible.md)), researched real-world rows, or reserved for later phases.
+**Rows:** 32 · **Source:** canon rows authored from the designer's notes ([world-bible](../../docs/world-bible.md)), researched real-world rows, or reserved for later phases.
 
 ## Fields
 
