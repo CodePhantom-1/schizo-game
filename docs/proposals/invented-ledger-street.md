@@ -14,3 +14,7 @@ Per D-018: every invented choice below fits theme and canon, contradicts no CANO
 
 - `places` added to `tools/export_datatables.py` TABLES.
 - `places` is **not yet** added to `kernel/src/Db.cpp`'s table list — flagged in the handback report for the kernel owner.
+
+## Follow-up (bug review 2026-09-25)
+
+- **`midday_rest` split per role.** The row's role was the compound string "workshops and households", which no resident holds (roles match `schedules.csv` exactly), so the midday rest never applied to anyone. It is now two rows with the same task text: `midday_rest` (role `craftsman`) and `midday_rest_households` (role `household`). Both stay `INVENTED` (D-012 glue); see docs/audits/bug-review-unreal-tools-2026-09-25.md.

@@ -82,7 +82,7 @@ void ASimPlayerController::OnUse()
 		*GetName(), Eyes.X, Eyes.Y, Eyes.Z, EyesRot.Yaw);
 	FHitResult Hit;
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(SimUse), false);
-	if (World->LineTraceSingleByChannel(Hit, Eyes, End, ECC_Visibility, Params))
+	if (World->LineTraceSingleByChannel(Hit, Eyes, End, ECC_Visibility, Params) && Hit.GetActor() != nullptr)
 	{
 		UE_LOG(LogSchizoGame, Log, TEXT("Use hit '%s' at (%.0f,%.0f,%.0f)."),
 			*Hit.GetActor()->GetName(), Hit.ImpactPoint.X, Hit.ImpactPoint.Y, Hit.ImpactPoint.Z);
@@ -92,8 +92,9 @@ void ASimPlayerController::OnUse()
 		}
 		else
 		{
+			// GetName, not GetActorLabel: labels are editor-only (Game target).
 			GEngine->AddOnScreenDebugMessage(2, 3.f, FColor::Silver,
-				*Hit.GetActor()->GetActorLabel());
+				*Hit.GetActor()->GetName());
 		}
 	}
 	else

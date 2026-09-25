@@ -29,18 +29,20 @@ def main() -> int:
     manifest = []
     for table in TABLES:
         src = CANON / f"{table}.csv"
-        if not src.exists():
-            continue
-        with src.open(newline="", encoding="utf-8") as f:
-            rows = list(csv.reader(f))
-        if len(rows) < 2:
-            continue  # header-only tables export later, when they have content
-        header = rows[0]
-        if header[0] != "id":
-            print(f"SKIP {table}: first column is not 'id'")
-            continue
-        ue_rows = [["Name"] + header[1:]] + [[r[0]] + r[1:] for r in rows[1:]]
         dst = OUT / f"{table}.csv"
+        rows = []
+        if src.exists():
+            with src.open(newline="", encoding="utf-8") as f:
+                rows = [r for r in csv.reader(f) if r]  # blank lines are not rows
+        if len(rows) < 2 or rows[0][0] != "id":
+            if rows and rows[0][0] != "id":
+                print(f"SKIP {table}: first column is not 'id'")
+            # Header-only (or vanished) tables export later, when they have
+            # content, and a previous export must not linger as live data.
+            dst.unlink(missing_ok=True)
+            continue
+        header = rows[0]
+        ue_rows = [["Name"] + header[1:]] + [[r[0]] + r[1:] for r in rows[1:]]
         with dst.open("w", newline="", encoding="utf-8") as f:
             csv.writer(f).writerows(ue_rows)
         manifest.append(f"{table}: {len(ue_rows) - 1} rows")

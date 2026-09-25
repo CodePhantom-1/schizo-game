@@ -2,8 +2,8 @@
 """canon_lint.py — THE law of the content database (plan.md rule 6).
 
 Fails (exit 1) on any canon row that is:
-  - untagged or wrongly tagged (must be CANON, A or OPEN)
-  - missing id / source_ref
+  - untagged or wrongly tagged (must be CANON, A, INVENTED or OPEN)
+  - missing id / source_ref, or an id with surrounding whitespace
   - duplicate id within a table
   - a CANON or A row with an empty source_ref
   - any field count mismatch against the table header
@@ -36,13 +36,24 @@ def main() -> int:
                 continue
             seen: set[str] = set()
             rows = 0
-            for lineno, row in enumerate(reader, start=2):
+            for row in reader:
                 rows += 1
-                where = f"{table.name}:{lineno}"
-                rid = (row.get("id") or "").strip()
+                where = f"{table.name}:{reader.line_num}"
+                # DictReader parks surplus fields under the None key and fills
+                # missing ones with None: either way the row's width is wrong
+                # (typically an unquoted comma) and every later column shifts.
+                if None in row:
+                    errors.append(f"{where}: {len(header) + len(row[None])} fields, header has {len(header)} (unquoted comma?)")
+                elif any(v is None for v in row.values()):
+                    width = sum(v is not None for v in row.values())
+                    errors.append(f"{where}: {width} fields, header has {len(header)}")
+                raw_id = row.get("id") or ""
+                rid = raw_id.strip()
                 if not rid:
                     errors.append(f"{where}: empty id")
                     continue
+                if raw_id != rid:
+                    errors.append(f"{where}: id '{raw_id}' has surrounding whitespace (the kernel matches ids verbatim)")
                 if rid in seen:
                     errors.append(f"{where}: duplicate id '{rid}'")
                 seen.add(rid)
