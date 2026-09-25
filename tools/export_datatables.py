@@ -20,7 +20,7 @@ OUT = ROOT / "data" / "ue"
 TABLES = [
     "cities", "deities", "endings", "events", "factions", "items", "laws",
     "names", "pantheons", "planetary_powers", "places", "ranks", "regions",
-    "rites", "schedules", "seasons", "skills", "story", "world_lore",
+    "rite_teachings", "rites", "schedules", "seasons", "skills", "story", "world_lore",
 ]
 
 

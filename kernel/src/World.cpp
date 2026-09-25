@@ -39,6 +39,7 @@ void WorldState::init(const std::string& canon_dir, std::uint64_t world_seed) {
     needs = NeedsState{};
     inventories.clear();
     inventories["player"] = Inventory{};  // the prisoner start (D-009): empty-handed
+    rite_effects = RiteEffectsState{};    // K-1: no ward laid, no omen read
 
     WorldContext ctx = context();
     for (const Row& city : db.rows("cities"))

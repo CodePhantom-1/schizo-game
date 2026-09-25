@@ -70,7 +70,10 @@
 //  9. Consumption of materials is the CALLER's outcome to apply (Magic.hpp:22
 //     -23: "no effect application here — the caller reads RiteResult and
 //     applies the outcome"; this module writes ONLY MagicState, and
-//     RiteInputs::materials_held is const).
+//     RiteInputs::materials_held is const). K-1: that caller is
+//     sim/Rites.hpp (perform_rite_in_world) — it debits the inventory and
+//     applies the effect family; this file only gained the known_rites
+//     accessors (knows_rite / learn_rite).
 #include "sim/Magic.hpp"
 
 #include "sim/Context.hpp"
@@ -203,6 +206,15 @@ void add_favour(MagicState& state, const Id& deity, int delta) {
 int favour(const MagicState& state, const Id& deity) {
     const auto it = state.favour_by_deity.find(deity);
     return it == state.favour_by_deity.end() ? kNeutralFavour : it->second;
+}
+
+bool knows_rite(const MagicState& state, const Id& rite_id) {
+    return state.known_rites.count(rite_id) != 0;
+}
+
+bool learn_rite(MagicState& state, const Id& rite_id) {
+    if (rite_id.empty()) return false;
+    return state.known_rites.insert(rite_id).second;
 }
 
 RiteResult perform_rite(const WorldContext& ctx, MagicState& state,

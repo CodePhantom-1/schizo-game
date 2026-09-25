@@ -56,6 +56,9 @@ the saved content, not init's fresh-seeded content plus the save.
 - QuestState: `defs`, `active`, `completed`, `failed_list`.
 - NeedsState (W2-I, additive section `NEEDS` after `QUESTS_*`): `by_actor` (hunger/thirst/fatigue per actor).
 - `WorldState::inventories` (W2-I, additive section `INVENTORIES` after `NEEDS`): actor id -> `Inventory::counts`.
+- K-1 (trailing, optional on load — a pre-K-1 save that ends after `INVENTORIES` still loads):
+  `MAGIC_KNOWN` (`MagicState::known_rites`), `RITE_WARDS` (`WorldState::rite_effects.wards_by_place`:
+  place, rite, laid, until), `RITE_OMENS` (`rite_effects.omens`: day, rite, subject, sign, confidence_pct).
 
 ## Errors
 

@@ -112,6 +112,12 @@ public:
         return f[1];
     }
 
+    // True once every line has been read (only trailing whitespace remains).
+    bool at_end() {
+        in_ >> std::ws;
+        return in_.peek() == std::char_traits<char>::eof();
+    }
+
     static std::int64_t parse_i64(const std::string& s) {
         try {
             std::size_t pos = 0;
@@ -309,6 +315,21 @@ std::string save_world(const WorldState& w) {
             for (const auto& [item, qty] : inv.counts)
                 wr.line({item, s64(qty)});
         }
+    }
+
+    // K-1 RITES (additive trailing sections; optional on load so a save
+    // written before K-1 still loads): rite knowledge, wards, omens.
+    {
+        wr.line({"MAGIC_KNOWN", s64(static_cast<std::int64_t>(w.magic.known_rites.size()))});
+        for (const Id& rite : w.magic.known_rites) wr.line({rite});
+
+        wr.line({"RITE_WARDS", s64(static_cast<std::int64_t>(w.rite_effects.wards_by_place.size()))});
+        for (const auto& [place, ward] : w.rite_effects.wards_by_place)
+            wr.line({place, ward.rite_id, s64(ward.laid), s64(ward.until)});
+
+        wr.line({"RITE_OMENS", s64(static_cast<std::int64_t>(w.rite_effects.omens.size()))});
+        for (const Omen& o : w.rite_effects.omens)
+            wr.line({s64(o.day), o.rite_id, o.subject, o.sign, s64(o.confidence_pct)});
     }
 
     return wr.str();
@@ -648,6 +669,41 @@ void load_world(WorldState& out, const std::string& canon_dir, const std::string
                     if (itf.size() != 2) throw std::runtime_error("snapshot: bad inventory item row");
                     inv.counts[itf[0]] = static_cast<int>(Reader::parse_i64(itf[1]));
                 }
+            }
+        }
+
+        // K-1 RITES — absent in a pre-K-1 save (the file ends here): the
+        // fresh init() state (nothing known, no ward, no omen) stands.
+        w.magic.known_rites.clear();
+        w.rite_effects = RiteEffectsState{};
+        if (!rd.at_end()) {
+            std::size_t n = rd.section("MAGIC_KNOWN");
+            for (std::size_t i = 0; i < n; ++i) {
+                std::vector<std::string> f = rd.next();
+                if (f.size() != 1) throw std::runtime_error("snapshot: bad known-rite row");
+                w.magic.known_rites.insert(f[0]);
+            }
+            n = rd.section("RITE_WARDS");
+            for (std::size_t i = 0; i < n; ++i) {
+                std::vector<std::string> f = rd.next();
+                if (f.size() != 4) throw std::runtime_error("snapshot: bad ward row");
+                Ward& wd = w.rite_effects.wards_by_place[f[0]];
+                wd.place = f[0];
+                wd.rite_id = f[1];
+                wd.laid = Reader::parse_i64(f[2]);
+                wd.until = Reader::parse_i64(f[3]);
+            }
+            n = rd.section("RITE_OMENS");
+            for (std::size_t i = 0; i < n; ++i) {
+                std::vector<std::string> f = rd.next();
+                if (f.size() != 5) throw std::runtime_error("snapshot: bad omen row");
+                Omen o;
+                o.day = Reader::parse_i64(f[0]);
+                o.rite_id = f[1];
+                o.subject = f[2];
+                o.sign = f[3];
+                o.confidence_pct = static_cast<int>(Reader::parse_i64(f[4]));
+                w.rite_effects.omens.push_back(std::move(o));
             }
         }
 

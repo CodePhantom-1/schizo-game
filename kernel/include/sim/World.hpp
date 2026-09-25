@@ -8,6 +8,7 @@
 // drought, raid chance responds to hunger and defence, a rite fails when
 // performed impure, a rumour crosses the city at walking speed.
 #include "sim/Context.hpp"
+#include "sim/RiteEffects.hpp"
 
 namespace sim {
 
@@ -33,6 +34,11 @@ struct WorldState {
     // through the C API (sim_world_advance_needs), not here.
     NeedsState needs;
     std::map<Id, Inventory> inventories;  // actor id -> Inventory ("player" + npcs)
+
+    // K-1: what successful rites did to the world (wards, omens). Written only
+    // by the caller-side applier in sim/Rites.hpp — never by Magic, never by
+    // the daily tick.
+    RiteEffectsState rite_effects;
 
     // Loads canon from canon_dir, seeds markets and people, prepares the calendar.
     void init(const std::string& canon_dir, std::uint64_t world_seed);

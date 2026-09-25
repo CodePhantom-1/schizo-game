@@ -34,6 +34,8 @@
 //   7. Determinism — two identically-seeded worlds run the same script and
 //      land on identical RiteResults and identical MagicState bytes.
 #include "sim/World.hpp"
+#include "sim/Rites.hpp"
+#include "sim/Snapshot.hpp"
 
 #include "sim/Test.hpp"
 
@@ -308,10 +310,220 @@ static bool test_rite_lifecycle_is_deterministic() {
     return true;
 }
 
+// ===========================================================================
+// K-1 — the magic loop closed: knowledge -> offering -> rite -> effect,
+// through the caller-side verbs of sim/Rites.hpp (gaps 1, 2 and 5 of
+// kernel/contracts/scenario_rite.md). Magic itself is unchanged.
+// ===========================================================================
+
+namespace {
+
+const Id kPriest = "lu_dingira_priest_moon";  // people.csv, role "priest of the moon"
+const Id kTrader = "ea_nasir_grain_trader";   // people.csv, a market trader: teaches no rite
+
+int count_of(const WorldState& w, const Id& item) {
+    const auto inv = w.inventories.find("player");
+    if (inv == w.inventories.end()) return 0;
+    const auto it = inv->second.counts.find(item);
+    return it == inv->second.counts.end() ? 0 : it->second;
+}
+
+}  // namespace
+
+// Learned from the temple's priest; fish and sea gems leave the inventory;
+// success is favour with the two waters beyond the rite's own +2.
+static bool test_k1_sacrifice_learned_offered_and_answered() {
+    WorldState w;
+    w.init("../db/canon", kScenarioSeed);
+    w.advance_days(4);  // day 5: draw 0.099786
+    w.magic.place = kCityTemple;
+    w.inventories["player"].counts["fish"] = 2;
+    w.inventories["player"].counts["sea_gems"] = 1;
+
+    // Unlearned: refused, nothing spent.
+    RiteOutcome o = perform_rite_in_world(w, kRite);
+    SIM_CHECK(!o.rite.performed);
+    SIM_CHECK_EQ(o.refusal_reason, std::string("rite_not_known"));
+    SIM_CHECK_EQ(count_of(w, "fish"), 2);
+    SIM_CHECK(o.consumed.empty());
+
+    // The wrong teacher, then the priest of the moon.
+    SIM_CHECK_EQ(learn_rite_from_teacher(w, kRite, kTrader).refusal_reason,
+                 std::string("not_taught_by_teacher"));
+    SIM_CHECK_EQ(learn_rite_from_teacher(w, kRite, "nobody_at_all").refusal_reason,
+                 std::string("unknown_teacher"));
+    SIM_CHECK_EQ(learn_rite_from_teacher(w, "no_such_rite", kPriest).refusal_reason,
+                 std::string("unknown_rite"));
+    const std::vector<Id> taught = rites_taught_by(w, kPriest);
+    SIM_CHECK_EQ(taught.size(), std::size_t{2});
+    SIM_CHECK_EQ(taught[0], std::string("hymns_deity_names"));
+    SIM_CHECK_EQ(taught[1], kRite);
+    SIM_CHECK(learn_rite_from_teacher(w, kRite, kPriest).learned);
+    SIM_CHECK(knows_rite(w.magic, kRite));
+    SIM_CHECK_EQ(learn_rite_from_teacher(w, kRite, kPriest).refusal_reason,
+                 std::string("already_known"));
+
+    o = perform_rite_in_world(w, kRite);
+    SIM_CHECK(o.rite.performed);
+    SIM_CHECK(o.rite.succeeded);
+    SIM_CHECK(close_enough(o.rite.score, 0.80));  // the fixed formula, untouched
+    SIM_CHECK_EQ(o.addressed, kDeity);
+    SIM_CHECK_EQ(o.consumed.size(), std::size_t{2});
+    SIM_CHECK_EQ(count_of(w, "fish"), 1);
+    SIM_CHECK_EQ(count_of(w, "sea_gems"), 0);
+    SIM_CHECK_EQ(favour(w.magic, kDeity), 50 + 2 + kOfferingFavour);
+    SIM_CHECK_EQ(o.effect, "favour:" + kDeity + ":+" + std::to_string(kOfferingFavour));
+    return true;
+}
+
+// Magic.hpp:16 — a failed rite still consumes the materials; no effect lands.
+static bool test_k1_failed_rite_still_consumes_the_offering() {
+    WorldState w;
+    w.init("../db/canon", kFailSeed);
+    w.advance_days(4);  // day 5: draw 0.662594
+    w.magic.place = "riverbank";
+    w.inventories["player"].counts["fish"] = 1;  // no sea gems: materials short
+    SIM_CHECK(learn_rite_from_teacher(w, kRite, kPriest).learned);
+
+    const RiteOutcome o = perform_rite_in_world(w, kRite);
+    SIM_CHECK(o.rite.performed);
+    SIM_CHECK(!o.rite.succeeded);          // 0.50 < 0.662594
+    SIM_CHECK_EQ(count_of(w, "fish"), 0);  // spent anyway
+    SIM_CHECK(o.effect.empty());
+    SIM_CHECK_EQ(favour(w.magic, kDeity), 47);  // Magic's own +2 -5, nothing more
+    return true;
+}
+
+// A hymn to "any" god must name one; a refusal spends and changes nothing.
+static bool test_k1_hymn_addresses_a_named_god() {
+    WorldState w;
+    w.init("../db/canon", kScenarioSeed);
+    w.advance_days(4);
+    w.magic.place = kCityTemple;
+    SIM_CHECK(learn_rite_from_teacher(w, "hymns_deity_names", kPriest).learned);
+
+    const std::string before = save_world(w);
+    SIM_CHECK_EQ(perform_rite_in_world(w, "hymns_deity_names").refusal_reason,
+                 std::string("no_deity_addressed"));
+    SIM_CHECK_EQ(perform_rite_in_world(w, "hymns_deity_names", "not_a_god").refusal_reason,
+                 std::string("unknown_deity"));
+    SIM_CHECK(save_world(w) == before);  // refusals leave no trace
+
+    // Intangible materials (vocal performance; the deity's true name) are the
+    // knowing performer's own: full 0.20, nothing debited.
+    const RiteOutcome o = perform_rite_in_world(w, "hymns_deity_names", "inanna");
+    SIM_CHECK(o.rite.performed);
+    SIM_CHECK(close_enough(o.rite.score, 0.80));
+    SIM_CHECK(o.rite.succeeded);
+    SIM_CHECK(o.consumed.empty());
+    SIM_CHECK_EQ(favour(w.magic, "inanna"), 50 + 2 + kHymnFavour);
+    SIM_CHECK(w.magic.favour_by_deity.count("any") == 0);
+    return true;
+}
+
+// Zisurru read from a tablet; the flour circle wards a place for kWardDays.
+static bool test_k1_zisurru_from_a_tablet_wards_a_household() {
+    WorldState w;
+    w.init("../db/canon", kScenarioSeed);
+    w.advance_days(4);
+    const Id rite = "zisurru_warding";
+    SIM_CHECK_EQ(learn_rite_from_text(w, rite, "zisurru_incantation_tablet").refusal_reason,
+                 std::string("text_not_held"));
+    w.inventories["player"].counts["zisurru_incantation_tablet"] = 1;
+    w.inventories["player"].counts["clay_liver_model"] = 1;
+    SIM_CHECK_EQ(learn_rite_from_text(w, rite, "clay_liver_model").refusal_reason,
+                 std::string("not_taught_in_text"));
+    SIM_CHECK(learn_rite_from_text(w, rite, "zisurru_incantation_tablet").learned);
+    SIM_CHECK_EQ(count_of(w, "zisurru_incantation_tablet"), 1);  // read, not consumed
+
+    w.inventories["player"].counts["different_types_of_flour"] = 1;
+    w.magic.place = "household:player";
+    const RiteOutcome o = perform_rite_in_world(w, rite);
+    SIM_CHECK(o.rite.succeeded);  // 0.90 > 0.099786
+    SIM_CHECK_EQ(count_of(w, "different_types_of_flour"), 0);
+    SIM_CHECK_EQ(o.addressed, std::string("household:player"));
+    const DayNumber until = 5 + kWardDays - 1;
+    SIM_CHECK_EQ(w.rite_effects.wards_by_place.at("household:player").until, until);
+    SIM_CHECK(ward_holds(w.rite_effects, "household:player", w.day));
+    SIM_CHECK(ward_holds(w.rite_effects, "household:player", until));
+    SIM_CHECK(!ward_holds(w.rite_effects, "household:player", until + 1));
+    SIM_CHECK(!ward_holds(w.rite_effects, "temple:city_of_the_moon", w.day));
+    SIM_CHECK(w.magic.favour_by_deity.empty());  // protection addresses no god
+    return true;
+}
+
+// Barutu from the clay liver model: an omen with a probability, never a certainty.
+static bool test_k1_barutu_reads_an_omen() {
+    WorldState w;
+    w.init("../db/canon", kScenarioSeed);
+    w.advance_days(4);
+    w.inventories["player"].counts["clay_liver_model"] = 1;
+    SIM_CHECK(learn_rite_from_text(w, "barutu_haruspicy", "clay_liver_model").learned);
+    w.inventories["player"].counts["a_burned_goat's_liver"] = 1;
+    w.magic.place = "house:diviner";
+    add_favour(w.magic, "inanna", 30);  // 80: the true answer is "favourable"
+    const std::uint64_t rng_before = w.rng.state();
+
+    const RiteOutcome o = perform_rite_in_world(w, "barutu_haruspicy", "inanna");
+    SIM_CHECK(o.rite.succeeded);
+    SIM_CHECK_EQ(count_of(w, "a_burned_goat's_liver"), 0);
+    SIM_CHECK_EQ(w.rite_effects.omens.size(), std::size_t{1});
+    const Omen& omen = w.rite_effects.omens.front();
+    SIM_CHECK_EQ(omen.subject, std::string("inanna"));
+    SIM_CHECK_EQ(omen.confidence_pct, kOmenTruthPct);
+    SIM_CHECK(omen.confidence_pct < 100);  // never a certainty
+    const bool reads_true =
+        w.rng.fork(static_cast<std::uint64_t>(w.day) ^ kOmenSalt).unit() < kOmenTruthPct / 100.0;
+    SIM_CHECK_EQ(omen.sign, std::string(reads_true ? "favourable" : "unfavourable"));
+    SIM_CHECK_EQ(w.rng.state(), rng_before);  // forked, never advanced
+    return true;
+}
+
+// The whole K-1 loop is deterministic and survives save/load byte-for-byte.
+static bool test_k1_loop_is_deterministic_and_saves() {
+    const auto run = [](WorldState& w) {
+        w.advance_days(4);
+        w.magic.place = kCityTemple;
+        w.inventories["player"].counts["fish"] = 3;
+        w.inventories["player"].counts["sea_gems"] = 3;
+        w.inventories["player"].counts["clay_liver_model"] = 1;
+        w.inventories["player"].counts["a_burned_goat's_liver"] = 2;
+        (void)learn_rite_from_teacher(w, kRite, kPriest);
+        (void)learn_rite_from_text(w, "barutu_haruspicy", "clay_liver_model");
+        (void)perform_rite_in_world(w, kRite);
+        w.advance_days(3);
+        (void)perform_rite_in_world(w, kRite);
+        w.magic.place = "house:diviner";
+        (void)perform_rite_in_world(w, "barutu_haruspicy", kDeity);
+    };
+    WorldState a;
+    a.init("../db/canon", kDeterminismSeed);
+    WorldState b;
+    b.init("../db/canon", kDeterminismSeed);
+    run(a);
+    run(b);
+    const std::string sa = save_world(a);
+    SIM_CHECK(sa == save_world(b));
+
+    WorldState r;
+    load_world(r, "../db/canon", sa);
+    SIM_CHECK(save_world(r) == sa);
+    SIM_CHECK(knows_rite(r.magic, kRite));
+    SIM_CHECK(knows_rite(r.magic, "barutu_haruspicy"));
+    SIM_CHECK_EQ(r.rite_effects.omens.size(), a.rite_effects.omens.size());
+    return true;
+}
+
 SIM_MAIN(test_refusal_changes_no_state,
          test_refusal_then_knowledge_gates_attempt,
          test_purity_is_carried_but_non_gating,
          test_successful_performance_raises_favour_by_two,
          test_failed_performance_nets_negative_three,
          test_all_five_powers_exercised,
-         test_rite_lifecycle_is_deterministic)
+         test_rite_lifecycle_is_deterministic,
+         test_k1_sacrifice_learned_offered_and_answered,
+         test_k1_failed_rite_still_consumes_the_offering,
+         test_k1_hymn_addresses_a_named_god,
+         test_k1_zisurru_from_a_tablet_wards_a_household,
+         test_k1_barutu_reads_an_omen,
+         test_k1_loop_is_deterministic_and_saves)
