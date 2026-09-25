@@ -13,3 +13,5 @@ SM_Awning,art/generated/meshes/SM_Awning.fbx,mesh_kit_piece,"original (procedura
 House_SmallSingleRoom,art/generated/meshes/House_SmallSingleRoom.fbx,mesh_house_example,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
 House_TwoRoomCourtyard,art/generated/meshes/House_TwoRoomCourtyard.fbx,mesh_house_example,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
 House_RoofAccess,art/generated/meshes/House_RoofAccess.fbx,mesh_house_example,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_RoofSlabFlat,art/generated/meshes/SM_RoofSlabFlat.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_ParapetRun,art/generated/meshes/SM_ParapetRun.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A

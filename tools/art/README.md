@@ -1,9 +1,9 @@
 # Mudbrick house kit (T8)
 
 Procedural, code-built modular kit for the City of the Moon street, run
-headless through Blender. No Blender GUI, no UE import — see the hard rules
-in the coordinator's brief (an Unreal editor is running; nothing here
-touches `unreal/`).
+headless through Blender. No Blender GUI. The UE import step
+(`ue_import_kit.py`, W6-B) is also headless and writes only to
+`unreal/Content/Art/Kit/`.
 
 Blender: install a portable LTS build (no sudo) once —
 
@@ -28,6 +28,23 @@ time). `check_kit.py` exits non-zero if anything fails and is the gate.
 Prefix with `nice -n 19` to keep CPU use modest, per the hard rules (CPU
 Workbench rendering only, no GPU renderer).
 
+## UE import (W6-B: the street consumes these meshes at runtime)
+
+After the kit is generated, import the pieces once (needs the project
+compiled; `SimStreetBuilder.cpp` falls back to engine cubes until then):
+
+```
+~/UnrealEngine/Engine/Binaries/Linux/UnrealEditor-Cmd \
+    "$PWD/unreal/SchizoGame.uproject" -run=pythonscript \
+    -script=tools/art/ue_import_kit.py
+```
+
+Imports every `mesh_kit_piece` row of `art/assets.csv` to
+`/Game/Art/Kit/Meshes` and creates the four flat-colour materials
+(`M_MudPlaster`, `M_Mudbrick`, `M_Timber`, `M_Reed`) in
+`/Game/Art/Kit/Materials`, assigned onto the meshes' material slots by name
+(D-023: flat colours, no PBR textures).
+
 ## What's in the kit
 
 Grid module = 1.0 m = 100 UE units (Blender stays in metres; FBX/GLB export
@@ -39,7 +56,7 @@ mudbrick house proportions `[A]`, not canon-specified (see
 house construction follows general practice, e.g. Woolley's Ur excavations
 and standard treatments of Mesopotamian vernacular building).
 
-11 pieces (`tools/art/house_kit.py`), triangle budgets in parentheses:
+13 pieces (`tools/art/house_kit.py`), triangle budgets in parentheses:
 
 | Piece | Budget | Notes |
 |---|---|---|
@@ -48,6 +65,8 @@ and standard treatments of Mesopotamian vernacular building).
 | SM_WallWindow | 500 | small high clerestory-style window `[A]` |
 | SM_Corner | 350 | L-shaped, offered as a decorative/reinforcing corner option (the four wall runs alone already close a room without it) |
 | SM_RoofSlab | 450 | flat roof tile with a parapet lip on one edge; `build_roof_slab(with_parapet=False)` variant used for interior roof tiles |
+| SM_RoofSlabFlat | 50 | the parapet-free variant, exported as its own piece — the UE street builder tiles whole roofs with it and wraps the edge in SM_ParapetRun (as `assemble_house.py`'s `build_flat_roof` + `build_parapet_ring` do offline) |
+| SM_ParapetRun | 50 | 1 m of continuous mudbrick parapet; instanced and X-scaled per roof side at runtime (invisible stretch with D-023 flat-colour materials) |
 | SM_RoofAccess | 500 | roof tile with a square ladder-access hole |
 | SM_Pilaster | 220 | engaged buttress |
 | SM_Stair | 700 | straight solid mudbrick stair, 10 steps, rises one storey over 2 grid modules |

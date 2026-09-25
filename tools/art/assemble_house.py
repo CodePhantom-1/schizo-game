@@ -18,7 +18,6 @@ Houses (grid units = GRID metres, footprint on the X/Y grid):
      roofs were used as an extra room, common practice in the hot climate).
 """
 import bpy
-import csv
 import os
 import sys
 
@@ -262,11 +261,8 @@ HOUSE_OBJS_BUILDERS = [
 
 
 def write_manifest_rows(rows):
-    path = os.path.join(REPO_ROOT, "art", "assets.csv")
-    with open(path, "a", newline="") as f:
-        w = csv.writer(f)
-        for r in rows:
-            w.writerow(r)
+    # Upsert-by-id lives in kit_common (shared with house_kit.py).
+    kc.write_manifest_rows(rows)
 
 
 def main():
