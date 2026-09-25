@@ -5,6 +5,7 @@
 #include "sim/World.hpp"
 #include "sim/Snapshot.hpp"
 #include "sim/Schedule.hpp"
+#include "sim/Population.hpp"
 
 #include <cstring>
 #include <fstream>
@@ -257,4 +258,52 @@ int sim_world_task_at(const SimWorld* world, const char* role, int hour, char* o
         task_at(world->world.db, world->world.cal, role, world->world.day, hour);
     if (!t) return -1;
     return write_str(out, cap, t->task);
+}
+
+// NPCs (UE-4: the street lives) -------------------------------------------
+// Additive block — kernel/include/sim/CApi.h documents each function; all
+// delegate to Population.hpp (frozen contract) and the Db (places.csv).
+int sim_world_npc_id(const SimWorld* world, int index, char* out, int cap) {
+    if (world == nullptr) return -1;
+    const auto& npcs = world->world.population.npcs;
+    if (index < 0 || static_cast<std::size_t>(index) >= npcs.size()) return -1;
+    return write_str(out, cap, npcs[static_cast<std::size_t>(index)].id);
+}
+
+int sim_world_npc_role(const SimWorld* world, const char* npc_id, char* out, int cap) {
+    if (world == nullptr || npc_id == nullptr) return -1;
+    const Npc* npc = find_npc(world->world.population, Id(npc_id));
+    if (npc == nullptr) return -1;
+    return write_str(out, cap, npc->role);
+}
+
+int sim_world_npc_name(const SimWorld* world, const char* npc_id, char* out, int cap) {
+    if (world == nullptr || npc_id == nullptr) return -1;
+    const Npc* npc = find_npc(world->world.population, Id(npc_id));
+    if (npc == nullptr) return -1;
+    return write_str(out, cap, npc->name);
+}
+
+int sim_world_npc_home_city(const SimWorld* world, const char* npc_id, char* out, int cap) {
+    if (world == nullptr || npc_id == nullptr) return -1;
+    const Npc* npc = find_npc(world->world.population, Id(npc_id));
+    if (npc == nullptr) return -1;
+    return write_str(out, cap, npc->home_city);
+}
+
+int sim_world_npc_task(const SimWorld* world, const char* npc_id, int hour, char* out, int cap) {
+    if (world == nullptr || npc_id == nullptr) return -1;
+    if (find_npc(world->world.population, Id(npc_id)) == nullptr) return -1;
+    const std::optional<ScheduledTask> t = npc_task_at(
+        world->world.db, world->world.cal, world->world.population, Id(npc_id), world->world.day, hour);
+    if (!t) return -1;
+    return write_str(out, cap, t->schedule_id + "|" + t->task);
+}
+
+int sim_world_npc_place(const SimWorld* world, const char* npc_id, char* out, int cap) {
+    if (world == nullptr || npc_id == nullptr) return -1;
+    for (const Row& row : world->world.db.rows("places")) {
+        if (row.get("owner_person_id") == npc_id) return write_str(out, cap, row.get("id"));
+    }
+    return write_str(out, cap, "");
 }

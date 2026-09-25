@@ -130,6 +130,45 @@ int sim_world_craft(SimWorld* world, const char* actor, const char* recipe,
 // -1 on a null argument or no schedule rows at all for that role.
 int sim_world_task_at(const SimWorld* world, const char* role, int hour, char* out, int cap);
 
+// NPCs (UE-4: the street lives) -----------------------------------------------
+// One block, all additive — see kernel/include/sim/Population.hpp (npc_task_at)
+// and db/canon/people.csv/places.csv for the data these read.
+
+// The npc id at `index` (0 <= index < sim_world_npc_count(world)), in seed
+// order (db/canon/people.csv row order). Writes at most cap-1 bytes plus
+// NUL; returns the untruncated length, or -1 on a null world/out or an
+// out-of-range index.
+int sim_world_npc_id(const SimWorld* world, int index, char* out, int cap);
+
+// The schedule role of `npc_id` (empty for named leaders with no matching
+// schedules.csv role, e.g. the_prophet). Writes at most cap-1 bytes plus
+// NUL; returns the untruncated length, or -1 on a null world/npc_id or an
+// unknown npc_id.
+int sim_world_npc_role(const SimWorld* world, const char* npc_id, char* out, int cap);
+
+// The display name of `npc_id` (people.csv `name` column). Writes at most
+// cap-1 bytes plus NUL; returns the untruncated length, or -1 on a null
+// world/npc_id or an unknown npc_id.
+int sim_world_npc_name(const SimWorld* world, const char* npc_id, char* out, int cap);
+
+// The home city id of `npc_id` (people.csv `city` column). Writes at most
+// cap-1 bytes plus NUL; returns the untruncated length, or -1 on a null
+// world/npc_id or an unknown npc_id.
+int sim_world_npc_home_city(const SimWorld* world, const char* npc_id, char* out, int cap);
+
+// The task `npc_id` is doing at `hour` (0..23) on the current day, from its
+// own schedule role (sim::npc_task_at). Written as "schedule_id|task_text".
+// Writes at most cap-1 bytes plus NUL; returns the untruncated length, or
+// -1 on a null world/npc_id, an unknown npc_id, or no matching schedule row
+// (no role, or the role has no schedule rows in canon).
+int sim_world_npc_task(const SimWorld* world, const char* npc_id, int hour, char* out, int cap);
+
+// The place `npc_id` owns (db/canon/places.csv `owner_person_id` column,
+// first match). Writes at most cap-1 bytes plus NUL; returns the
+// untruncated length, -1 on a null world/npc_id, or 0 (empty string) if
+// `npc_id` owns no place in canon.
+int sim_world_npc_place(const SimWorld* world, const char* npc_id, char* out, int cap);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

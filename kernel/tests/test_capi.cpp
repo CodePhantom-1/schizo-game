@@ -154,6 +154,54 @@ static bool test_task_at_through_c() {
     return ok;
 }
 
+static bool test_npc_surfaces_through_c() {
+    SimWorld* w = sim_world_create("../db/canon", 42);
+    if (!w) return false;
+    bool ok = true;
+
+    const int count = sim_world_npc_count(w);
+    ok = ok && count > 0;
+
+    // Iterate every seeded npc by index; every id and index round-trips.
+    for (int i = 0; i < count; ++i) {
+        char id[128];
+        ok = ok && sim_world_npc_id(w, i, id, sizeof(id)) > 0;
+    }
+    ok = ok && sim_world_npc_id(w, -1, nullptr, 0) == -1;
+    ok = ok && sim_world_npc_id(w, count, nullptr, 0) == -1;
+
+    // A known resident: the street baker (db/canon/people.csv, places.csv).
+    char role[64], name[64], city[64], task[128], place[64];
+    ok = ok && sim_world_npc_role(w, "ur_shara_baker", role, sizeof(role)) > 0;
+    ok = ok && std::string(role) == "baker";
+    ok = ok && sim_world_npc_name(w, "ur_shara_baker", name, sizeof(name)) > 0;
+    ok = ok && std::string(name) == "Ur-Shara";
+    ok = ok && sim_world_npc_home_city(w, "ur_shara_baker", city, sizeof(city)) > 0;
+    ok = ok && std::string(city) == "city_of_the_moon";
+    // schedules.csv: baker_fires_the_oven fires at hour 3.
+    ok = ok && sim_world_npc_task(w, "ur_shara_baker", 3, task, sizeof(task)) > 0;
+    ok = ok && std::string(task).rfind("baker_fires_the_oven|", 0) == 0;
+    // places.csv: bakery_place's owner_person_id is ur_shara_baker (first match).
+    ok = ok && sim_world_npc_place(w, "ur_shara_baker", place, sizeof(place)) > 0;
+    ok = ok && std::string(place) == "bakery_place";
+
+    // A resident with no owned place (a schedule role with no places.csv row).
+    char no_place[64];
+    ok = ok && sim_world_npc_place(w, "sin_eribam_watchman", no_place, sizeof(no_place)) == 0;
+
+    // Unknown npc: role/name/home_city/task fail cleanly (-1); place is a
+    // places.csv scan keyed on owner_person_id alone, so an unknown npc_id
+    // reads the same as "owns no place" (0, per sim_world_npc_place's doc).
+    ok = ok && sim_world_npc_role(w, "no_such_npc", role, sizeof(role)) == -1;
+    ok = ok && sim_world_npc_name(w, "no_such_npc", name, sizeof(name)) == -1;
+    ok = ok && sim_world_npc_home_city(w, "no_such_npc", city, sizeof(city)) == -1;
+    ok = ok && sim_world_npc_task(w, "no_such_npc", 3, task, sizeof(task)) == -1;
+    ok = ok && sim_world_npc_place(w, "no_such_npc", place, sizeof(place)) == 0;
+
+    sim_world_destroy(w);
+    return ok;
+}
+
 static bool test_save_load_continue_through_c() {
     SimWorld* a = sim_world_create("../db/canon", 7);
     if (!a) return false;
@@ -208,5 +256,6 @@ SIM_MAIN(test_lifecycle_and_clock,
          test_eat_drink_error_codes_through_c,
          test_craft_chain_and_eat_through_c,
          test_task_at_through_c,
+         test_npc_surfaces_through_c,
          test_save_load_continue_through_c,
          test_save_load_null_and_bad_path)
