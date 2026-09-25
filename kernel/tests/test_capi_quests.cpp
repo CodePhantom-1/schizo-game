@@ -99,5 +99,32 @@ static bool test_journal_survives_save_load() {
     return true;
 }
 
+static bool test_dialogue_lines_for_a_speaker() {
+    SimWorld* w = sim_world_create("../db/canon", 42);
+    const char* SPEAKER = "the captain of the prisoner transport";  // 2 opening-act lines
+    const int n = sim_world_dialogue_count(w, SPEAKER);
+    SIM_CHECK(n >= 1);
+    char id[128], text[1024];
+    SIM_CHECK(sim_world_dialogue_at(w, SPEAKER, 0, id, sizeof id, text, sizeof text) > 0);
+    SIM_CHECK(std::strlen(id) > 0);
+    SIM_CHECK_EQ(sim_world_dialogue_at(w, SPEAKER, n, id, sizeof id, text, sizeof text), -1);
+    SIM_CHECK_EQ(sim_world_dialogue_count(w, "nobody at all"), 0);
+    sim_world_destroy(w);
+    return true;
+}
+
+static bool test_dialogue_speaker_keys() {
+    SimWorld* w = sim_world_create("../db/canon", 42);
+    const char* SPEAKER = "the captain of the prisoner transport";
+    std::string upper = SPEAKER;
+    for (char& c : upper) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+    SIM_CHECK_EQ(sim_world_dialogue_count(w, upper.c_str()), sim_world_dialogue_count(w, SPEAKER));
+    SIM_CHECK_EQ(sim_world_dialogue_count(w, nullptr), -1);
+    SIM_CHECK_EQ(sim_world_dialogue_count(nullptr, SPEAKER), -1);
+    sim_world_destroy(w);
+    return true;
+}
+
 SIM_MAIN(test_quest_lifecycle, test_deadline_fails_and_lists_it, test_quest_verbs_refuse_nonsense,
-         test_journal_survives_save_load)
+         test_journal_survives_save_load,
+         test_dialogue_lines_for_a_speaker, test_dialogue_speaker_keys)

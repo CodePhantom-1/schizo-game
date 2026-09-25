@@ -64,6 +64,13 @@ bool known_def(const WorldState& w, const Id& id) {
     return std::any_of(w.quests.defs.begin(), w.quests.defs.end(), [&](const QuestDef& d) { return d.id == id; });
 }
 
+PlayerContext player_context(const WorldState& w) {
+    PlayerContext p;
+    for (const Quest& q : w.quests.active) p.active_quests.push_back(q.def_id);
+    p.completed_quests = w.quests.completed;
+    return p;
+}
+
 }  // namespace
 
 extern "C" {
@@ -173,6 +180,25 @@ int sim_world_journal_at(const SimWorld* w, const char* quest, int index, int64_
         if (day != nullptr) *day = static_cast<int64_t>(e.day);
         write_req(stage, stage_cap, e.stage);
         return write_req(text, text_cap, e.text);
+    });
+}
+
+int sim_world_dialogue_count(const SimWorld* w, const char* speaker) {
+    return guard([&] {
+        if (w == nullptr || speaker == nullptr) return -1;
+        return static_cast<int>(eligible_lines(w->world.db, speaker, player_context(w->world)).size());
+    });
+}
+
+int sim_world_dialogue_at(const SimWorld* w, const char* speaker, int index,
+                          char* id, int id_cap, char* text, int text_cap) {
+    return guard([&] {
+        if (w == nullptr || speaker == nullptr || index < 0) return -1;
+        const auto lines = eligible_lines(w->world.db, speaker, player_context(w->world));
+        if (index >= static_cast<int>(lines.size())) return -1;
+        const DialogueLine& l = lines[static_cast<std::size_t>(index)];
+        write_req(id, id_cap, l.id);
+        return write_req(text, text_cap, l.text);
     });
 }
 

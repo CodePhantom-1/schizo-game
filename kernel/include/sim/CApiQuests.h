@@ -45,6 +45,15 @@ int sim_world_journal_count(const SimWorld* world, const char* quest);
 int sim_world_journal_at(const SimWorld* world, const char* quest, int index, int64_t* day,
                          char* stage, int stage_cap, char* text, int text_cap);
 
+// Dialogue ---------------------------------------------------------------------
+// The lines `speaker` may say now (dialogues.csv; speaker matched
+// case-insensitively, gated by the player's act through their quests —
+// Dialogue.hpp). A people.csv id or a schedule role works as the key.
+int sim_world_dialogue_count(const SimWorld* world, const char* speaker);
+// Line `index`: writes its id and returns its text length; -1 on a bad index.
+int sim_world_dialogue_at(const SimWorld* world, const char* speaker, int index,
+                          char* id, int id_cap, char* text, int text_cap);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif
