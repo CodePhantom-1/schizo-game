@@ -234,6 +234,27 @@ static bool test_refused_calls_leave_the_save_untouched() {
     return ok;
 }
 
+
+// Bug-review 2026-09-25: a missing canon directory produced a valid but
+// empty world (Db::load skips absent tables), so the engine's "canon missing?"
+// nullptr check (SimWorldSubsystem) never fired.
+static bool test_missing_canon_dir_is_refused() {
+    bool ok = sim_world_create("/no/such/canon/dir", 1) == nullptr;
+    SimWorld* a = sim_world_create("../db/canon", 1);
+    ok = ok && a != nullptr;
+    char buf[1 << 16];
+    ok = ok && sim_world_save_to_buffer(a, buf, sizeof(buf)) > 0;
+    ok = ok && sim_world_load_from_buffer("/no/such/canon/dir", buf) == nullptr;
+    const std::string path =
+        (std::filesystem::temp_directory_path() / "sim_capi_missing_canon.txt").string();
+    ok = ok && sim_world_save(a, path.c_str()) == 0;
+    ok = ok && sim_world_load("/no/such/canon/dir", path.c_str()) == nullptr;
+    std::error_code ec;
+    std::filesystem::remove(path, ec);
+    sim_world_destroy(a);
+    return ok;
+}
+
 SIM_MAIN(test_lifecycle_and_clock,
          test_prices_and_the_drought_through_c,
          test_standing_and_favour_clamps,
@@ -246,4 +267,5 @@ SIM_MAIN(test_lifecycle_and_clock,
          test_save_load_continue_through_c,
          test_save_load_null_and_bad_path,
          test_give_item_saturates,
-         test_refused_calls_leave_the_save_untouched)
+         test_refused_calls_leave_the_save_untouched,
+         test_missing_canon_dir_is_refused)
