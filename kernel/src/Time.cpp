@@ -34,6 +34,17 @@ Calendar::Calendar(const CalendarConfig& cfg) : cfg_(cfg) {
         if (i > 0 && cfg_.festivals[i - 1].day_of_year == doy)
             throw std::invalid_argument("two festivals on the same day_of_year");
     }
+    std::sort(cfg_.month_days.begin(), cfg_.month_days.end(),
+              [](const CalendarDayDef& a, const CalendarDayDef& b) {
+                  return a.day_of_month < b.day_of_month;
+              });
+    for (std::size_t i = 0; i < cfg_.month_days.size(); ++i) {
+        const int dom = cfg_.month_days[i].day_of_month;
+        if (dom < 1 || dom > cfg_.days_per_month)
+            throw std::invalid_argument("calendar day outside the month");
+        if (i > 0 && cfg_.month_days[i - 1].day_of_month == dom)
+            throw std::invalid_argument("two calendar days on the same day_of_month");
+    }
 }
 
 int Calendar::days_per_year() const { return cfg_.days_per_month * cfg_.months_per_year; }
@@ -92,6 +103,41 @@ const FestivalDef* Calendar::festival_on(DayNumber day) const {
 const std::string& Calendar::festival_id(DayNumber day) const {
     const FestivalDef* f = festival_on(day);
     return f ? f->id : kEmptyName;
+}
+
+const char* moon_phase_id(MoonPhase p) {
+    switch (p) {
+        case MoonPhase::New: return "new";
+        case MoonPhase::Waxing: return "waxing";
+        case MoonPhase::Full: return "full";
+        case MoonPhase::Waning: return "waning";
+    }
+    return "new";
+}
+
+MoonPhase Calendar::moon_phase(DayNumber day) const {
+    const int dom = to_date(day).day;
+    const int full = cfg_.days_per_month / 2;
+    if (dom == 1) return MoonPhase::New;
+    if (dom < full) return MoonPhase::Waxing;
+    if (dom == full) return MoonPhase::Full;
+    return MoonPhase::Waning;
+}
+
+int Calendar::moon_illumination(DayNumber day) const {
+    const int dom = to_date(day).day;
+    const int dpm = cfg_.days_per_month;
+    const int full = dpm / 2;
+    if (full <= 1) return 100;  // degenerate shapes: always lit
+    if (dom <= full) return (dom - 1) * 100 / (full - 1);
+    return (dpm + 1 - dom) * 100 / (dpm + 1 - full);
+}
+
+const CalendarDayDef* Calendar::month_day(DayNumber day) const {
+    const int dom = to_date(day).day;
+    const auto it = std::lower_bound(cfg_.month_days.begin(), cfg_.month_days.end(), dom,
+        [](const CalendarDayDef& d, int v) { return d.day_of_month < v; });
+    return (it != cfg_.month_days.end() && it->day_of_month == dom) ? &*it : nullptr;
 }
 
 }  // namespace sim

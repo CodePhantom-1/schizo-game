@@ -27,6 +27,23 @@ struct FestivalDef {
     int day_of_year = 1;  // 1-based, 1..days_per_year
 };
 
+// The moon (A14, D-024 §7): the month is lunar. Day 1 is the new crescent,
+// the middle day (15 of 30) is full; the phase is pure day-of-month
+// arithmetic, so it needs no state and replays identically (D-022).
+enum class MoonPhase { New, Waxing, Full, Waning };
+const char* moon_phase_id(MoonPhase p);  // "new" | "waxing" | "full" | "waning"
+
+// A day of every month with a name, an omen and/or a deity
+// (db/canon/calendar_days.csv): the eššešu moon days, the unfavourable days of
+// the hemerologies. Same day_of_month in every month.
+struct CalendarDayDef {
+    Id id;
+    std::string name;
+    int day_of_month = 1;  // 1..days_per_month
+    std::string omen;      // "favourable" | "unfavourable" | ""
+    std::string deity;     // deity id honoured that day, "" when none
+};
+
 struct CalendarConfig {
     int days_per_month = 30;
     int months_per_year = 12;
@@ -34,6 +51,7 @@ struct CalendarConfig {
     std::vector<SeasonDef> seasons;        // empty => no seasons
     std::vector<DayNumber> festival_days;  // absolute one-off festival days (anonymous)
     std::vector<FestivalDef> festivals;    // yearly named festivals (festivals.csv)
+    std::vector<CalendarDayDef> month_days;  // calendar_days.csv (A14)
 };
 
 class Calendar {
@@ -59,6 +77,12 @@ public:
     const std::string& festival_id(DayNumber day) const;
     // Every yearly festival, sorted by day_of_year.
     const std::vector<FestivalDef>& festivals() const { return cfg_.festivals; }
+
+    MoonPhase moon_phase(DayNumber day) const;
+    // Integer 0..100: 0 at the new crescent, 100 at full (D-022: no floats).
+    int moon_illumination(DayNumber day) const;
+    // The calendar_days row for this day of the month, or nullptr.
+    const CalendarDayDef* month_day(DayNumber day) const;
 
 private:
     CalendarConfig cfg_;

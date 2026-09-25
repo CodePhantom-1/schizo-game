@@ -128,7 +128,76 @@ static bool test_bad_festival_config_throws() {
     return true;
 }
 
+static bool test_moon_phase_through_a_month() {
+    Calendar cal;  // 30-day months: new on day 1, full on day 15
+    SIM_CHECK(cal.moon_phase(1) == MoonPhase::New);
+    SIM_CHECK(cal.moon_phase(2) == MoonPhase::Waxing);
+    SIM_CHECK(cal.moon_phase(14) == MoonPhase::Waxing);
+    SIM_CHECK(cal.moon_phase(15) == MoonPhase::Full);
+    SIM_CHECK(cal.moon_phase(16) == MoonPhase::Waning);
+    SIM_CHECK(cal.moon_phase(30) == MoonPhase::Waning);
+    SIM_CHECK_EQ(std::string(moon_phase_id(MoonPhase::Full)), "full");
+    return true;
+}
+
+static bool test_moon_illumination_is_integer_and_bounded() {
+    Calendar cal;
+    SIM_CHECK_EQ(cal.moon_illumination(1), 0);
+    SIM_CHECK_EQ(cal.moon_illumination(8), 50);
+    SIM_CHECK_EQ(cal.moon_illumination(15), 100);
+    SIM_CHECK_EQ(cal.moon_illumination(16), 93);
+    SIM_CHECK_EQ(cal.moon_illumination(30), 6);
+    for (DayNumber d = 1; d <= 60; ++d) {
+        const int i = cal.moon_illumination(d);
+        SIM_CHECK(i >= 0 && i <= 100);
+    }
+    return true;
+}
+
+static bool test_moon_cycle_repeats_every_month() {
+    Calendar cal;
+    for (DayNumber d : {DayNumber{1}, DayNumber{15}, DayNumber{23}}) {
+        SIM_CHECK(cal.moon_phase(d) == cal.moon_phase(d + 30));
+        SIM_CHECK(cal.moon_phase(d) == cal.moon_phase(d + 3600));
+        SIM_CHECK_EQ(cal.moon_illumination(d), cal.moon_illumination(d + 30));
+    }
+    SIM_CHECK(cal.moon_phase(361) == MoonPhase::New);  // year 2, month 1, day 1
+    return true;
+}
+
+static bool test_month_days_by_day_of_month() {
+    CalendarConfig cfg;
+    cfg.month_days = {{"new_crescent", "Day of the New Crescent", 1, "favourable", "nanna"},
+                      {"ibbu", "Ibbu, the day of wrath", 19, "unfavourable", ""}};
+    Calendar cal(cfg);
+    SIM_CHECK(cal.month_day(1) != nullptr);
+    SIM_CHECK_EQ(cal.month_day(1)->id, "new_crescent");
+    SIM_CHECK_EQ(cal.month_day(31)->id, "new_crescent");   // month 2, day 1
+    SIM_CHECK_EQ(cal.month_day(49)->omen, "unfavourable"); // month 2, day 19
+    SIM_CHECK(cal.month_day(2) == nullptr);
+    return true;
+}
+
+static bool test_month_day_validation() {
+    auto throws = [](int dom_a, int dom_b) {
+        CalendarConfig cfg;
+        cfg.month_days = {{"a", "A", dom_a, "", ""}, {"b", "B", dom_b, "", ""}};
+        try { Calendar cal(cfg); } catch (const std::invalid_argument&) { return true; }
+        return false;
+    };
+    SIM_CHECK(throws(0, 2));    // day 0
+    SIM_CHECK(throws(1, 31));   // past the month
+    SIM_CHECK(throws(7, 7));    // two rows on one day
+    SIM_CHECK(!throws(1, 30));  // both ends are legal
+    return true;
+}
+
 SIM_MAIN(test_yearly_festivals,
+         test_moon_phase_through_a_month,
+         test_moon_illumination_is_integer_and_bounded,
+         test_moon_cycle_repeats_every_month,
+         test_month_days_by_day_of_month,
+         test_month_day_validation,
          test_bad_festival_config_throws,
          test_day_one_is_year_one_month_one_day_one,
          test_year_rolls_over,
