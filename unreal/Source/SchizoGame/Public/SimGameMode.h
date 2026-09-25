@@ -17,6 +17,7 @@ public:
 	ASimGameMode();
 	virtual void StartPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
+	virtual AActor* FindPlayerStart_Implementation(AController* Player, const FString& IncomingName = TEXT("")) override;
 
 protected:
 	/** Spawns one scaled engine cube (grey-box stone). */
@@ -24,4 +25,8 @@ protected:
 
 	/** The sim day the clock shows (to avoid re-reading the C API every line). */
 	int64 LastShownDay = -1;
+
+	/** The street's PlayerStart: the only start spot this game recognises. */
+	UPROPERTY()
+	class APlayerStart* StreetStart = nullptr;
 };
