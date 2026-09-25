@@ -95,7 +95,10 @@ Db Db::load(const std::string& canon_dir) {
         "schedules", "seasons", "skills", "story", "talents",
         "terrain_schemes", "treaties", "world_lore", "recipes",
         "festivals", "person_schedules",  // K-2
-        "attributes", "skill_teachings", "work_roles"};  // W4-A
+        "attributes", "skill_teachings", "work_roles",  // W4-A
+        // --- W4-C: the wild lands
+        "wild_places", "wild_links", "wild_groups", "wild_encounters", "caravans",
+        "transport_modes", "weather"};
 
     for (const std::string& table : tables) {
         std::ifstream in(canon_dir + "/" + table + ".csv");

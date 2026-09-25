@@ -25,12 +25,11 @@
 #include <sstream>
 #include <string>
 
+#include "CApiInternal.hpp"
+
 using namespace sim;
 
-struct SimWorld {
-    WorldState world;
-    std::string w4a_refusal;  // W4-A: why the last progression verb refused ("" = it didn't)
-};
+// SimWorld is defined once, in CApiInternal.hpp.
 
 namespace {
 // A canon directory is one that holds seasons.csv (WorldState::init builds the

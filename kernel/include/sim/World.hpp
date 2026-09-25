@@ -10,6 +10,8 @@
 #include "sim/Context.hpp"
 #include "sim/RiteEffects.hpp"
 #include "sim/Character.hpp"  // W4-A
+// W4-C: the wild lands (regions, travel, bandits, raider camps, the raid formula).
+#include "sim/Wild.hpp"
 
 namespace sim {
 
@@ -49,6 +51,12 @@ struct WorldState {
     ProgressionCatalog progression;
     CharacterState character;
     std::map<Id, NpcSheet> npc_sheets;  // npc id -> light sheet
+    // --- W4-C: the wild lands beyond the walls (sim/Wild.hpp). Loaded from
+    // canon by init(); ticked by advance_days() after the hearings through
+    // tick_wild (sim/WildActions.hpp), which writes other modules' state only
+    // through their public APIs. Saved as the trailing WILD snapshot section.
+    WildState wild;
+    // --- end W4-C
 
     // Loads canon from canon_dir, seeds markets and people, prepares the calendar.
     void init(const std::string& canon_dir, std::uint64_t world_seed);

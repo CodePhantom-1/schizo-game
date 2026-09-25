@@ -161,7 +161,10 @@ static bool test_unwitnessed_theft_stays_open() {
 
     // No named NPC ever learns of it either — nothing to witness means
     // nothing enters memory or the rumour graph.
-    for (const Npc& n : w.population.npcs) SIM_CHECK(n.memory.empty());
+    // (W4-C: the city does talk — of the bandit camps beyond the walls — so
+    // the check is on memories of the criminal, not on silence itself.)
+    for (const Npc& n : w.population.npcs)
+        for (const MemoryEntry& m : n.memory) SIM_CHECK(m.subject != "player");
     return true;
 }
 

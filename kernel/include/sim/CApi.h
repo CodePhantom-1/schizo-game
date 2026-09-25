@@ -339,3 +339,7 @@ int sim_world_progression_refusal(const SimWorld* world, char* out, int cap);
 #ifdef __cplusplus
 }  // extern "C"
 #endif
+
+// --- W4-C: the wild lands (places, travel, camps, raids) -----------------------
+#include "sim/CApiWild.h"
+// --- end W4-C

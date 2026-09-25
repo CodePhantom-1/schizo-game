@@ -23,6 +23,10 @@ TABLES = [
     "rite_teachings", "rites", "schedules", "seasons", "skills", "story", "world_lore",
     "festivals", "person_schedules",  # K-2
     "attributes", "callings", "talents", "skill_teachings", "work_roles",  # W4-A (skills above)
+    # --- W4-C: the wild lands
+    "wild_places", "wild_links", "wild_groups", "wild_encounters", "caravans",
+    "transport_modes", "weather",
+    # --- end W4-C
 ]
 
 

@@ -5,6 +5,7 @@
 
 #include "sim/Actions.hpp"
 #include "sim/Progression.hpp"  // W4-A
+#include "sim/WildActions.hpp"  // W4-C
 
 #include <cstdlib>
 
@@ -66,6 +67,9 @@ void WorldState::init(const std::string& canon_dir, std::uint64_t world_seed) {
     progression = load_progression(db);
     character = new_character(progression);
     seed_npc_sheets(*this);
+    // --- W4-C: the wild lands (static tables + day-1 camps, herds, sites).
+    init_wild(db, wild);
+    // --- end W4-C
 }
 
 void WorldState::advance_days(int days) {
@@ -83,6 +87,9 @@ void WorldState::advance_days(int days) {
         // World-orchestrated hearings (commit_crime) need several modules'
         // state, so they run here, after the module ticks, on the same day.
         hold_due_hearings(*this);
+        // --- W4-C: the wild's day (weather, caravans, camps, the raid formula).
+        tick_wild(*this);
+        // --- end W4-C
         ++day;
     }
 }

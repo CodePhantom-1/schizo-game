@@ -112,6 +112,7 @@ public:
         return f[1];
     }
 
+
     // True once every line has been read (only trailing whitespace remains).
     bool at_end() {
         in_ >> std::ws;
@@ -375,6 +376,13 @@ std::string save_world(const WorldState& w) {
             for (const auto& [skill, v] : sheet.skills) wr.line({skill, s64(v)});
         }
     }
+    // --- W4-C WILD (trailing optional section; sim/Wild.hpp wild_save_rows).
+    {
+        const auto rows = wild_save_rows(w.wild);
+        wr.line({"WILD", s64(static_cast<std::int64_t>(rows.size()))});
+        for (const auto& row : rows) wr.line(row);
+    }
+    // --- end W4-C
 
     return wr.str();
 }
@@ -816,6 +824,15 @@ void load_world(WorldState& out, const std::string& canon_dir, const std::string
                 }
             }
         }
+        // --- W4-C WILD — optional: absent in a pre-W4-C save, where the fresh
+        // init_wild state (day-1 camps, full herds, unrobbed sites) stands.
+        if (!rd.at_end() && rd.peek_tag() == "WILD") {
+            const std::size_t n = rd.section("WILD");
+            std::vector<std::vector<std::string>> rows;
+            for (std::size_t i = 0; i < n; ++i) rows.push_back(rd.next());
+            wild_load_rows(w.wild, rows);
+        }
+        // --- end W4-C
 
         out = std::move(w);  // atomic: only reached once parsing fully succeeded
     } catch (const std::runtime_error&) {

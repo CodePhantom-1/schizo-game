@@ -87,3 +87,7 @@ byte-deterministic and a restored world advances identically to its source.
 reference only once every section has parsed without throwing. A
 truncated/malformed save now throws with the caller's live world left
 byte-for-byte untouched (see `test_load_world_is_atomic_on_failure`).
+
+## W4-C update (the wild lands)
+
+One more trailing, optional section: `WILD\t<n>`, then n rows produced by `wild_save_rows` (sim/Wild.hpp; row kinds S/G/C/V/R/E/F/T) and restored by `wild_load_rows`. `Reader::peek_tag()` reads the next tag without consuming it, so the section is found in any order among the trailing sections. It is absent in older saves, where the fresh `init_wild` state stands. Static wild tables are canon and are never saved.
