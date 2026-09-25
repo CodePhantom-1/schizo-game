@@ -1,0 +1,27 @@
+Name,from,to,kind,distance_m,danger,tag,source_ref
+moon_gate__lighthouse_wharf,moon_gate_place,lighthouse_wharf_place,road,650,1,INVENTED,INVENTED (D-018; D-021 wild lands); measured on the wild_places.csv x_m/y_m layout (D-002: ~20 km2)
+moon_gate__fields_beyond_the_gate,moon_gate_place,fields_beyond_the_gate_place,road,550,1,INVENTED,INVENTED (D-018; D-021 wild lands); measured on the wild_places.csv x_m/y_m layout (D-002: ~20 km2)
+moon_gate__grazing_lands,moon_gate_place,grazing_lands_place,track,950,1,INVENTED,INVENTED (D-018; D-021 wild lands); measured on the wild_places.csv x_m/y_m layout (D-002: ~20 km2)
+moon_gate__date_grove,moon_gate_place,date_grove_place,track,1100,1,INVENTED,INVENTED (D-018; D-021 wild lands); measured on the wild_places.csv x_m/y_m layout (D-002: ~20 km2)
+moon_gate__old_tombs,moon_gate_place,old_tombs_place,track,1300,4,INVENTED,INVENTED (D-018; D-021 wild lands); measured on the wild_places.csv x_m/y_m layout (D-002: ~20 km2)
+lighthouse_wharf__riverbank_reeds,lighthouse_wharf_place,riverbank_reeds_place,river,1850,2,INVENTED,INVENTED (D-018; D-021 wild lands); measured on the wild_places.csv x_m/y_m layout (D-002: ~20 km2)
+lighthouse_wharf__southern_marsh,lighthouse_wharf_place,southern_marsh_place,river,2500,4,INVENTED,INVENTED (D-018; D-021 wild lands); measured on the wild_places.csv x_m/y_m layout (D-002: ~20 km2)
+fields_beyond_the_gate__river_road,fields_beyond_the_gate_place,river_road_place,road,1000,1,INVENTED,INVENTED (D-018; D-021 wild lands); measured on the wild_places.csv x_m/y_m layout (D-002: ~20 km2)
+fields_beyond_the_gate__riverbank_reeds,fields_beyond_the_gate_place,riverbank_reeds_place,track,1000,2,INVENTED,INVENTED (D-018; D-021 wild lands); measured on the wild_places.csv x_m/y_m layout (D-002: ~20 km2)
+river_road__canal_head,river_road_place,canal_head_place,road,750,1,INVENTED,INVENTED (D-018; D-021 wild lands); measured on the wild_places.csv x_m/y_m layout (D-002: ~20 km2)
+river_road__eastern_road,river_road_place,eastern_road_place,road,1200,3,INVENTED,INVENTED (D-018; D-021 wild lands); measured on the wild_places.csv x_m/y_m layout (D-002: ~20 km2)
+eastern_road__eastern_waystation,eastern_road_place,eastern_waystation_place,road,650,4,INVENTED,INVENTED (D-018; D-021 wild lands); measured on the wild_places.csv x_m/y_m layout (D-002: ~20 km2)
+eastern_road__shrine_ruins,eastern_road_place,shrine_ruins_place,track,900,6,INVENTED,INVENTED (D-018; D-021 wild lands); measured on the wild_places.csv x_m/y_m layout (D-002: ~20 km2)
+grazing_lands__southern_marsh,grazing_lands_place,southern_marsh_place,track,1050,4,INVENTED,INVENTED (D-018; D-021 wild lands); measured on the wild_places.csv x_m/y_m layout (D-002: ~20 km2)
+grazing_lands__shrine_ruins,grazing_lands_place,shrine_ruins_place,track,1900,6,INVENTED,INVENTED (D-018; D-021 wild lands); measured on the wild_places.csv x_m/y_m layout (D-002: ~20 km2)
+southern_marsh__reed_islands,southern_marsh_place,reed_islands_place,marsh_path,1000,6,INVENTED,INVENTED (D-018; D-021 wild lands); measured on the wild_places.csv x_m/y_m layout (D-002: ~20 km2)
+date_grove__northern_ford,date_grove_place,northern_ford_place,track,1050,3,INVENTED,INVENTED (D-018; D-021 wild lands); measured on the wild_places.csv x_m/y_m layout (D-002: ~20 km2)
+riverbank_reeds__northern_ford,riverbank_reeds_place,northern_ford_place,river,950,3,INVENTED,INVENTED (D-018; D-021 wild lands); measured on the wild_places.csv x_m/y_m layout (D-002: ~20 km2)
+northern_ford__tell_ruins,northern_ford_place,tell_ruins_place,track,1100,5,INVENTED,INVENTED (D-018; D-021 wild lands); measured on the wild_places.csv x_m/y_m layout (D-002: ~20 km2)
+old_tombs__desert_edge,old_tombs_place,desert_edge_place,track,850,5,INVENTED,INVENTED (D-018; D-021 wild lands); measured on the wild_places.csv x_m/y_m layout (D-002: ~20 km2)
+desert_edge__desert_caverns,desert_edge_place,desert_caverns_place,desert_track,750,6,INVENTED,INVENTED (D-018; D-021 wild lands); measured on the wild_places.csv x_m/y_m layout (D-002: ~20 km2)
+desert_edge__suti_wells,desert_edge_place,suti_wells_place,desert_track,1000,7,INVENTED,INVENTED (D-018; D-021 wild lands); measured on the wild_places.csv x_m/y_m layout (D-002: ~20 km2)
+tell_ruins__desert_caverns,tell_ruins_place,desert_caverns_place,desert_track,3350,6,INVENTED,INVENTED (D-018; D-021 wild lands); measured on the wild_places.csv x_m/y_m layout (D-002: ~20 km2)
+suti_wells__city_of_the_abyss,suti_wells_place,city_of_the_abyss,journey,22000,5,INVENTED,"INVENTED (D-018; D-021 wild lands); cities.csv city_of_the_abyss (Eridu, D-018 real-site pairing: a day's march south-west of Ur); mechanics.md row 36 (off-map ventures and journeys)"
+canal_head__city_of_the_sun,canal_head_place,city_of_the_sun,journey,45000,4,INVENTED,"INVENTED (D-018; D-021 wild lands); cities.csv city_of_the_sun (Larsa, D-018 real-site pairing: two days up-river); mechanics.md row 36"
+eastern_waystation__city_of_the_warrior_spirit,eastern_waystation_place,city_of_the_warrior_spirit,journey,240000,8,INVENTED,INVENTED (D-018; D-021 wild lands); cities.csv city_of_the_warrior_spirit (off-map in the east; the eastern barbarian alliance); wb §4.3; mechanics.md row 36

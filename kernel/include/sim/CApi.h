@@ -236,3 +236,7 @@ int sim_world_npc_schedule_at(const SimWorld* world, const char* npc, int hour, 
 #ifdef __cplusplus
 }  // extern "C"
 #endif
+
+// --- W4-C: the wild lands (places, travel, camps, raids) -----------------------
+#include "sim/CApiWild.h"
+// --- end W4-C

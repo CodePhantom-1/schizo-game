@@ -23,3 +23,10 @@ Run `python3 tools/export_datatables.py` to regenerate from db/canon.
 - world_lore: 7 rows
 - festivals: 4 rows
 - person_schedules: 4 rows
+- wild_places: 15 rows
+- wild_links: 26 rows
+- wild_groups: 5 rows
+- wild_encounters: 9 rows
+- caravans: 3 rows
+- transport_modes: 6 rows
+- weather: 6 rows

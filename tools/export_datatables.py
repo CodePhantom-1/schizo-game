@@ -22,6 +22,10 @@ TABLES = [
     "names", "pantheons", "planetary_powers", "places", "ranks", "regions",
     "rite_teachings", "rites", "schedules", "seasons", "skills", "story", "world_lore",
     "festivals", "person_schedules",  # K-2
+    # --- W4-C: the wild lands
+    "wild_places", "wild_links", "wild_groups", "wild_encounters", "caravans",
+    "transport_modes", "weather",
+    # --- end W4-C
 ]
 
 

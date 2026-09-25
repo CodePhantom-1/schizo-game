@@ -9,6 +9,8 @@
 // performed impure, a rumour crosses the city at walking speed.
 #include "sim/Context.hpp"
 #include "sim/RiteEffects.hpp"
+// W4-C: the wild lands (regions, travel, bandits, raider camps, the raid formula).
+#include "sim/Wild.hpp"
 
 namespace sim {
 
@@ -39,6 +41,13 @@ struct WorldState {
     // by the caller-side applier in sim/Rites.hpp — never by Magic, never by
     // the daily tick.
     RiteEffectsState rite_effects;
+
+    // --- W4-C: the wild lands beyond the walls (sim/Wild.hpp). Loaded from
+    // canon by init(); ticked by advance_days() after the hearings through
+    // tick_wild (sim/WildActions.hpp), which writes other modules' state only
+    // through their public APIs. Saved as the trailing WILD snapshot section.
+    WildState wild;
+    // --- end W4-C
 
     // Loads canon from canon_dir, seeds markets and people, prepares the calendar.
     void init(const std::string& canon_dir, std::uint64_t world_seed);
