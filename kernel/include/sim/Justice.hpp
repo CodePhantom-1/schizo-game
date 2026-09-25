@@ -34,6 +34,13 @@ struct Crime {
     // through commit_crime() sets it; report_crime()/hold_hearing() never
     // read or write it themselves.
     std::string stage;  // "" | "alarmed" | "pursued" | "detained" | "heard"
+    // W2-A: 0 (default) keeps the original Wave-1 behaviour — tick_justice()
+    // hears any witnessed crime the same tick it processes it. A nonzero day
+    // (set by commit_crime()) makes tick_justice() wait until that day before
+    // auto-hearing it — the real window scenario_crime.md gap 1 asks for,
+    // between detention and the hearing. Calling hold_hearing()/
+    // hold_crime_hearing() directly, at any time, still works regardless.
+    DayNumber hearing_day = 0;
 };
 
 struct Hearing {

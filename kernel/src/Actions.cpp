@@ -88,6 +88,10 @@ Id commit_crime(WorldState& w, const Id& criminal, const Id& law_row,
         crime.stage = "alarmed";
         crime.stage = "pursued";
         crime.stage = "detained";
+        // Schedules the real window between detention and the hearing
+        // (city-life §3.3.3; scenario_crime.md gap 1) — tick_justice() will
+        // not auto-hear this crime before w.day + kHearingDelayDays.
+        crime.hearing_day = w.day + kHearingDelayDays;
     }
     return crime.id;
 }

@@ -42,11 +42,25 @@ Driven against a real `WorldState` (canon loaded, `../db/canon`), no fixture dat
   another module's state") and is not a bug; it is the missing surface
   below.
 
-## What the slice still lacks at kernel level
+## W2-A update (2026-09-25): gaps 1-6 closed
 
-Each of these has **no kernel surface today**; none were built by this
-track (T5 is scenario + report only, per the assignment). Contract/doc
-reference for each:
+`kernel/include/sim/Actions.hpp` + `kernel/src/Actions.cpp` (tested by
+`kernel/tests/test_actions.cpp`) now provide the orchestration verbs this
+document asked for: `commit_crime()` (witness -> alarm -> pursuit ->
+detention, closing gaps 1, 2 and 6) and `hold_crime_hearing()` (sealed
+verdict tablet id, compensation paid from/to the purse with escalation on
+non-payment, standing loss and outlawry with the jurisdiction's faction —
+closing gaps 3, 4 and 5). See `docs/proposals/invented-ledger-actions.md`
+for every INVENTED constant/mapping this introduced (the hearing delay, the
+flat compensation amount, the city->faction jurisdiction map, the standing
+severity ladder). The original gap list below is kept as the historical
+record of what T5 found missing; each gap now links to its closure.
+
+## What the slice still lacks at kernel level (T5's original finding)
+
+Each of these had **no kernel surface** at T5 (T5 was scenario + report
+only, per that track's assignment); W2-A closed all six (see above).
+Contract/doc reference for each: 
 
 1. **Alarm → pursuit → detention as distinct stages.** `Justice.hpp`'s own
    comment names all four ("crime → witness → alarm → pursuit → detention →
