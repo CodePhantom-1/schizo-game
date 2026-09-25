@@ -4,6 +4,12 @@
 // forming, eating, recruiting, deserting, feuding, moving, raiding and
 // re-forming while the conditions that made it persist.
 //
+// W5-B: faction politics modulates the formula (raid_politics below) — a
+// band whose faction is at war with the target's holder raids harder, a live
+// sworn treaty reins it, an outlawed faction owes nobody peace, and a grudge
+// that names the holder sharpens the raid. All of it ledgered in
+// docs/proposals/invented-ledger-faction-raids.md.
+//
 // D-022: integer maths only; chances in basis points.
 #include "WildInternal.hpp"
 
@@ -101,7 +107,63 @@ Id weather_on(const WorldState& w, DayNumber day) {
 
 // --- the raid formula ---------------------------------------------------------------
 
+namespace {
+
+// W5-B (ledgered): the city's open enemies in the world's war — the Empire
+// and the eastern barbarians (wb §4.1-4.3; war_stage is their clock).
+bool enemy_of_city(const Id& f) { return f == kEmpireFaction || f == kBarbarianFaction; }
+
+// W5-B (ledgered): who stands with the city — itself and its live-treaty
+// partners. The war's sides come from canon + the treaty table, never from a
+// second hardcoded list; an outlawed ally (treaty void) stands alone.
+bool stands_with_city(const WorldState& w, const Id& f) {
+    const Id city = city_faction_id(w);
+    return f == city || live_treaty_between(w, f, city) != nullptr;
+}
+
+}  // namespace
+
 namespace wild {
+
+RaidPolitics raid_politics(const WorldState& w, const GroupDef& def, const Id& holder) {
+    // Every rule is ledgered in docs/proposals/invented-ledger-faction-raids.md.
+    RaidPolitics p;
+    if (def.faction.empty() || holder.empty() || def.faction == holder) return p;
+    auto note = [&p](const char* why) {
+        if (!p.note.empty()) p.note += ',';
+        p.note += why;
+    };
+    const bool outlawed = is_outlawed(w.faction, def.faction);
+    if (outlawed) {
+        // An outlawed faction's law is broken: its sworn peace is void and its
+        // bands owe nobody quarter — they raid anyone opportunity allows.
+        p.opportunity += kOutlawOpportunity;
+        note("outlaw");
+    }
+    const bool war = w.facts.war_stage >= 1 &&
+                     ((enemy_of_city(def.faction) && stands_with_city(w, holder)) ||
+                      (enemy_of_city(holder) && stands_with_city(w, def.faction)));
+    if (war) {
+        // A band whose faction is at war with the holder's raids harder.
+        p.opportunity += kWarOpportunity;
+        note("war");
+    }
+    if (grudges_against(def, holder)) {
+        // A grudge that names the holder's faction sharpens the raid (the
+        // W4-C caravan-grudge weight, now one holder-keyed rule).
+        p.opportunity += kGrudgeOpportunity;
+        note("grudge");
+    }
+    if (!outlawed) {
+        if (live_treaty_between(w, def.faction, holder) != nullptr) {
+            // A live sworn peace reins the band against that holder's things.
+            p.defence += kTreatyDefence;
+            p.blocked = true;
+            note("treaty");
+        }
+    }
+    return p;
+}
 
 RaidAssessment assess_target(const WorldState& w, const Group& g, const GroupDef& def,
                              const std::string& target, DayNumber day) {
@@ -121,6 +183,7 @@ RaidAssessment assess_target(const WorldState& w, const Group& g, const GroupDef
     const auto pref = def.prefers.find(target);
     opp += (pref == def.prefers.end() ? 0 : pref->second) / 10;
     const std::string& season = w.cal.season_id(day);
+    Id holder = city_faction_id(w);  // whose things the target is (W5-B)
     if (target == "fields") {
         opp += season == "harvest" ? 25 : season == "sowing" ? 10 : 5;
     } else if (target == "herds") {
@@ -131,20 +194,42 @@ RaidAssessment assess_target(const WorldState& w, const Group& g, const GroupDef
     } else if (target == "caravans") {
         if (const CaravanRun* run = caravan_in_territory(w, def)) {
             const CaravanDef* cd = caravan_def(w, run->def);
-            opp += 30 + (cd && grudges_against(def, cd->faction) ? 20 : 0);
+            holder = cd ? cd->faction : Id();
+            opp += 30;  // (the caravan grudge rides in raid_politics now)
             def_pts += run->guards * 4 + run->escort_fighters * 5;
         }
     }
+    // W5-B: faction politics (treaties, the war, outlawry, grudges) modulates
+    // the chance inside the formula's own points.
+    const RaidPolitics pol = raid_politics(w, def, holder);
+    opp += pol.opportunity;
+    def_pts += pol.defence;
     if (!a.place.empty() && ward_holds(w.rite_effects, a.place, day)) def_pts += 20;  // K-1 wards
     a.opportunity = opp;
     a.defence = def_pts;
     a.score = a.hunger + a.opportunity - a.defence - a.fear;
     a.chance_bp = std::clamp(a.score * kRaidBpPerPoint, 0, kRaidMaxBp);
     if (a.place.empty()) a.chance_bp = 0;
+    if (pol.blocked) {
+        a.blocked = true;   // a sworn peace forbids this target outright
+        a.chance_bp = 0;
+    }
     return a;
 }
 
 }  // namespace wild
+
+BandPolitics band_politics(const WorldState& w, const Id& group_id) {
+    BandPolitics bp;
+    const GroupDef* def = find_group_def(w.wild, group_id);
+    if (def == nullptr) return bp;
+    bp.faction = def->faction;
+    const RaidPolitics p = raid_politics(w, *def, city_faction_id(w));
+    bp.net_pts = p.opportunity - p.defence;
+    bp.blocked = p.blocked;
+    bp.note = p.note;
+    return bp;
+}
 
 RaidAssessment assess_raid(const WorldState& w, const Id& group_id, DayNumber day) {
     RaidAssessment best;
@@ -162,6 +247,7 @@ RaidAssessment assess_raid(const WorldState& w, const Id& group_id, DayNumber da
         if (w.wild.herd_head <= 0 && std::string(target) == "herds") continue;
         RaidAssessment a = assess_target(w, *g, *def, target, day);
         if (a.place.empty()) continue;
+        if (a.blocked) continue;  // W5-B: a live treaty forbids this target today
         if (std::string(target) == "caravans") {
             const CaravanRun* run = caravan_in_territory(w, *def);
             const CaravanDef* cd = run ? caravan_def(w, run->def) : nullptr;

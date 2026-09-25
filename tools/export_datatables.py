@@ -27,6 +27,7 @@ TABLES = [
     "wild_places", "wild_links", "wild_groups", "wild_encounters", "caravans",
     "transport_modes", "weather",
     # --- end W4-C
+    "treaties",  # W5-B: faction politics (sworn peace reins a faction's bands)
     "arms", "combat_styles",  # W4-B: combat
 ]
 

@@ -255,6 +255,18 @@ void init_wild(const Db& db, WildState& s) {
         d.raids = r.get("raids", "true") != "false";
         s.weather_defs.push_back(d);
     }
+    // W5-B: sworn treaties (treaties.csv). A row needs two parties to bind
+    // anyone; the kernel-read term is the "no_raids" token in `terms`.
+    for (const Row& r : db.rows("treaties")) {
+        if (r.get("tag") == "OPEN") continue;
+        TreatyDef t;
+        t.id = r.at("id");
+        t.name = r.get("name");
+        t.parties = split(r.get("parties"), ';');
+        t.terms = r.get("terms");
+        if (t.parties.size() < 2) continue;  // a treaty binds no one alone
+        s.treaty_defs.push_back(t);
+    }
 
     // --- dynamic seed ---
     s.herd_head = kHerdStart;
@@ -310,6 +322,28 @@ Id other_end(const WildLink& l, const Id& node) {
 bool in_territory(const GroupDef& g, const Id& place) {
     return std::find(g.territory.begin(), g.territory.end(), place) != g.territory.end() ||
            std::find(g.camp_sites.begin(), g.camp_sites.end(), place) != g.camp_sites.end();
+}
+
+const TreatyDef* live_treaty_between(const WorldState& w, const Id& a, const Id& b) {
+    // "Live" (W5-B reading, ledgered): both factions named in `parties`, the
+    // sworn "no_raids" term among the terms, and neither side outlawed — an
+    // outlawed party's law is broken, so its sworn peace is void.
+    if (a.empty() || b.empty() || a == b) return nullptr;
+    for (const TreatyDef& t : w.wild.treaty_defs) {
+        bool has_a = false, has_b = false;
+        for (const Id& p : t.parties) {
+            has_a = has_a || p == a;
+            has_b = has_b || p == b;
+        }
+        if (!has_a || !has_b) continue;
+        bool no_raids = false;
+        for (const std::string& term : split(t.terms, ';'))
+            no_raids = no_raids || term == "no_raids";
+        if (!no_raids) continue;
+        if (is_outlawed(w.faction, a) || is_outlawed(w.faction, b)) continue;  // void
+        return &t;
+    }
+    return nullptr;
 }
 
 std::string npc_fate(const WildState& s, const Id& npc) {

@@ -36,5 +36,6 @@ Run `python3 tools/export_datatables.py` to regenerate from db/canon.
 - caravans: 3 rows
 - transport_modes: 6 rows
 - weather: 6 rows
+- treaties: 1 rows
 - arms: 20 rows
 - combat_styles: 11 rows

@@ -146,6 +146,17 @@ struct WeatherDef {
     bool raids = true;
 };
 
+// A sworn treaty between factions (treaties.csv; mechanics.md row 26).
+// `terms` is free text for the codex; the tokens before the prose are the
+// kernel-read terms — "no_raids" is the sworn peace that reins a faction's
+// bands (W5-B). See docs/proposals/invented-ledger-faction-raids.md.
+struct TreatyDef {
+    Id id;
+    std::string name;
+    std::vector<Id> parties;  // factions.csv ids (2+; ';' in the csv)
+    std::string terms;
+};
+
 // ---------------------------------------------------------------------------
 // Dynamic state (saved by Snapshot as the trailing optional WILD section).
 
@@ -233,6 +244,7 @@ struct WildState {
     std::vector<GroupDef> group_defs;
     std::vector<CaravanDef> caravan_defs;
     std::vector<WeatherDef> weather_defs;
+    std::vector<TreatyDef> treaty_defs;    // W5-B: sworn treaties (treaties.csv)
     SkirmishResolver skirmish = nullptr;   // nullptr = stub_skirmish (W4-B wires at merge)
 
     // --- dynamic (saved) ---
@@ -270,6 +282,14 @@ constexpr int kRansomSilver = 40;
 constexpr int kEscortFee = 12;
 constexpr int kCaravanLegsPerDay = 2;
 constexpr int kRescueRewardSilver = 30;
+
+// W5-B faction-politics tunables (INVENTED, D-018/D-021; ledgered in
+// docs/proposals/invented-ledger-faction-raids.md). Points on the raid
+// formula's own scale (one point = kRaidBpPerPoint bp of daily chance).
+constexpr int kWarOpportunity = 12;     // band faction at war with the holder
+constexpr int kGrudgeOpportunity = 20;  // a grudge names the holder's faction
+constexpr int kTreatyDefence = 15;      // a live no_raids treaty reins the band
+constexpr int kOutlawOpportunity = 10;  // an outlawed faction owes nobody peace
 
 // Loads the static tables and seeds the dynamic state (groups whose
 // forms_when is "start" form on day 1; the herds; lootable sites).

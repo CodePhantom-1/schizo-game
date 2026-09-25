@@ -39,8 +39,28 @@ struct RaidAssessment {
     Id place;
     int hunger = 0, opportunity = 0, defence = 0, fear = 0, score = 0;
     int chance_bp = 0;    // 0..kRaidMaxBp per day
+    bool blocked = false; // W5-B: a live treaty forbids this target outright
 };
 RaidAssessment assess_raid(const WorldState& w, const Id& group_id, DayNumber day);
+
+// --- faction politics around the formula (W5-B) --------------------------------
+// The live treaty between two factions: both named in `parties`, carrying the
+// "no_raids" term, and void while either side stands outlawed
+// (Faction::is_outlawed). nullptr when none is live. Pure query.
+const TreatyDef* live_treaty_between(const WorldState& w, const Id& a, const Id& b);
+
+// One band's politics against the city, for the engine/UI: the band's faction
+// and the net political modifier on its raids against the city's holdings
+// today (positive = politics urges the raid; a blocked band is treaty-reined
+// to nothing). note names what fired, ','-joined: war | grudge | treaty |
+// outlaw. An unaligned band reads "" / 0 / "".
+struct BandPolitics {
+    Id faction;
+    int net_pts = 0;      // politics opportunity minus politics defence
+    bool blocked = false; // a live no_raids treaty with the city
+    std::string note;
+};
+BandPolitics band_politics(const WorldState& w, const Id& group_id);
 
 // --- travel (rows 31, 35, 36) -------------------------------------------------
 struct TravelResult {

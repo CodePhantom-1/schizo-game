@@ -14,6 +14,15 @@ constexpr const char* kGate = "moon_gate_place";
 constexpr const char* kPlayer = "player";
 constexpr const char* kPlayerBand = "player_band";
 
+// W5-B: the belligerents of the world's war against the city's alliance
+// (city_of_the_moon's jurisdiction, cities.csv). The Empire is the rebellion's
+// enemy (wb §4.1-4.2); the eastern barbarians raid the settled lands, the
+// rebellion's included (wb §4.1, §4.3; events.csv rebel_agents_agitate,
+// eastern_raiders_pillage). INVENTED glue, ledgered in
+// docs/proposals/invented-ledger-faction-raids.md.
+constexpr const char* kEmpireFaction = "the_empire";
+constexpr const char* kBarbarianFaction = "the_barbarians";
+
 // Stable 64-bit id hash (FNV-1a) for rng salts.
 std::uint64_t salt_of(const std::string& s);
 // A fresh stream for (day, what) — never advances the world rng.
@@ -69,6 +78,18 @@ RaidAssessment assess_target(const WorldState& w, const Group& g, const GroupDef
                              const std::string& target, DayNumber day);
 RaidRecord resolve_raid(WorldState& w, Group& g, const GroupDef& def, const RaidAssessment& a,
                         Rng& r, bool player_led, int hour);
+
+// W5-B faction politics of one raid: what `def`'s faction owes or fears of
+// `holder` (the city's faction for city targets, the caravan's faction for
+// caravans). Folded into assess_target's opportunity/defence; see
+// docs/proposals/invented-ledger-faction-raids.md for every rule.
+struct RaidPolitics {
+    int opportunity = 0;   // war, a grudge, outlawry
+    int defence = 0;       // a live treaty reining the band
+    bool blocked = false;  // a live no_raids treaty forbids this holder's things
+    std::string note;      // what fired, ','-joined ("war", "grudge", "treaty", "outlaw")
+};
+RaidPolitics raid_politics(const WorldState& w, const GroupDef& def, const Id& holder);
 
 // Where a raid target lies (the first target node in the group's territory).
 Id target_place(const WorldState& w, const GroupDef& def, const std::string& target);

@@ -4,7 +4,7 @@
 
 **Files:** `include/sim/Wild.hpp` (state types, pure queries, the combat seam), `include/sim/WildActions.hpp` (the verbs over `WorldState`), `include/sim/CApiWild.h` (C ABI, included by `CApi.h`); `src/Wild.cpp` (canon loading, queries, the stub resolver), `src/WildTick.cpp` (weather, caravans, the raid formula, camp life), `src/WildTravel.cpp` (routes, travel, encounters), `src/WildPlayer.cpp` (player verbs), `src/WildWorld.cpp` (cross-module helpers), `src/WildSave.cpp` (snapshot rows), `src/CApiWild.cpp`; private `src/WildInternal.hpp`.
 
-**Canon (all INVENTED, ledgered in docs/proposals/invented-ledger-wild.md):** `wild_places`, `wild_links`, `wild_groups`, `wild_encounters`, `caravans`, `transport_modes`, `weather`. places.csv is **not** changed: its gate, wharf, fields and grazing-lands ids are reused as travel nodes, so every current reader of places.csv keeps working.
+**Canon (all INVENTED, ledgered in docs/proposals/invented-ledger-wild.md):** `wild_places`, `wild_links`, `wild_groups`, `wild_encounters`, `caravans`, `transport_modes`, `weather`. **W5-B** adds the sworn-treaty table `treaties` (ledgered in docs/proposals/invented-ledger-faction-raids.md). places.csv is **not** changed: its gate, wharf, fields and grazing-lands ids are reused as travel nodes, so every current reader of places.csv keeps working.
 
 ## State
 
@@ -27,6 +27,8 @@ For each target the band prefers (`fields`, `herds`, `caravans`, `market`) and c
 - **defence** = 5 per watchman/gatekeeper/paladin in play + standing with the city's faction / 4 (the player's reputation) + 20 behind the walls (market) + 4 per caravan guard + 5 per escort fighter + 20 on a warded place (K-1 `ward_holds`)
 - **fear** = player fear / 2 + (100 − morale) / 5
 - **score** = hunger + opportunity − defence − fear; **chance** = clamp(score × 20 bp, 0, 2000 bp) a day, for the best-scoring target.
+
+**Faction politics (W5-B, `raid_politics`)** — one more pass, keyed on the *holder* of the target (the city's faction for fields/herds/market, the caravan's faction for caravans), inside the same points. A band whose faction is **at war** with the holder's (war_stage ≥ 1; the city's enemies are the Empire and the eastern barbarians, and the city's live-treaty partners stand with it) raids harder: opportunity +12. A **grudge** naming the holder's faction: opportunity +20 (the W4-C caravan-grudge weight, now one holder-keyed rule — a row naming the city or a player faction lights the same path). A **live sworn treaty** (`treaties.csv`, both parties, the `no_raids` term, neither party outlawed) reins the band against that holder's things: defence +15 and the target **blocked outright** (chance 0; the assessment loop skips it). A band whose faction is **outlawed** (`Faction::is_outlawed`) owes nobody peace: its treaties are void and opportunity +10 — it raids anyone. `band_politics` reads the net of it for the UI (`sim/CApiFaction.h`). Every rule is ledgered in docs/proposals/invented-ledger-faction-raids.md.
 
 No raid when the band is inactive, led by the player (he decides), under 2 strong, or in a sandstorm. A bribed band (`paid_until`) raids nothing but caravans, and never one the player escorts. Partisans raid only the caravans of the factions they hate.
 
@@ -60,7 +62,7 @@ These happen only in the verbs and the tick, never elsewhere, and only through p
 
 ## Snapshot
 
-One trailing, **optional**, order-independent section: `WILD\t<n>` followed by n rows (S scalars · G group · C camp · V caravan run · R raid · E encounter · F fate · T site). `Reader::peek_tag` (a W4-C block in Snapshot.cpp) lets the section sit in any order among other agents' trailing sections. A save written before W4-C has no WILD section and loads into the fresh `init_wild` state. A malformed row throws, and `load_world` stays atomic.
+One trailing, **optional**, order-independent section: `WILD\t<n>` followed by n rows (S scalars · G group · C camp · V caravan run · R raid · E encounter · F fate · T site). `Reader::peek_tag` (a W4-C block in Snapshot.cpp) lets the section sit in any order among other agents' trailing sections. A save written before W4-C has no WILD section and loads into the fresh `init_wild` state. A malformed row throws, and `load_world` stays atomic. **W5-B adds no save section:** the treaty table is canon-static (rebuilt by `init_wild` on load, like the caravans), and politics reads `FactionState`, which the FACTION_* sections already save.
 
 ## Determinism (D-022)
 
@@ -68,11 +70,11 @@ Integer maths throughout: chances are basis points, distances metres, durations 
 
 ## Tunables (INVENTED, D-018; `Wild.hpp`)
 
-`kRaidBpPerPoint` 20 and `kRaidMaxBp` 2000; `kHerdStart` 60 and `kHerdMax` 80; `kCaptiveDays` 45; `kBountyPerFighter` 6; `kTributePerFighter` 5 and `kTributeDays` 30; `kRansomSilver` 40; `kEscortFee` 12; `kCaravanLegsPerDay` 2; `kRescueRewardSilver` 30. The formula weights above are listed in the ledger.
+`kRaidBpPerPoint` 20 and `kRaidMaxBp` 2000; `kHerdStart` 60 and `kHerdMax` 80; `kCaptiveDays` 45; `kBountyPerFighter` 6; `kTributePerFighter` 5 and `kTributeDays` 30; `kRansomSilver` 40; `kEscortFee` 12; `kCaravanLegsPerDay` 2; `kRescueRewardSilver` 30. W5-B politics: `kWarOpportunity` 12, `kGrudgeOpportunity` 20, `kTreatyDefence` 15, `kOutlawOpportunity` 10. The formula weights above are listed in the ledger.
 
 ## Merge notes
 
 - `CApiWild.cpp` repeats `struct SimWorld { WorldState world; };` token for token (a legal multi-TU class definition). If CApi.cpp's `SimWorld` ever changes, move both into a shared `src/CApiInternal.hpp`.
 - The labelled W4-C blocks in shared files are: `World.hpp` (member and include), `World.cpp` (init and tick), `Db.cpp` (table list), `Snapshot.cpp` (peek_tag, save, load), `CApi.h` (include), `tools/export_datatables.py` (table list). `tests/test_scenario_crime.cpp` changed one assertion: it now checks for no memories *of the criminal*, because the city now talks about bandit camps.
 
-**Tests:** `tests/test_wild.cpp` (data, formula, travel, encounters, camps, captives, verbs, caravans, sites, weather, seam, save, determinism, no-float), `tests/test_scenario_wild.cpp` (the year of drought), `tests/test_wild_capi.cpp` (the C boundary).
+**Tests:** `tests/test_wild.cpp` (data, formula, travel, encounters, camps, captives, verbs, caravans, sites, weather, seam, save, determinism, no-float), `tests/test_scenario_wild.cpp` (the year of drought), `tests/test_wild_capi.cpp` (the C boundary), `tests/test_faction_raids.cpp` (W5-B: the treaty table, the politics rules, the formula's politics points, the band-politics read, the Faction C ABI, a save round-trip).
