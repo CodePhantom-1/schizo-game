@@ -10,24 +10,24 @@ Severity: **High** means a crash, silently wrong world data, or a broken build o
 
 | # | Where | Severity | Status |
 |---|---|---|---|
-| U1 | unreal/Content/Sim/canon/* | High | Fixed (tracked files refreshed); 2 untracked tables proposed |
-| U2 | SimWorldSubsystem.cpp:70-76 | High | Proposed |
-| U3 | unreal/Config (no DefaultGame.ini) | High | Proposed |
+| U1 | unreal/Content/Sim/canon/* | High | **Fixed** (places.csv and recipes.csv tracked since 6f0d62a) |
+| U2 | SimWorldSubsystem.cpp:70-76 | High | **Applied** (D-020) |
+| U3 | unreal/Config (no DefaultGame.ini) | High | **Applied** (D-020) |
 | U4 | SimGameMode.cpp:104 | High (crash) | **Fixed** |
 | U5 | SimGameMode.cpp:50, SimPlayerController.cpp:96 | High (Game target build) | **Fixed** |
 | U6 | SimPlayerController.cpp:85-88 | Low | **Fixed** |
-| U7 | SimWorldSubsystem.h:65 / .cpp:131 (GetSimHandle) | Medium | Proposed (docs + usage rule) |
-| U8 | SimWorldSubsystem.cpp:121-129 (GetSimHour) | Medium | Proposed |
-| U9 | SimWorldSubsystem.cpp (all static getters) | Medium | Proposed |
-| U10 | SimWorldSubsystem lifecycle (world subsystem) | Medium (latent) | Proposed |
-| U11 | SimRuntime.Build.cs:21-22 | Medium | Proposed |
-| U12 | SimRuntime.Build.cs / SchizoGame linking | Low | Proposed |
-| U13 | SimWorldSubsystem.cpp:33 | Low | Proposed |
-| U14 | SimWorldSubsystem.cpp:70, 164-165 | Low | Proposed |
-| U15 | SimWorldSubsystem.h:14, :52-58 | Low | Proposed |
-| U16 | SimGameMode.cpp:98-110 | Low | Proposed |
-| U17 | SimGameMode.cpp:145 | Low | Proposed |
-| U18 | .gitignore:22 | Low | Proposed |
+| U7 | SimWorldSubsystem.h:65 / .cpp:131 (GetSimHandle) | Medium | **Applied** (D-020) |
+| U8 | SimWorldSubsystem.cpp:121-129 (GetSimHour) | Medium | **Applied** (D-020) |
+| U9 | SimWorldSubsystem.cpp (all static getters) | Medium | **Applied** (D-020) |
+| U10 | SimWorldSubsystem lifecycle (world subsystem) | Medium (latent) | **Applied** (D-020) |
+| U11 | SimRuntime.Build.cs:21-22 | Medium | **Applied** (D-020; warns instead of throwing) |
+| U12 | SimRuntime.Build.cs / SchizoGame linking | Low | Documented, deferred |
+| U13 | SimWorldSubsystem.cpp:33 | Low | **Applied** (D-020) |
+| U14 | SimWorldSubsystem.cpp:70, 164-165 | Low | **Applied** (D-020) |
+| U15 | SimWorldSubsystem.h:14, :52-58 | Low | **Applied** (comments only; no rename) |
+| U16 | SimGameMode.cpp:98-110 | Low | **Applied** (D-020) |
+| U17 | SimGameMode.cpp:145 | Low | **Applied** (D-020) |
+| U18 | .gitignore:22 | Low | **Applied** (the stage stays tracked) |
 | U19 | Config/DefaultInput.ini | Low | Note |
 | T1 | tools/canon_lint.py:39-48 | High | **Fixed** |
 | T2 | tools/export_datatables.py:34-42 | Medium | **Fixed** |
@@ -345,3 +345,43 @@ export_datatables     manifest written — 18 tables              (data/ue/sched
 stage_canon_for_ue    staged 33 canon tables; --check: staged canon is current
 kernel ctest          24/25 (test_capi: K2, pre-existing, fails identically at HEAD)
 ```
+
+---
+
+## Rebuild notes (proposals applied, 2026-09-25, D-020)
+
+The designer approved every proposal (D-020), and they are now applied in `unreal/`. None of it has been compiled: there is still no Unreal Engine on the machine that wrote it. The only new UE APIs are long-stable UE5 ones: `UGameInstanceSubsystem`, `UWorld::GetGameInstance`, `UGameInstance::GetSubsystem`, `FPaths::FileExists` and `FPaths::ConvertRelativePathToFull`. The new C++ was syntax-checked with clang against stub UE headers. That catches typos, access and const errors, but not engine-API mismatches.
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `unreal/Plugins/SimRuntime/Source/SimRuntime/Public/SimGameInstanceSubsystem.h` (new) | `USimGameInstanceSubsystem` **owns** the kernel world, its sub-day clock and the canon-missing flag. It lasts as long as the game instance, so the sim survives `OpenLevel` and seamless travel (U10). |
+| `unreal/Plugins/SimRuntime/Source/SimRuntime/Private/SimGameInstanceSubsystem.cpp` (new) | `CanonDir()` is now absolute (U13). `CreateWorld()` checks for `seasons.csv` first and logs an error, with no retries, if it is missing (U2). It passes the path without the UTF-8 round trip (U14). `Deinitialize()` destroys the world. |
+| `.../Public/SimWorldSubsystem.h` | It is now a thin driver and facade: every existing function keeps its name and signature, including `GetSimHandle()` and `GetSimHour()`. New `StartHour` config property, default **6.0**: play starts at 06:00 (U8). The `GetSimHandle()` comment now says never destroy it and never cache it (U7). The `SimDaysPerRealMinute` unit is documented, but the property is not renamed (U15). New `...For(WorldContextObject)` variants of every getter and setter, plus `GetSimHandleFor` (U9). The private `SimHandle`, `bCanonFailed` and `SecondsSinceLastDay` members moved to the owner. |
+| `.../Private/SimWorldSubsystem.cpp` | `Tick` runs only in a world that has begun play. It lazily creates the world through the owner, sets the clock to `StartHour`, then advances days as before. `Deinitialize` no longer destroys anything. The old static getters wrap the `...For` versions with `GEngine->GetCurrentPlayWorld()`, so their behaviour is unchanged. `GetSimPrice` no longer does the UTF-8 round trip (U14). The season buffer is zero-initialised. |
+| `.../Public/SimRuntimeModule.h` | Includes `Modules/ModuleInterface.h` explicitly. Before, it relied on the PCH. |
+| `.../Private/SimRuntimeModule.cpp` | Comment only. |
+| `.../SimRuntime.Build.cs` | Links `sim_core.lib` on Win64 and `libsim_core.a` elsewhere, using a full path. If the library is missing it prints a warning pointing to the docs instead of throwing, because UBT also evaluates Build.cs while generating project files (U11). `CoreUObject` and `Engine` moved from private to **public** dependencies, since the public headers include Engine subsystem headers. |
+| `unreal/Config/DefaultGame.ini` (new) | `+DirectoriesToAlwaysStageAsNonUFS=(Path="Sim/canon")` (U3). |
+| `unreal/Source/SchizoGame/Private/SimGameMode.cpp` | Spawns the street pawn first, then possesses it, and destroys the fallback pawn only after that succeeds (U16). The on-screen clock refreshes every tick with key 1, shows `Day N — season — HH:MM`, and reads through the `...For(World)` getters (U17). |
+| `.gitignore` | The dead `unreal/SchizoGame/...` line is gone. The stage stays tracked and `--check` guards it (U18). |
+| `tools/build_kernel_for_ue.sh` (new), `docs/kernel-build-for-ue.md` (new) | How `kernel/build-ue` is built: UE's bundled clang, libc++ and `-fPIC` on Linux, and MSVC with Ninja on Win64 (U11). U12 is written up there as a known, deferred limitation. The script was smoke-tested with a stand-in toolchain layout. |
+
+### What to expect on the next local build
+
+1. **UHT regenerates two headers.** The new `SimGameInstanceSubsystem.generated.h` and a changed `SimWorldSubsystem.generated.h`. That is expected with a new UCLASS and new UFUNCTIONs. Close the editor and build from the IDE or UBT; Live Coding cannot add classes.
+2. **Wave-3 code compiles unchanged.** `GetSimHandle()`, `GetSimHour()`, `GetSimDay()`, `GetSimSeason()`, `GetSimPrice()`, `SetSimDrought()`, `GetSimDrought()` and `AdvanceSimDays()` keep their exact signatures. Blueprint nodes keep working. New nodes appear alongside them: `Get Sim Day For` and the other `...For` variants.
+3. **The clock starts at 06:00 on day 1**, not at midnight. `GetSimHour()` returns about 6.0 on the first tick after creation. To override it, add `StartHour=` under `[/Script/SimRuntime.SimWorldSubsystem]` in `DefaultEngine.ini`.
+4. **The on-screen clock stays visible** and shows the time as `HH:MM`.
+5. **A missing canon folder is now a red error in the log:** `Canon missing at <absolute path> (no seasons.csv) — run tools/stage_canon_for_ue.py`. The getters return -1 or an empty string, and the on-screen clock is hidden. Before this change, the same situation gave a silent empty world.
+6. **Log lines change.** The creation line now reads `Sim world created from <abs path>: day 1, season rains, hour 6.00.`
+7. **Map travel keeps the world.** The sim and its hour survive `OpenLevel`. PIE stop still destroys the world, because the game instance ends.
+8. **If the link fails**, check that `kernel/build-ue/libsim_core.a` exists and was built with UE's clang and libc++, and rebuild it with `tools/build_kernel_for_ue.sh`. If yours was built another way that worked, keep it and record that invocation in `docs/kernel-build-for-ue.md`.
+9. **Packaging:** the cooked build carries `Content/Sim/canon/*.csv` as loose files. The runtime resolves them through the same `ProjectContentDir()` path in both the editor and a packaged build.
+
+### Compile risks that remain
+
+- `UWorld::GetGameInstance()` is called through a `const UWorld*`. It is declared `const` in UE5; if your engine version differs, make the helper take a non-const `UWorld*`.
+- The `friend class USimWorldSubsystem;` declaration inside a `UCLASS` is standard C++ and UHT accepts friend declarations. If UHT complains anyway, make `CreateWorld`, `SimHandle`, `bCanonFailed` and `SecondsSinceLastDay` public.
+- The new `SimRuntime.Build.cs` code uses `UnrealTargetPlatform.Win64`, `System.IO.File.Exists` and `System.Console.WriteLine`. All are plain rules-assembly code, and `BuildException` was deliberately avoided.

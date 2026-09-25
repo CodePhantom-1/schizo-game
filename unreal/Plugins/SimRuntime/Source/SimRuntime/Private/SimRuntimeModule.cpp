@@ -1,8 +1,9 @@
 // SimRuntimeModule.cpp — PLACEHOLDER skeleton (authored pre-editor).
 // The Phase 3 binding this module will grow into (plan v2 §6):
-//   1. A WorldSubsystem owns one sim::WorldState (kernel/include/sim/World.hpp),
-//      initialised from the shipped canon tables (db/canon/*.csv via DataTables
-//      import or raw-file read at init).
+//   1. A GameInstanceSubsystem owns one sim::WorldState (kernel/include/sim/World.hpp)
+//      so it survives map travel; a WorldSubsystem drives and fronts it. It is
+//      initialised from the shipped canon tables (Content/Sim/canon, staged
+//      from db/canon, raw-file read at init).
 //   2. The daily tick advances on the game clock (configurable real-minutes per
 //      day; parent architecture §4.2 default 45 real min) and publishes
 //      prices/facts/weather to the engine-side consumers each morning.

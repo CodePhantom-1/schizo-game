@@ -94,23 +94,26 @@ void ASimGameMode::StartPlay()
 	if (PC != nullptr && StreetStart != nullptr)
 	{
 		// Direct placement (RestartPlayer's own spawn was not landing at the
-		// street start): destroy the fallback pawn, spawn ours at the PlayerStart.
-		if (APawn* Old = PC->GetPawn())
-		{
-			Old->Destroy();
-		}
+		// street start): spawn ours at the PlayerStart FIRST, possess it (which
+		// unpossesses the fallback), and only then destroy the fallback — a
+		// failed spawn keeps the player in the engine's pawn.
+		APawn* Old = PC->GetPawn();
 		FActorSpawnParameters Params;
 		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 		if (APawn* NewPawn = World->SpawnActor<APawn>(DefaultPawnClass, StreetStart->GetActorTransform(), Params))
 		{
 			PC->Possess(NewPawn);
+			if (Old != nullptr && Old != NewPawn)
+			{
+				Old->Destroy();
+			}
 			UE_LOG(LogSimGameMode, Log, TEXT("Pawn '%s' placed at (%.0f,%.0f,%.0f), facing the gate."),
 				*NewPawn->GetName(),
 				NewPawn->GetActorLocation().X, NewPawn->GetActorLocation().Y, NewPawn->GetActorLocation().Z);
 		}
 		else
 		{
-			UE_LOG(LogSimGameMode, Warning, TEXT("Pawn spawn at the street start failed."));
+			UE_LOG(LogSimGameMode, Warning, TEXT("Pawn spawn at the street start failed — keeping the engine's pawn."));
 		}
 	}
 }
@@ -130,22 +133,32 @@ void ASimGameMode::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
-	// The clock on screen: sim day and season, from the kernel via the C API.
-	// The sim is a WORLD subsystem: the clock belongs to the world, not the
-	// game instance.
+	// The clock on screen: sim day, season and hour, from the kernel via the
+	// C API. The world subsystem drives the clock; the sim itself is owned by
+	// the game instance (it survives map travel). Reads resolve through THIS
+	// world (the ...For getters), so each PIE instance shows its own clock.
 	if (UWorld* World = GetWorld())
 	{
-		if (USimWorldSubsystem* Sim = World->GetSubsystem<USimWorldSubsystem>())
+		const int64 Day = USimWorldSubsystem::GetSimDayFor(World);
+		if (Day < 0)
 		{
-			(void)Sim;  // reads go through the static accessors (the C API)
-			const int64 Day = USimWorldSubsystem::GetSimDay();
-			if (Day != LastShownDay)
-			{
-				LastShownDay = Day;
-				GEngine->AddOnScreenDebugMessage(1, 5.f, FColor::White,
-					FString::Printf(TEXT("Day %lld — %s"), Day, *USimWorldSubsystem::GetSimSeason()));
-				UE_LOG(LogSimGameMode, Log, TEXT("Clock: day %lld — %s."), Day, *USimWorldSubsystem::GetSimSeason());
-			}
+			return;  // the sim world does not exist yet (or its canon is missing)
+		}
+		const FString Season = USimWorldSubsystem::GetSimSeasonFor(World);
+		const float Hour = USimWorldSubsystem::GetSimHourFor(World);
+		const int32 WholeHour = FMath::Clamp(FMath::FloorToInt(Hour), 0, 23);
+		const int32 Minute = FMath::Clamp(FMath::FloorToInt((Hour - WholeHour) * 60.f), 0, 59);
+		// Same key (1) every tick: the message is replaced, not stacked, and
+		// stays on screen as long as the game mode ticks (audit U17).
+		if (GEngine != nullptr)
+		{
+			GEngine->AddOnScreenDebugMessage(1, 1.f, FColor::White,
+				FString::Printf(TEXT("Day %lld — %s — %02d:%02d"), Day, *Season, WholeHour, Minute));
+		}
+		if (Day != LastShownDay)
+		{
+			LastShownDay = Day;
+			UE_LOG(LogSimGameMode, Log, TEXT("Clock: day %lld — %s."), Day, *Season);
 		}
 	}
 }
