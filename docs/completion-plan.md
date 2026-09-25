@@ -27,17 +27,18 @@
 5. **No hardcoded strings.** All text goes through UE string tables from the first UI step (localisation-ready, plan.md §9).
 6. **Two people, one repo:** each stage names an owner. Tommy owns the Windows build and the environment/visual layer (`SimEnvironment`, `SimMeshKit`, style materials). The coordinator owns the kernel, data, tools and gameplay code. Visual and gameplay changes meet through documented actor interfaces.
 
-## 2. Decisions to take before or during the stages (recommendation first)
+## 2. Decisions (answered by the designer, 2026-09-25 — D-024)
 
-| # | Question | Recommendation | Blocks |
-|---|---|---|---|
-| DQ1 | Camera: the design says first-person, but `ASimCharacter` is third-person on a spring arm | **Both, with a toggle.** Default to third-person (Valheim-like, D-023); first-person for interiors and aiming. | A5, K |
-| DQ2 | Sim day length: the code uses 45 real minutes, the parent says 3 hours | **Configurable, default 48 real minutes** (1 game hour = 2 real minutes). Sleep and wait skip time. | A4 |
-| DQ3 | How many of Tommy's ~500 dressing houses are simulated | **Grow the simulated area district by district.** Each house becomes simulated when it gets an owner, a door and an interior. Early Access target: ~150 full NPCs and ~500 light residents (living-world §1). | F, S |
-| DQ4 | The magick opt-ins (game-design §8.3: sex magick, numerology, kabbalah, the Moon powers, pathworking, planetary rite-crafting, the Taurus-D columns) | **Numerology, astrology and planetary rite-crafting (the Earth, Moon, Mercury and Venus lists) as rite modifiers.** The Moon powers only as divination-family rites, with the "bad karma" as divine wrath. Sex magick only as an off-screen Venus rite with a rating flag. Taurus-D stays lore. **The designer must say yes to each one.** | J6 |
-| DQ5 | NPC voices (game-design §11.20) | Subtitles plus short ancient-language barks for every NPC. The player voice is licensed TTS with an on/off toggle. | R |
-| DQ6 | Git LFS for binary assets | **Yes, before audio lands.** | A1 |
-| DQ7 | Months and festival days (still OPEN after D-015) | Fill them as `INVENTED` under D-018: a lunar calendar of 12 months, with the moon god's month rites at new moon and full moon. This is the City of the Moon. | O |
+| # | Question | Answer |
+|---|---|---|
+| DQ1 | Camera | **Third-person only.** |
+| DQ2 | Sim day length | **Adjustable** (setting + cvar); the default is 48 real minutes. |
+| DQ3 | How much of the city is simulated | **Only the core quarter:** the Moon Gate Quarter, the market, the temple precinct and the lighthouse wharf. That is ~60 enterable buildings, **~80 full NPCs and ~250 light residents**. Tommy's ~500 other houses stay scenery (shut doors, lamps at night, ambient crowds). A district is added only when it earns its place. |
+| DQ4 | The magick opt-ins | **The agent's choice, lore-accurate to the attested Mesopotamian record:** the divine numbers (An 60, Enlil 50, Enki 40, Nanna 30, Utu 20, Inanna 15); the sky as "heavenly writing" (omen-series astrology, MUL.APIN constellations: the notes' primitive astrology and their "as above, so below"); the planetary power lists as rite modifiers; dream divination and incubation as the Moon powers, with mind-binding as sorcery and wrath; the Venus rites as the sacred marriage and ŠÀ.ZI.GA incantations, handled off-screen. **Not built** (not in the record): kabbalah proper, pathworking, astral travel, psychometry, telepathy. Taurus-D stays lore. |
+| DQ5 | Voices | **Tommy records them later.** No TTS. The voice-line hooks and the player-voice on/off setting are built now. |
+| DQ6 | Git LFS | **On** (done: binaries are in LFS from commit 2 of this plan). Every clone needs git-lfs. |
+| DQ7 | The calendar | **On:** moon phases, new-moon and full-moon rites to Nanna, lucky and unlucky days, on top of the existing 12×30 months and 4 festival days. Moved forward to step A14. |
+| — | The missing systems | **Built according to lore** (D-024 §8), `INVENTED` under D-018 and ledgered. |
 
 ---
 
@@ -45,7 +46,7 @@
 
 | # | Step | Done when |
 |---|---|---|
-| A1 | **Verify Tommy's commit on Linux**: `SimEnvironment`/`SimMeshKit` compile; the ProceduralMeshComponent plugin is enabled; `ue_make_style_materials.py` has been run headless; the iGPU launch still holds 30+ fps. Decide DQ6 (LFS). | A Linux `-game` launch shows the city without GPU wedging; any Windows-only paths are guarded |
+| A1 | **Verify Tommy's commit on Linux**: `SimEnvironment`/`SimMeshKit` compile; the ProceduralMeshComponent plugin is enabled; `ue_make_style_materials.py` has been run headless; the iGPU launch still holds 30+ fps. | A Linux `-game` launch shows the city without GPU wedging; any Windows-only paths are guarded |
 | A2 | **CI on GitHub Actions**: kernel ctest, canon_lint, coverage_check, stage_canon --check on every push | A red badge blocks the merge |
 | A3 | **UE automation smoke tests** (architecture §CI): boot, walk the market, one crafting chain, one full day-night cycle, save→load round trip | Running `-ExecCmds="Automation RunTests Sim."` headless passes |
 | A4 | **Bring-up TODOs**: the subsystem initialises twice (a per-world guard); the day length is configurable (DQ2) | Logged once; a cvar sets the day length |
@@ -58,6 +59,8 @@
 | A11 | **Settings**: graphics, audio, controls, gameplay (Mythic/Chronicle, guided mode, fast travel, needs severity, disease, permadeath/Historical difficulty, player voice on/off, subtitles, subtitle size, colour-blind palettes) | Each toggle is read by the system it names |
 | A12 | **New game**: the prisoner start is a *system*, not the story. You start in the quayside barracks with rank 0, Kaldunai rags and the starting inventory. The scripted intro stays parked. | New Game drops you into a playable world |
 | A13 | Housekeeping: delete merged branches and worktrees (`art/*`, `verify/gameplay`, `claude/admiring-babbage-c0jyzr`) after the designer confirms | `git branch -a` shows only live work |
+| A14 | **The calendar turned on** (DQ7): moon phase in the kernel (the day of the month → new, waxing, full, waning), `lunar_rites` rows for the new and full moon to Nanna, lucky and unlucky days (`calendar_days.csv`, INVENTED on the attested hemerology pattern); the C API; the HUD date line and the moon in the sky tracking the phase | The HUD shows the month, the day, the moon phase and whether the day is lucky; the moon rite fires on day 1 and day 15 of every month |
+| A15 | **Third-person camera polish** (DQ1): collision-aware boom, shoulder swap, aim zoom, interior auto-shorten | The camera never clips through walls in interiors |
 
 **Stage A gate:** start from the menu, change a setting, play, save, load, quit. CI is green.
 
@@ -134,7 +137,7 @@
 | F4 | **Memory and relationships** (missing): each memory has a source, date, place and certainty; opinion of the player and of other NPCs (friendship, rivalry, love, grudges, debts owed) | NPCs greet you differently after what they saw or heard |
 | F5 | **Rumour at walking speed** along social links (the kernel has it; it needs wiring and UI): overheard gossip lines, and the rumours you hear in the journal | A crime you commit at the gate reaches the wharf hours later, not instantly |
 | F6 | **Simulation layers in UE**: L0 full AI within ~150 m, L1 scheduled (NPCs appear where their schedule puts them), L2 statistical; promotion of light residents to full NPCs when you get involved | Walking across the city never shows pop-in contradictions |
-| F7 | **Population to target** (DQ3): the `people.csv` storm to ~150 full NPCs and ~500 light residents for Early Access; `person_schedules.csv` from 4 rows to one per full NPC | Every simulated house has occupants who live there |
+| F7 | **Population to target** (DQ3): the `people.csv` storm to ~80 full NPCs and ~250 light residents in the core quarter; `person_schedules.csv` from 4 rows to one per full NPC | Every simulated house has occupants who live there |
 | F8 | **Crowds** (Mass) for market days and festivals, at historical density | The market at noon on market day is packed and stays at 60 fps |
 | F9 | **NPC animation and presence**: task animations, sitting, eating, sleeping, conversations between NPCs, greetings by rank (bows), barks | You can watch a street of people doing real things |
 | F10 | **Life events**: weddings (bride-price, contract), births, funerals, divorce and inheritance quarrels, a missing child, aging; the world responds to you (the smith you supplied opens a second forge; a village names a child after you) | Over a season, the street visibly lives through events |
@@ -198,7 +201,7 @@
 | J3 | **Divination in play**: all 9 forms (haruspicy/Barûtu, astragalomancy, cleromancy, pessomancy, aeromancy and its five sub-types, astrology with 12 zodiac signs plus a few extra constellations), answers as **omens with probabilities, never certainties**, clarity scaled by skill | A liver reading before a journey gives a probabilistic warning that matters |
 | J4 | **The deity network**: per-god favour meters (UI), domain, cult sites, festivals and **taboos** (missing); **equated gods** share part of their favour (Inanna/Ishtar, Enki/Ea/Mercury, Nanna/Sîn, Utu/Shamash) (missing); **neglected gods get angry** (missing: misfortune events); **choosing a patron god** with a unique high rite and taboos to keep | Neglecting a god produces misfortune; a patron's taboo matters |
 | J5 | **Guard rails enforced**: rites take hours to days and cost real goods; no combat spells (wards and blessings prepared beforehand, amulets); **magic cannot change the historical clock** | A test asserts no rite alters the clock |
-| J6 | **The opt-ins (DQ4)**, only those the designer approves: numerology and astrology modifiers; planetary rite-crafting on the Earth, Moon, Mercury, Venus, Sun and Saturn lists; Moon-list powers as divination rites, with mind control as bad karma (divine wrath); the Venus rites handled per the rating decision | Each approved opt-in has a table, a rite and a test |
+| J6 | **The opt-ins as chosen in DQ4**: divine-number numerology; heavenly-writing astrology (omens, MUL.APIN constellations); planetary rite modifiers from the Earth, Moon, Mercury, Venus, Sun and Saturn lists; dream divination and incubation; mind-binding as sorcery with divine wrath; the Venus sacred-marriage and ŠÀ.ZI.GA rites off-screen | Each has a table, a rite and a test; the codex cites its source |
 | J7 | **Chronicle mode**: the same rites and costs, but effects become statistical and deniable | The toggle changes outcomes and never costs |
 | J8 | **Sorcery is a crime**: curse rites seen by a witness go to justice (H3) | Casting a curse in view leads to a trial |
 | J9 | **Divine wrath and cataclysm in play** (the kernel has it): omens, the curse tiers, atonement, shown in the world (a failed harvest, lightning striking a temple, a plague) | Wrath has visible world consequences |
@@ -269,7 +272,7 @@
 
 | # | Step | Done when |
 |---|---|---|
-| O1 | **The month and day calendar** (DQ7): 12 lunar months, moon phases visible in the sky and the UI, lucky and unlucky days | The calendar shows the date, the moon and whether the day is lucky |
+| O1 | **The calendar's effects** (on top of A14): lucky and unlucky days change rite outcomes, trade and event odds; the moon rites draw crowds to the ziggurat | A rite on an unlucky day is measurably worse |
 | O2 | **The city's clock, in full** (city-life §1 table): before dawn (bakers, querns), dawn (shrine offerings, animals watered, **gates open**), morning (peak market, petitions at the governor's seat), midday (summer rest, shops shut), afternoon (the port unloads), evening (main meal, visits, stories, **shops close**, gates close at dusk), night (lamps, feasts, lovers, thieves, the watch, dogs) | Following the clock hour by hour matches the table |
 | O3 | **Seasonal bend**: summer long rests, rooftop sleeping, dust; winter rain, early dark, indoor fires; the sailing season | The same street differs by season |
 | O4 | **The festival storm**: from 4 rows to the full ritual year of the City of the Moon: new moon and full moon offerings to Nanna, the king's (governor's) purification days, the new year, harvest and threshing, the date harvest, first fruits, the Feeding of the Dead, ship-arrival and caravan days, the drinking fellowship | `festivals.csv` covers every month |
@@ -325,7 +328,7 @@
 | R3 | **SFX for every verb and system**: footsteps per surface, doors, eating, drinking, crafting stations, combat, weather, fire, the lighthouse | No silent actions |
 | R4 | **Music**: ambient by time of day and season, festival music, tension and combat | Music follows state |
 | R5 | **NPC barks** in short ancient-language exclamations, subtitled | Every response-ladder rung has barks |
-| R6 | **Player voice** (licensed TTS) with the on/off setting (notes L1) | The toggle works |
+| R6 | **Voice hooks** (DQ5): every dialogue line and bark has a voice-asset slot and a subtitle; the player-voice on/off setting (notes L1); Tommy's recordings drop in later without code changes | A placeholder line plays through the hook, and the toggle silences it |
 
 ---
 
@@ -335,7 +338,7 @@
 |---|---|---|
 | S1 | **Every place usable**: every simulated building has a door that opens, an owner, and something to do (houses: visit by invitation, trade, rent, buy, rob, sleep as a guest, marry in; workshops; fields and presses; the temple of sun and moon: offer, pray, rites, ritual goods, festivals, purification, vows, temple service; the governor's seat: petitions, court, rank, grants, the archives, dues, ilku calls; the lighthouse scholars' school: scripts, scribes, tablets; the wharf: loading work, selling to ships, imports, ventures, sailors, foreigners; family tombs; wells and springs as gossip spots) | A place-by-place checklist is 100% green |
 | S2 | **Interiors** for every building kind, built with the kit in the D-023 style | Every enterable door leads somewhere |
-| S3 | **The simulated area grown district by district** (DQ3), with places registered in `places.csv` | The EA district count is met |
+| S3 | **The core quarter complete** (DQ3): ~60 enterable buildings registered in `places.csv`; every other house is scenery with a shut door (a knock gets a refusal bark) | Every enterable door works; no scenery door pretends to be one |
 | S4 | **The ziggurat and the Great Lighthouse** as usable places, not only scenery | Both host rites, work, and events |
 | S5 | **Clothing set v1** (plan.md §7 art risk): rank and origin clothing (Sumerian, imperial Akkadian, barbarian, Suti, Kaldunai prisoner), since dress drives reactions | Each community reads visually |
 | S6 | **Weapons, armour, shields and helmets** as meshes for all 20 arms and the cultural styles | Every equipped item is visible |
