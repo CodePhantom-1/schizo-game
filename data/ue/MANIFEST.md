@@ -29,5 +29,12 @@ Run `python3 tools/export_datatables.py` to regenerate from db/canon.
 - talents: 41 rows
 - skill_teachings: 43 rows
 - work_roles: 19 rows
+- wild_places: 15 rows
+- wild_links: 26 rows
+- wild_groups: 5 rows
+- wild_encounters: 9 rows
+- caravans: 3 rows
+- transport_modes: 6 rows
+- weather: 6 rows
 - arms: 20 rows
 - combat_styles: 11 rows

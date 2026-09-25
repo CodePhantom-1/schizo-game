@@ -267,6 +267,17 @@ file is a labelled "W4-A" addition; no module contract changed.
 - `tests/test_character.cpp` (new), `tests/test_scenario_progression.cpp` (new: the D-021
   reachability proof through the C API alone).
 
+# SEAM CHANGELOG — W4-C (the wild lands)
+
+Additive throughout; every edit to a shared file sits in a labelled `W4-C` block. Full contract: [module_Wild.md](module_Wild.md).
+
+- **World.hpp / World.cpp:** `WorldState` gains `WildState wild;` (include `sim/Wild.hpp`). `init` calls `init_wild(db, wild)` after the quest defs load, and `advance_days` calls `tick_wild(*this)` after `hold_due_hearings`. `tick_wild` is world-orchestrated like the hearings: it writes Economy (`consume`/`deliver`), Population (`witness`), Events (`fired` + `fire_count_by_rule`), Quests, Justice (`commit_crime`), Property (purse) and Faction (`add_standing`) only through their public APIs. Faction.cpp is untouched. `WorldContext` is unchanged.
+- **Db.cpp:** seven new canon tables load: `wild_places`, `wild_links`, `wild_groups`, `wild_encounters`, `caravans`, `transport_modes`, `weather`.
+- **Snapshot.cpp:** `Reader::peek_tag()` is added, and one trailing optional section `WILD\t<n>` is written after the K-1 sections and read when present (in any order among trailing sections). Pre-W4-C saves load unchanged.
+- **CApi.h:** `#include "sim/CApiWild.h"` (43 new functions, add-only; implemented in `src/CApiWild.cpp`, every entry point guarded by try/catch like CApi.cpp).
+- **tools/export_datatables.py:** the seven tables export to `data/ue/`.
+- **tests/test_scenario_crime.cpp:** `test_unwitnessed_theft_stays_open` now asserts that no memory concerns the criminal, instead of that no memory exists at all: the city now carries rumours of bandit camps from day 1.
+
 # SEAM CHANGELOG — W4-B (combat)
 
 Additive only. Every shared-file change sits in a block labelled `W4-B` at the end of its section.
@@ -319,3 +330,10 @@ Functions were added only, each wrapped in `try/catch`:
 ## Tests
 
 - New: `tests/test_combat.cpp`, `tests/test_scenario_duel.cpp` and `tests/test_capi_combat.cpp`.
+
+### W4-B after merging W4-A and W4-C
+
+- `combat_inputs_for` reads W4-A's `actor_attribute` / `actor_effective_skill` (which wrap `attribute()` / `effective_skill()` over `w.character` and `w.npc_sheets`). Blows grow skills by use.
+- `WorldState::init` wires `wild.skirmish = &combat_skirmish_adapter` (sim/CombatActions.hpp).
+- The Ransom constant was renamed `kCaptiveRansomSilver`. W4-C's `Wild.hpp` already owns `kRansomSilver`.
+- `test_capi.cpp`'s save buffer grew from 64 KiB to 256 KiB. The arms on every market shelf push the save past 64 KiB.

@@ -101,6 +101,7 @@ bool limping(const Combatant& c) {
 }
 
 ArmsDef weapon_of(const Db& db, const Combatant& c) {
+    if (c.weapon == "ordinary_spear") return ordinary_arms();
     if (!c.weapon.empty())
         if (auto d = arms_def(db, c.weapon)) return *d;
     return fists();
@@ -311,6 +312,22 @@ ArmsDef fists() {
     d.balance = 6;
     d.quality = 50;
     return d;
+}
+
+ArmsDef ordinary_arms() {
+    ArmsDef d;
+    d.id = "ordinary_spear";
+    d.slot = "melee";
+    d.skill = "spears";
+    d.damage_type = "pierce";
+    d.damage = 13;
+    d.reach_cm = 200;
+    d.speed = 6;
+    d.weight_g = 1800;
+    d.balance = 6;
+    d.stamina = 3;
+    d.quality = 50;
+    return d;  // durability 0: never wears
 }
 
 // --- the body ------------------------------------------------------------------

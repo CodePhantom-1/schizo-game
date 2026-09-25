@@ -35,7 +35,7 @@ constexpr Silver kHealerFee = 5;          // an asû's visit, silver grains
 constexpr Silver kRepairFeePerBand = 5;   // full repair = band x this
 constexpr Silver kRecastFeePerBand = 5;   // recasting = band(into) x this
 constexpr Silver kTinFee = 20;            // tin bought to make bronze of copper
-constexpr Silver kRansomSilver = 30;      // a captive's price (Code of Hammurabi §32 model)
+constexpr Silver kCaptiveRansomSilver = 30;      // a captive's price (Code of Hammurabi §32 model)
 constexpr int kRansomLoanRatePct = 20;    // the shortfall becomes a debt at the customary rate
 constexpr int kRansomLoanTermDays = 90;
 constexpr int kSkilledBinderMedicine = 40;  // medicine at which bare hands bind like linen
@@ -102,7 +102,7 @@ int treat_in_world(WorldState& w, const Id& actor, const std::string& method, co
 Id file_combat_crime(WorldState& w, const Id& attacker, const Id& victim, const Id& place_city,
                      const std::vector<Id>& witnesses, Id* crime_id = nullptr);
 
-// Ransom: the captive pays kRansomSilver to his captor from his purse; any
+// Ransom: the captive pays kCaptiveRansomSilver to his captor from his purse; any
 // shortfall becomes a loan (debtor captive, creditor captor). Frees him.
 // Returns the silver paid now, or -1 if he is no one's prisoner.
 Silver ransom_prisoner(WorldState& w, const Id& captive, Id* loan_id = nullptr);
@@ -130,5 +130,17 @@ Id style_of_npc(const WorldState& w, const Id& npc);
 
 // The day's healing, bleeding-out and death hooks (called by advance_days).
 void tick_combat_world(WorldState& w);
+
+// W4-C seam: the real combat behind WildState::skirmish (set in
+// WorldState::init). Each side becomes up to kWildSideCap synthetic
+// fighters armed as "an ordinary armed man" (ordinary_arms), with skill,
+// strength and agility scaled from prowess_pct and the side's morale; the
+// player, when present, is fighter 0 of his side. resolve_skirmish decides
+// (stance, flight, surrender and all); an undecided fight goes to the side
+// with more still standing (then more health; ties to the defender).
+// Losses = the fallen and the yielded, scaled back to the real head-count.
+// Draws one value from `rng` and forks from it (D-022 integer maths).
+constexpr int kWildSideCap = 24;
+SkirmishOutcome combat_skirmish_adapter(const SkirmishRequest& req, Rng& rng);
 
 }  // namespace sim

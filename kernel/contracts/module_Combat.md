@@ -165,6 +165,15 @@ Outcome codes: 0 dodged, 1 blocked, 2 parried, 3 deflected, 4 wounded,
 
 ## For W4-C (wild lands, bandits)
 
+- **The seam is wired.** `WorldState::init` sets `wild.skirmish = &combat_skirmish_adapter`. Every fight in the wild (encounters, camp assaults, raids on caravans, feuds) now runs through `resolve_skirmish`. How the adapter builds the fight:
+  - Each side becomes up to 24 synthetic fighters armed as "an ordinary armed man". That is the virtual `ordinary_spear`, which needs no canon.
+  - Skill is `prowess × 35/100` (5..95). Strength and agility are `2 + prowess × 3/100`. Morale is the side's morale.
+  - The player, when present, is fighter 0 of his side.
+  - An undecided fight goes to the side with more fighters still standing, then more health. Ties go to the defender.
+  - Losses are the fallen plus the yielded, scaled back to the real head-count.
+  - `player_wounded` is true when fighter 0 took any wound.
+- **Still open:** handing W4-C's `player_wounds` over to the player's real body. The hook's signature carries no `WorldState`, so this needs a W4-C-side change.
+
 - One blow: `AttackResult attack_in_world(WorldState&, attacker, defender, zone_hint)`.
 - A raid or ambush: `SkirmishResult skirmish_in_world(WorldState&, side_a, side_b, max_rounds)`.
 - Pure what-ifs on a scratch state: `resolve_attack(db, rng, state, Fighter, Fighter, zone, day)`

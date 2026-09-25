@@ -9,6 +9,7 @@
 #include "sim/Progression.hpp"  // W4-A: attributes, skills, growth by use
 
 #include <algorithm>
+#include <set>
 
 namespace sim {
 namespace {
@@ -369,10 +370,10 @@ Silver ransom_prisoner(WorldState& w, const Id& captive, Id* loan_id) {
     const Prisoner* p = find_prisoner(w.combat, captive);
     if (p == nullptr) return -1;
     const Id captor = p->captor;
-    const Silver paid = std::min<Silver>(kRansomSilver, std::max<Silver>(0, purse(w.property, captive)));
+    const Silver paid = std::min<Silver>(kCaptiveRansomSilver, std::max<Silver>(0, purse(w.property, captive)));
     if (paid > 0) (void)pay(w, captive, captor, paid);
-    if (paid < kRansomSilver) {
-        Loan& l = issue_loan(w.property, captive, captor, kRansomSilver - paid, kRansomLoanRatePct, w.day,
+    if (paid < kCaptiveRansomSilver) {
+        Loan& l = issue_loan(w.property, captive, captor, kCaptiveRansomSilver - paid, kRansomLoanRatePct, w.day,
                              kRansomLoanTermDays);
         if (loan_id != nullptr) *loan_id = l.id;
     }
@@ -447,6 +448,71 @@ void tick_combat_world(WorldState& w) {
     std::map<Id, Id> killer;
     for (const auto& [id, c] : w.combat.by_actor) killer[id] = c.last_attacker;
     for (const Id& id : tick_combat(w.combat, w.day)) on_killed(w, id, killer[id], "bled_out");
+}
+
+SkirmishOutcome combat_skirmish_adapter(const SkirmishRequest& req, Rng& rng) {
+    static const Db kNoCanon;  // immutable and empty: fighters carry ordinary_arms
+    CombatState s;
+    std::map<Id, CombatInputs> inputs;
+    std::vector<Id> sides[2];
+    const SkirmishSide* reqs[2] = {&req.attacker, &req.defender};
+    for (int sd = 0; sd < 2; ++sd) {
+        const SkirmishSide& side = *reqs[sd];
+        const int n = std::clamp(side.fighters, 0, kWildSideCap);
+        const int prowess = std::clamp(side.prowess_pct, 1, 300);
+        for (int i = 0; i < n; ++i) {
+            const Id id = (side.has_player && i == 0) ? Id("player")
+                                                      : Id(sd == 0 ? "atk_" : "def_") + std::to_string(i);
+            sides[sd].push_back(id);
+            Combatant& c = combatant_of(s, id);
+            c.weapon = "ordinary_spear";
+            c.morale = std::clamp(side.morale, 0, 100);
+            CombatInputs in;
+            in.default_skill = std::clamp(prowess * 35 / 100, 5, 95);
+            in.strength = std::clamp(2 + prowess * 3 / 100, 1, 10);
+            in.agility = in.strength;
+            inputs[id] = in;
+        }
+    }
+    const Rng base(rng.next());
+    const SkirmishResult r = resolve_skirmish(kNoCanon, base, s, sides[0], sides[1], inputs, {}, 1, 20);
+
+    auto side_of = [&](const Id& id) {
+        return std::find(sides[0].begin(), sides[0].end(), id) != sides[0].end() ? 0 : 1;
+    };
+    std::set<Id> out_of_fight(r.fallen.begin(), r.fallen.end());
+    out_of_fight.insert(r.surrendered.begin(), r.surrendered.end());
+    int lost[2] = {0, 0};
+    for (const Id& id : out_of_fight) ++lost[side_of(id)];
+    int standing[2] = {0, 0}, health[2] = {0, 0};
+    const std::set<Id> fled(r.fled.begin(), r.fled.end());
+    for (int sd = 0; sd < 2; ++sd)
+        for (const Id& id : sides[sd]) {
+            const Combatant& c = combatant_of(s, id);
+            if (can_fight(c) && !fled.count(id)) {
+                ++standing[sd];
+                health[sd] += c.health;
+            }
+        }
+
+    SkirmishOutcome out;
+    if (r.winner >= 0)
+        out.attacker_won = r.winner == 0;
+    else
+        out.attacker_won = standing[0] > standing[1] ||
+                           (standing[0] == standing[1] && health[0] > health[1]);
+    for (int sd = 0; sd < 2; ++sd) {
+        const int n = static_cast<int>(sides[sd].size());
+        const int real = std::max(0, reqs[sd]->fighters);
+        int l = n > 0 ? lost[sd] * real / n : 0;
+        (sd == 0 ? out.attacker_losses : out.defender_losses) = std::clamp(l, 0, real);
+    }
+    if (const Combatant* p = find_combatant(s, "player"))
+        out.player_wounded = !p->wounds.empty() || p->dead;
+    out.note = "combat: rounds=" + std::to_string(r.rounds) + ";blows=" + std::to_string(r.log.size()) +
+               ";fled=" + std::to_string(r.fled.size()) + ";fallen=" + std::to_string(r.fallen.size()) +
+               ";surrendered=" + std::to_string(r.surrendered.size());
+    return out;
 }
 
 }  // namespace sim

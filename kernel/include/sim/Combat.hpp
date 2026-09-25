@@ -98,6 +98,10 @@ struct ArmsDef {
 std::optional<ArmsDef> arms_def(const Db& db, const Id& item);
 // The bare hands: the virtual weapon "fists" (not a canon row, like "water").
 ArmsDef fists();
+// "An ordinary armed man" (W4-C's prowess 100 baseline): the virtual weapon
+// "ordinary_spear", a copper-spear stat line that needs no canon, used by
+// the Db-free wild skirmish adapter. Never wears.
+ArmsDef ordinary_arms();
 
 // --- the body -------------------------------------------------------------------
 // Wound severity tiers (from the net damage of one blow).

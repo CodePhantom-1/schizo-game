@@ -184,7 +184,7 @@ static bool test_save_load_continue_through_c() {
     ok = ok && sim_world_day(a) == sim_world_day(b);
 
     // Buffer round-trip too.
-    char buf[1 << 16];
+    static char buf[1 << 18];  // W4-B: the arms on every market shelf grew the save past 64 KiB
     const int len = sim_world_save_to_buffer(a, buf, sizeof(buf));
     ok = ok && len > 0 && len < static_cast<int>(sizeof(buf));
     SimWorld* c = sim_world_load_from_buffer("../db/canon", buf);

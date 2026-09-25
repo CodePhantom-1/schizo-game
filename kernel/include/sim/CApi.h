@@ -454,3 +454,7 @@ int sim_world_death_count(const SimWorld* world);
 #ifdef __cplusplus
 }  // extern "C"
 #endif
+
+// --- W4-C: the wild lands (places, travel, camps, raids) -----------------------
+#include "sim/CApiWild.h"
+// --- end W4-C

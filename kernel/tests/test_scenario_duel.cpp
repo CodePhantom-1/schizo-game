@@ -215,7 +215,7 @@ bool test_outlaw_prisoner_and_duel() {
     SIM_CHECK_EQ(ransom_prisoner(w, yielder, &loan), Silver(0));
     SIM_CHECK(!loan.empty());
     const Loan* debt = find_loan(w.property, loan);
-    SIM_CHECK(debt != nullptr && debt->creditor == Id("player") && debt->principal == kRansomSilver);
+    SIM_CHECK(debt != nullptr && debt->creditor == Id("player") && debt->principal == kCaptiveRansomSilver);
     SIM_CHECK(find_prisoner(w.combat, yielder) == nullptr);
 
     // A man who yielded is under protection: striking him is assault.
@@ -325,6 +325,37 @@ bool test_bleeding_out_in_the_daily_tick() {
     return true;
 }
 
+bool test_wild_fights_use_real_combat() {
+    WorldState w;
+    w.init("../db/canon", 3);
+    SIM_CHECK(w.wild.skirmish == &combat_skirmish_adapter);  // the W4-C seam is wired
+    SkirmishRequest req;
+    req.attacker = SkirmishSide{"band", 6, 70, 45, false};
+    req.defender = SkirmishSide{"player", 4, 140, 70, true};
+    req.context = "encounter";
+    int defender_wins = 0;
+    for (std::uint64_t seed = 1; seed <= 20; ++seed) {
+        Rng r1(seed), r2(seed);
+        const SkirmishOutcome a = combat_skirmish_adapter(req, r1);
+        const SkirmishOutcome b = combat_skirmish_adapter(req, r2);
+        SIM_CHECK_EQ(a.note, b.note);  // deterministic
+        SIM_CHECK_EQ(a.attacker_losses, b.attacker_losses);
+        SIM_CHECK(a.note.rfind("combat:", 0) == 0);
+        SIM_CHECK(a.attacker_losses >= 0 && a.attacker_losses <= 6);
+        SIM_CHECK(a.defender_losses >= 0 && a.defender_losses <= 4);
+        if (!a.attacker_won) ++defender_wins;
+    }
+    SIM_CHECK(defender_wins >= 12);  // prowess tells
+    // A hundred-strong fight is capped, and losses scale back to the head-count.
+    req.attacker.fighters = 100;
+    req.defender = SkirmishSide{"caravan", 100, 100, 50, false};
+    Rng r(9);
+    const SkirmishOutcome big = combat_skirmish_adapter(req, r);
+    SIM_CHECK(big.attacker_losses <= 100 && big.defender_losses <= 100);
+    SIM_CHECK(!big.player_wounded);
+    return true;
+}
+
 bool test_saves_before_and_after_combat() {
     // A save written before W4-B (no COMBAT sections) still loads: nobody hurt.
     WorldState w;
@@ -363,4 +394,4 @@ bool test_saves_before_and_after_combat() {
 
 SIM_MAIN(test_duel_self_defence_and_healing, test_murder_of_a_townsman, test_outlaw_prisoner_and_duel,
          test_healer_smith_and_ammo, test_bleeding_out_in_the_daily_tick,
-         test_saves_before_and_after_combat)
+         test_saves_before_and_after_combat, test_wild_fights_use_real_combat)
