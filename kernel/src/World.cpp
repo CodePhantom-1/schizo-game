@@ -3,6 +3,8 @@
 // the same morning and writes only its own.
 #include "sim/World.hpp"
 
+#include "sim/Actions.hpp"
+
 #include <cstdlib>
 
 namespace sim {
@@ -40,7 +42,8 @@ void WorldState::init(const std::string& canon_dir, std::uint64_t world_seed) {
 
     WorldContext ctx = context();
     for (const Row& city : db.rows("cities"))
-        seed_market(ctx, economy, city.at("id"));
+        if (city.get("alias_of").empty())  // an alias is the same city: one market
+            seed_market(ctx, economy, city.at("id"));
     seed_people(ctx, population);
     load_rules(ctx, events);  // events.csv is canon-empty at Wave 1: zero rules
     load_defs(ctx, quests);   // quests.csv likewise
@@ -58,6 +61,9 @@ void WorldState::advance_days(int days) {
         tick_events(ctx, events, 1);
         tick_property(ctx, property, 1);
         tick_quests(ctx, quests, 1);
+        // World-orchestrated hearings (commit_crime) need several modules'
+        // state, so they run here, after the module ticks, on the same day.
+        hold_due_hearings(*this);
         ++day;
     }
 }

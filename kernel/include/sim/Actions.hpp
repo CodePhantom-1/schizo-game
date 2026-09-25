@@ -37,13 +37,19 @@ constexpr Silver kCompensationSilver = 50;
 // and returns its id. Does NOT hold the hearing — call hold_crime_hearing()
 // kHearingDelayDays later (gap 1: a real window between detention and trial).
 Id commit_crime(WorldState& w, const Id& criminal, const Id& law_row,
-                const Id& place_city, const std::vector<Id>& witnesses);
+                const Id& place_city, const std::vector<Id>& witnesses,
+                const Id& victim = "");
+
+// Hears every commit_crime crime whose hearing_day has come, with its stored
+// victim and city (called by WorldState::advance_days each day).
+void hold_due_hearings(WorldState& w);
 
 // INVENTED mapping (city-life §3.1: enforcement is per jurisdiction) from a
 // place to the faction whose law/court holds it, used for standing loss and
 // outlawry. Cities with no explicit canon tie default to "the_empire" (built
 // on tribute and conquest, wb §4.1 — the Empire is the fallback crown).
-Id city_faction(const Id& place_city);
+// Reads cities.csv `jurisdiction` (alias rows resolve to their target).
+Id city_faction(const Db& db, const Id& place_city);
 
 // hold_crime_hearing (scenario_crime.md gaps 1, 3, 4, 5): seals the hearing
 // (Justice::hold_hearing, unchanged) and then applies the verdict:

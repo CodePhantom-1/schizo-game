@@ -4,8 +4,9 @@ neo_sumerian_rebellion,The Neo Sumerian Rebellion,major,the seer from the city o
 the_barbarians,The Barbarians,major,eastern mountain people turned warrior people by a new form of thought; tribal and scattered; bound loosely by survival of the breaking — new lands in the west,CANON,wb §4.3; notes L20-21
 brotherhood_of_the_serpent,The Brotherhood of the Serpent,hidden,Ante-Diluvian priestly secret order; preserve balance and the natural law; works in the background; can only be met by the worthy; describes the Empire's deity as a demonic entity,CANON,wb §2;§4.4; notes L5;L22-26
 retributors_of_utu,The Retributors of Utu,minor,guild of paladins headquartered at the City of the Sun,CANON,wb §5; notes L50
-dead_cult,The dead cult,minor,the biggest ancestor and underworld cult; City of the Dead / Gravestone (whether these are one city or two is OPEN — game-design §11.7),CANON,wb §5; notes L44;L103
+dead_cult,The dead cult,minor,the biggest ancestor and underworld cult; City of the Dead = Gravestone — ruled ONE city (D-018; deities.csv:underworld_queen resolves game-design §11.7),INVENTED,D-018; wb §5; notes L44;L103
 sky_cult,The cult of the Sky Father,minor,centered on the sacred hill at the City of the Sky,CANON,wb §5; notes L46
 eastern_barbarian_alliance,The eastern barbarian alliance,minor,the mighty warchief's alliance; City of the Warrior Spirit,CANON,wb §5; notes L56
 suti,The Suti,minor,reign alone in the South (regions:south plan 2),CANON,wb §7; notes L143
 southern_city_states_alliance,The rebellious alliance of southern city states,minor,home at the City of the Moon,CANON,wb §5; notes L52
+temple_of_sun_and_moon,The Temple of Sun and Moon,minor,priesthood of the twin cults of sun and moon at the City of the Moon; the first great temple offered the two waters sacrifices of fish and sea gems; its stewards remember who serves it and who does not,INVENTED,wb §3 (the first great temple; the offering pattern); cities.csv:city_of_the_moon (temple of sun and moon listed as a feature); notes L52; D-018 (creative gap-filling — a faction row so quest standing has a home; the_priestess_debt and its act_ii-iv deepenings credit this id)

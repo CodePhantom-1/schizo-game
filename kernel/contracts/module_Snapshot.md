@@ -14,7 +14,7 @@ accessors added to `Rng.hpp` for this purpose — no other change to that file).
 ## Format
 
 Plain UTF-8 text, `\n`-terminated lines, tab-separated fields. First line is
-the literal version header `SIMSAVE 1`. Every field after it is one of:
+the literal version header `SIMSAVE 2`. Every field after it is one of:
 
 - a **scalar line**: `TAG\t<value>`
 - a **section**: a count line `TAG\t<n>` followed by exactly `n` data lines

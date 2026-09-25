@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <map>
+#include <optional>
 
 namespace sim {
 namespace {
@@ -71,7 +72,7 @@ int standing_penalty(const std::string& verdict) {
 }  // namespace
 
 Id commit_crime(WorldState& w, const Id& criminal, const Id& law_row,
-                const Id& place_city, const std::vector<Id>& witnesses) {
+                const Id& place_city, const std::vector<Id>& witnesses, const Id& victim) {
     Id first_witness;
     for (const Id& npc_id : witnesses) {
         witness(w.population, npc_id, criminal,
@@ -80,6 +81,8 @@ Id commit_crime(WorldState& w, const Id& criminal, const Id& law_row,
     }
 
     Crime& crime = report_crime(w.justice, criminal, law_row, law_row, w.day, first_witness);
+    crime.victim = victim;
+    crime.place_city = place_city;
     if (!first_witness.empty()) {
         // city-life §3.1/§3.3.2-3: alarm -> the watch's pursuit -> detention.
         // Wave 1 collapses the chase itself into a stage transition, same
@@ -96,30 +99,29 @@ Id commit_crime(WorldState& w, const Id& criminal, const Id& law_row,
     return crime.id;
 }
 
-Id city_faction(const Id& place_city) {
-    static const std::map<Id, Id> kJurisdiction = {
-        {"city_of_jewels", "the_empire"},
-        {"city_of_the_dead", "dead_cult"},
-        {"gravestone", "dead_cult"},
-        {"city_of_the_sky", "sky_cult"},
-        {"city_of_kings", "the_empire"},
-        {"city_of_the_sun", "retributors_of_utu"},
-        {"city_of_the_moon", "southern_city_states_alliance"},
-        {"city_of_the_abyss", "the_empire"},
-        {"city_of_the_warrior_spirit", "eastern_barbarian_alliance"},
-    };
-    const auto it = kJurisdiction.find(place_city);
-    return it == kJurisdiction.end() ? Id("the_empire") : it->second;
+Id city_faction(const Db& db, const Id& place_city) {
+    std::optional<Row> city = db.find("cities", place_city);
+    if (city && !city->get("alias_of").empty()) city = db.find("cities", city->get("alias_of"));
+    const Id j = city ? city->get("jurisdiction") : Id{};
+    return j.empty() ? Id("the_empire") : j;  // the Empire claims every unassigned place
+}
+
+void hold_due_hearings(WorldState& w) {
+    std::vector<Crime> due;
+    for (const Crime& c : w.justice.open_crimes)
+        if (!c.witnessed_by.empty() && c.hearing_day > 0 && w.day >= c.hearing_day) due.push_back(c);
+    for (const Crime& c : due) (void)hold_crime_hearing(w, c.id, c.victim, c.place_city);
 }
 
 Hearing hold_crime_hearing(WorldState& w, const Id& crime_id, const Id& victim,
                            const Id& place_city) {
     // Captured before hold_hearing() removes the crime from the docket.
     Id law_row, criminal;
-    if (const Crime* c = find_crime(w.justice, crime_id)) {
-        law_row = c->law_row;
-        criminal = c->criminal;
-    }
+    const Crime* c = find_crime(w.justice, crime_id);
+    if (c == nullptr)  // unknown or already heard: nothing sealed, no consequences
+        return Hearing{crime_id, w.day, "dismissed", "", 0};
+    law_row = c->law_row;
+    criminal = c->criminal;
 
     const WorldContext ctx = w.context();
     (void)hold_hearing(ctx, w.justice, crime_id);  // seals into w.justice.verdicts
@@ -135,7 +137,7 @@ Hearing hold_crime_hearing(WorldState& w, const Id& crime_id, const Id& victim,
         }
     }
 
-    const Id faction = city_faction(place_city);
+    const Id faction = city_faction(w.db, place_city);
     add_standing(w.faction, faction, standing_penalty(sealed.verdict));
     if (sealed.verdict == "exile" || sealed.verdict == "death") outlaw(w.faction, faction);
 
@@ -147,6 +149,7 @@ void complete_quest(WorldState& w, const Id& def_id, DayNumber day) {
     for (const QuestDef& d : w.quests.defs)
         if (d.id == def_id) { def = &d; break; }
 
+    if (find_active(w.quests, def_id) == nullptr) return;  // only an active quest pays, once
     complete(w.quests, def_id, day);  // Quests::complete — unchanged, active -> completed
 
     if (def == nullptr) return;  // no canon def loaded: no reward data to pay
@@ -156,8 +159,9 @@ void complete_quest(WorldState& w, const Id& def_id, DayNumber day) {
 }
 
 void fail_quest(WorldState& w, const Id& def_id, DayNumber day) {
-    (void)day;
+    if (find_active(w.quests, def_id) == nullptr) return;
     fail(w.quests, def_id);  // Quests::fail — no reward on the failure path
+    w.quests.journal[def_id].push_back(JournalEntry{day, "failed", "abandoned"});
 }
 
 }  // namespace sim

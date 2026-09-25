@@ -4,7 +4,7 @@
 // and the world continues identically."
 //
 // Format: a deterministic, versioned, human-diffable tab-separated text
-// ("SIMSAVE 1\n" header line, then one scalar/section line per field of every
+// ("SIMSAVE 2\n" header line, then one scalar/section line per field of every
 // module state). Same WorldState => identical bytes. Free text fields
 // (names, summaries, place tags…) are escaped (\\, \t, \n, \r) so any commas,
 // quotes or newlines in canon-sourced strings round-trip safely.

@@ -48,7 +48,7 @@ static bool test_save_load_round_trips() {
     a.advance_days(400);
 
     const std::string s = save_world(a);
-    SIM_CHECK(s.substr(0, 9) == std::string("SIMSAVE 1"));
+    SIM_CHECK(s.substr(0, 9) == std::string("SIMSAVE 2"));
 
     WorldState b;
     load_world(b, "../db/canon", s);
@@ -92,7 +92,7 @@ static bool test_malformed_save_throws() {
 
     threw = false;
     try {
-        load_world(w, "../db/canon", "SIMSAVE 1\nday\tnot_a_number\n");
+        load_world(w, "../db/canon", "SIMSAVE 2\nday\tnot_a_number\n");
     } catch (const std::runtime_error&) {
         threw = true;
     }
@@ -122,7 +122,7 @@ static bool test_load_world_is_atomic_on_failure() {
         // Well-formed header and a few fields, then truncated mid-stream —
         // reaches deep into the parse before failing.
         load_world(live, "../db/canon",
-                    "SIMSAVE 1\nday\t5\nseed\t42\nrng\t1\ndrought_stage\t0\n");
+                    "SIMSAVE 2\nday\t5\nseed\t42\nrng\t1\ndrought_stage\t0\n");
     } catch (const std::runtime_error&) {
         threw = true;
     }

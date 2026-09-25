@@ -33,6 +33,8 @@ struct Crime {
     // names (alarm -> pursuit -> detention). "" until a crime orchestrated
     // through commit_crime() sets it; report_crime()/hold_hearing() never
     // read or write it themselves.
+    Id victim;          // W2 review: who is owed compensation ("" = the community)
+    Id place_city;      // W2 review: where it happened — the jurisdiction
     std::string stage;  // "" | "alarmed" | "pursued" | "detained" | "heard"
     // W2-A: 0 (default) keeps the original Wave-1 behaviour — tick_justice()
     // hears any witnessed crime the same tick it processes it. A nonzero day

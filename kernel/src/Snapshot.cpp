@@ -146,7 +146,7 @@ private:
 
 std::string save_world(const WorldState& w) {
     Writer wr;
-    wr.raw("SIMSAVE 1");
+    wr.raw("SIMSAVE 2");
     wr.line({"day", s64(w.day)});
     wr.line({"seed", u64(w.seed)});
     wr.line({"rng", u64(w.rng.state())});
@@ -218,7 +218,7 @@ std::string save_world(const WorldState& w) {
         wr.line({"JUSTICE_OPEN", s64(static_cast<std::int64_t>(w.justice.open_crimes.size()))});
         for (const Crime& c : w.justice.open_crimes)
             wr.line({c.id, c.criminal, c.law_row, c.crime_kind, s64(c.day), c.witnessed_by,
-                     sbool(c.atoned), c.stage, s64(c.hearing_day)});
+                     sbool(c.atoned), c.stage, s64(c.hearing_day), c.victim, c.place_city});
 
         wr.line({"JUSTICE_VERDICTS", s64(static_cast<std::int64_t>(w.justice.verdicts.size()))});
         for (const Hearing& h : w.justice.verdicts)
@@ -294,7 +294,7 @@ std::string save_world(const WorldState& w) {
             for (const JournalEntry& e : list) wr.line({qid, s64(e.day), e.stage, e.text});
     }
 
-    // NEEDS (W2-I; additive section — SIMSAVE 1 format tolerates it)
+    // NEEDS (W2-I; SIMSAVE 2)
     {
         wr.line({"NEEDS", s64(static_cast<std::int64_t>(w.needs.by_actor.size()))});
         for (const auto& [actor, n] : w.needs.by_actor)
@@ -324,7 +324,9 @@ void load_world(WorldState& out, const std::string& canon_dir, const std::string
         Reader rd(data);
 
         std::vector<std::string> header = rd.next();
-        if (header.size() != 1 || header[0] != "SIMSAVE 1")
+        if (header.size() == 1 && header[0] == "SIMSAVE 1")
+            throw std::runtime_error("snapshot: SIMSAVE 1 is a pre-wave-2 save (no longer supported)");
+        if (header.size() != 1 || header[0] != "SIMSAVE 2")
             throw std::runtime_error("snapshot: unknown or missing version header");
 
         std::int64_t day = Reader::parse_i64(rd.scalar("day"));
@@ -449,7 +451,7 @@ void load_world(WorldState& out, const std::string& canon_dir, const std::string
             std::size_t n = rd.section("JUSTICE_OPEN");
             for (std::size_t i = 0; i < n; ++i) {
                 std::vector<std::string> f = rd.next();
-                if (f.size() != 9) throw std::runtime_error("snapshot: bad crime row");
+                if (f.size() != 11) throw std::runtime_error("snapshot: bad crime row");
                 Crime c;
                 c.id = f[0];
                 c.criminal = f[1];
@@ -460,6 +462,8 @@ void load_world(WorldState& out, const std::string& canon_dir, const std::string
                 c.atoned = Reader::parse_bool(f[6]);
                 c.stage = f[7];
                 c.hearing_day = Reader::parse_i64(f[8]);
+                c.victim = f[9];
+                c.place_city = f[10];
                 w.justice.open_crimes.push_back(std::move(c));
             }
             n = rd.section("JUSTICE_VERDICTS");

@@ -71,7 +71,7 @@ static bool test_theft_cycle_ends_in_paid_compensation() {
 
     // Standing with the jurisdiction's faction drops (never to outlawry for
     // a mere compensation verdict).
-    const Id faction = city_faction(kCity);
+    const Id faction = city_faction(w.db, kCity);
     SIM_CHECK(standing(w.faction, faction) < 100);
     SIM_CHECK(!is_outlawed(w.faction, faction));
     return true;
@@ -100,7 +100,7 @@ static bool test_unpaid_compensation_escalates() {
 static bool test_burglary_verdict_is_death_and_outlaws() {
     WorldState w;
     w.init("../db/canon", kSeed);
-    const Id faction = city_faction(kCity);
+    const Id faction = city_faction(w.db, kCity);
     add_standing(w.faction, faction, 60);  // some standing to lose
     SIM_CHECK(standing(w.faction, faction) > 0);
 
@@ -181,7 +181,80 @@ static bool test_same_seed_same_script_same_state_bytes() {
     return true;
 }
 
-SIM_MAIN(test_theft_cycle_ends_in_paid_compensation,
+// Wave-2 review regressions ----------------------------------------------
+
+// An unknown or already-heard crime is dismissed with no consequences (was a
+// back() on an empty vector / a re-used stale verdict).
+static bool test_hearing_for_unknown_crime_is_dismissed() {
+    WorldState w;
+    w.init("../db/canon", kSeed);
+    const std::string before = faction_bytes(w.faction);
+    const Hearing h = hold_crime_hearing(w, "crime_99", "", kCity);
+    SIM_CHECK_EQ(h.verdict, std::string("dismissed"));
+    SIM_CHECK(w.justice.verdicts.empty());
+    SIM_CHECK(faction_bytes(w.faction) == before);
+    return true;
+}
+
+// The daily tick hears a commit_crime crime WITH its consequences once its day
+// comes (it used to be sealed bare by tick_justice).
+static bool test_due_hearing_applies_consequences_in_the_tick() {
+    WorldState w;
+    w.init("../db/canon", kSeed);
+    credit_purse(w.property, "player", 200);
+    const Id crime_id = commit_crime(w, "player", "theft", kCity, {kWitness}, "the_grain_merchant");
+    w.advance_days(kHearingDelayDays + 1);
+    SIM_CHECK(find_crime(w.justice, crime_id) == nullptr);
+    SIM_CHECK_EQ(w.justice.verdicts.size(), std::size_t{1});
+    SIM_CHECK_EQ(w.justice.verdicts.front().tablet_id, "verdict_tablet_" + crime_id);
+    SIM_CHECK_EQ(purse(w.property, "the_grain_merchant"), Silver{kCompensationSilver});
+    // A late manual call finds nothing and changes nothing.
+    const std::string before = faction_bytes(w.faction);
+    SIM_CHECK_EQ(hold_crime_hearing(w, crime_id, "", kCity).verdict, std::string("dismissed"));
+    SIM_CHECK(faction_bytes(w.faction) == before);
+    return true;
+}
+
+// Rewards pay once, and only for an active quest.
+static bool test_quest_reward_pays_once_and_only_when_active() {
+    WorldState w;
+    w.init("../db/canon", kSeed);
+    complete_quest(w, "the_priestess_debt", w.day);  // never accepted
+    SIM_CHECK_EQ(purse(w.property, "player"), Silver{0});
+    accept(w.quests, "the_priestess_debt", w.day);
+    complete_quest(w, "the_priestess_debt", w.day);
+    const Silver once = purse(w.property, "player");
+    SIM_CHECK(once > 0);
+    complete_quest(w, "the_priestess_debt", w.day);
+    SIM_CHECK_EQ(purse(w.property, "player"), once);
+    return true;
+}
+
+static bool test_abandoned_quest_is_journaled() {
+    WorldState w;
+    w.init("../db/canon", kSeed);
+    accept(w.quests, "the_priestess_debt", w.day);
+    fail_quest(w, "the_priestess_debt", w.day);
+    SIM_CHECK_EQ(journal(w.quests, "the_priestess_debt").back().stage, std::string("failed"));
+    return true;
+}
+
+// Gravestone is the City of the Dead (D-018): one market, one jurisdiction.
+static bool test_city_alias_is_one_city() {
+    WorldState w;
+    w.init("../db/canon", kSeed);
+    SIM_CHECK(w.economy.market_by_city.count("gravestone") == 0);
+    SIM_CHECK(w.economy.market_by_city.count("city_of_the_dead") == 1);
+    SIM_CHECK_EQ(city_faction(w.db, "gravestone"), city_faction(w.db, "city_of_the_dead"));
+    SIM_CHECK_EQ(city_faction(w.db, "nowhere"), std::string("the_empire"));
+    return true;
+}
+
+SIM_MAIN(test_hearing_for_unknown_crime_is_dismissed,
+         test_due_hearing_applies_consequences_in_the_tick,
+         test_quest_reward_pays_once_and_only_when_active, test_abandoned_quest_is_journaled,
+         test_city_alias_is_one_city,
+         test_theft_cycle_ends_in_paid_compensation,
          test_unpaid_compensation_escalates,
          test_burglary_verdict_is_death_and_outlaws,
          test_quest_completion_pays_silver_and_standing,

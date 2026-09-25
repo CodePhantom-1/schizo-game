@@ -132,7 +132,10 @@ void tick_justice(const WorldContext& ctx, JusticeState& state, int days) {
         // behaviour for every crime filed via plain report_crime().
         std::vector<Id> to_hear;
         for (const Crime& c : state.open_crimes)
-            if (!c.witnessed_by.empty() && (c.hearing_day == 0 || ctx.day >= c.hearing_day))
+            // hearing_day > 0 marks a world-orchestrated crime (commit_crime):
+            // WorldState::advance_days hears it via hold_due_hearings so the
+            // verdict's consequences apply — this module must not seal it bare.
+            if (!c.witnessed_by.empty() && c.hearing_day == 0)
                 to_hear.push_back(c.id);
         for (const Id& id : to_hear) (void)hold_hearing(ctx, state, id);
     }

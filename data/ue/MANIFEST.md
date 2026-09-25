@@ -3,19 +3,20 @@
 Run `python3 tools/export_datatables.py` to regenerate from db/canon.
 
 - cities: 9 rows
-- deities: 16 rows
+- deities: 25 rows
 - endings: 4 rows
 - events: 16 rows
-- factions: 10 rows
+- factions: 11 rows
 - items: 35 rows
 - laws: 10 rows
-- names: 45 rows
+- names: 51 rows
 - pantheons: 6 rows
 - planetary_powers: 6 rows
+- places: 23 rows
 - ranks: 7 rows
 - regions: 4 rows
 - rites: 4 rows
-- schedules: 24 rows
+- schedules: 32 rows
 - seasons: 4 rows
 - story: 6 rows
-- world_lore: 5 rows
+- world_lore: 7 rows
