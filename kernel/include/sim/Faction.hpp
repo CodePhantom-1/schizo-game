@@ -32,6 +32,12 @@ struct FactionState {
     std::map<Id, int> standing_by_faction;  // factions.csv id -> 0..100
     std::vector<Oath> oaths;
     bool oath_breaker_curse = false;        // set when any oath is broken
+    // W2-A (kernel/src/Actions.cpp): mechanics.md row 12 "outlawry -> rank
+    // 0". The kernel carries no numeric rank per faction, so an exile/death
+    // verdict is recorded here instead — rank 0 (D-015's "the Outsider") is
+    // exactly "stateless outside any city's protection", i.e. zero standing
+    // and marked outlawed with that jurisdiction.
+    std::map<Id, bool> outlawed_by_faction;
 };
 
 void tick_faction(const WorldContext& ctx, FactionState& state, int days = 1);
@@ -48,5 +54,10 @@ std::string tier_of(int standing);
 Oath* swear(FactionState& state, const Id& swearer, const Id& to_faction, DayNumber day);
 // Breaks the oath: marks it, drops standing with that faction by 40, sets the curse.
 void break_oath(FactionState& state, const Id& oath_id);
+
+// W2-A: forces standing with the faction to 0 and marks it outlawed (rank 0,
+// mechanics.md row 12). Used by Actions.cpp on an exile/death verdict.
+void outlaw(FactionState& state, const Id& faction_id);
+bool is_outlawed(const FactionState& state, const Id& faction_id);
 
 }  // namespace sim

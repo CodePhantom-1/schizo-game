@@ -101,10 +101,25 @@ them are quests or dialogues, and none block this quest's own defs (the
 Quests loader already excludes `OPEN` rows; see `src/Quests.cpp`
 `row_is_open`).
 
+## W2-A update (2026-09-25): the reward/standing pipes are closed
+
+`kernel/include/sim/Actions.hpp` + `kernel/src/Actions.cpp`
+(`kernel/tests/test_actions.cpp`) add `complete_quest()`/`fail_quest()`,
+closing the "reward -> purse/inventory pipe" and "standing -> Faction pipe"
+items below: `quests.csv` gained `reward_silver`/`reward_faction`/
+`reward_standing` columns (INVENTED, filled for all 41 rows —
+`the_priestess_debt` itself pays 35 silver + 5 standing with the new
+`temple_of_sun_and_moon` faction row, closing the "temple isn't modeled as a
+faction" data gap named below), and `complete_quest()` credits the purse and
+adds standing from those columns; `fail_quest()` pays nothing. The dialogue
+runner, journal/quest-log surface and `quests.csv` `city` column gaps remain
+open (engine-side / data-only, out of this track's scope).
+
 ## Missing kernel surfaces (documented, not built — per instructions)
 
-The slice quest works end-to-end as *state machine*, but nothing in
-`kernel/` yet delivers or resolves it as *play*:
+The slice quest works end-to-end as *state machine*; W2-A above closed the
+reward/standing pipes. The rest remains, and nothing in `kernel/` yet
+delivers or resolves it as *play*:
 
 - **A dialogue runner.** `dialogues.csv` rows are static text with a
   `speaker`/`context`; nothing in the kernel presents them, branches them,

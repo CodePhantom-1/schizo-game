@@ -29,12 +29,28 @@ struct Crime {
     DayNumber day = 0;
     Id witnessed_by;    // npc id, or "" when unwitnessed (evidence remains)
     bool atoned = false;
+    // W2-A (kernel/src/Actions.cpp): the pre-hearing stages city-life §3.3
+    // names (alarm -> pursuit -> detention). "" until a crime orchestrated
+    // through commit_crime() sets it; report_crime()/hold_hearing() never
+    // read or write it themselves.
+    std::string stage;  // "" | "alarmed" | "pursued" | "detained" | "heard"
+    // W2-A: 0 (default) keeps the original Wave-1 behaviour — tick_justice()
+    // hears any witnessed crime the same tick it processes it. A nonzero day
+    // (set by commit_crime()) makes tick_justice() wait until that day before
+    // auto-hearing it — the real window scenario_crime.md gap 1 asks for,
+    // between detention and the hearing. Calling hold_hearing()/
+    // hold_crime_hearing() directly, at any time, still works regardless.
+    DayNumber hearing_day = 0;
 };
 
 struct Hearing {
     Id crime_id;
     DayNumber day = 0;
     std::string verdict;  // "compensation" | "confiscation" | "debt_service" | "exile" | "death" | "dismissed"
+    // W2-A additions (kernel/src/Actions.cpp fills these; hold_hearing()
+    // itself never touches them — it writes ONLY the fields above):
+    Id tablet_id;               // "verdict_tablet_<crime_id>" once sealed
+    Silver compensation_paid = 0;  // silver actually moved from the purse, 0 if none/unpaid
 };
 
 struct JusticeState {

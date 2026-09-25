@@ -127,9 +127,13 @@ void tick_justice(const WorldContext& ctx, JusticeState& state, int days) {
         // the morning it is processed, in report order. Unwitnessed crimes stay
         // open: the evidence can be found later (Justice.hpp). Ids are
         // collected first — a hearing removes its crime from the docket.
+        // W2-A: a crime with a scheduled hearing_day (commit_crime()) waits
+        // until that day; hearing_day == 0 keeps the original same-tick
+        // behaviour for every crime filed via plain report_crime().
         std::vector<Id> to_hear;
         for (const Crime& c : state.open_crimes)
-            if (!c.witnessed_by.empty()) to_hear.push_back(c.id);
+            if (!c.witnessed_by.empty() && (c.hearing_day == 0 || ctx.day >= c.hearing_day))
+                to_hear.push_back(c.id);
         for (const Id& id : to_hear) (void)hold_hearing(ctx, state, id);
     }
 }

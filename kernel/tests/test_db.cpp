@@ -10,10 +10,12 @@ static Db load_canon() { return Db::load("../db/canon"); }
 static bool test_loads_every_table() {
     const Db db = load_canon();
     // Canon only grows (CANON rows are never deleted, D-018 appends): check
-    // floors, not exact counts — exact counts went stale with every content wave.
+    // floors, not exact counts — exact counts went stale with every content
+    // wave (W2-A appended a factions.csv row, temple_of_sun_and_moon, D-018;
+    // see docs/proposals/invented-ledger-actions.md).
     SIM_CHECK(db.rows("deities").size() >= std::size_t{16});
     SIM_CHECK(db.rows("cities").size() >= std::size_t{9});
-    SIM_CHECK(db.rows("factions").size() >= std::size_t{10});
+    SIM_CHECK(db.rows("factions").size() >= std::size_t{11});
     SIM_CHECK(db.rows("planetary_powers").size() >= std::size_t{6});
     return true;
 }

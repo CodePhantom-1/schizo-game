@@ -57,6 +57,21 @@ int parse_deadline_days(const std::string& s) {
     return static_cast<int>(v);
 }
 
+// Strict non-negative decimal read, shared by deadline_days/reward_silver/
+// reward_standing: blank/negative/non-digit/overflow all read as 0 rather
+// than a guessed number (same rule parse_deadline_days documents above).
+long long parse_nonneg(const std::string& s) {
+    const std::string t = trim(s);
+    if (t.empty()) return 0;
+    long long v = 0;
+    for (const char c : t) {
+        if (c < '0' || c > '9') return 0;
+        v = v * 10 + (c - '0');
+        if (v > 2147483647LL) return 0;
+    }
+    return v;
+}
+
 const QuestDef* find_def(const QuestState& state, const Id& def_id) {
     for (const QuestDef& def : state.defs)
         if (def.id == def_id) return &def;
@@ -76,6 +91,12 @@ void load_defs(const WorldContext& ctx, QuestState& state) {
         def.id = id;
         def.kind = row.get("kind");  // carried as data; the machine never branches on it
         def.deadline_days = parse_deadline_days(row.get("deadline_days"));
+        // W2-A: reward columns (absent = 0/"" — a row from before this wave,
+        // or a def with no fitting standing reward, pays no reward, never a
+        // guessed one).
+        def.reward_silver = static_cast<Silver>(parse_nonneg(row.get("reward_silver")));
+        def.reward_faction = row.get("reward_faction");
+        def.reward_standing = static_cast<int>(parse_nonneg(row.get("reward_standing")));
         state.defs.push_back(std::move(def));
     }
 }
@@ -122,6 +143,14 @@ void complete(QuestState& state, const Id& def_id, DayNumber day) {
                                  [&](const Quest& q) { return q.def_id == def_id; });
     if (it == state.active.end()) return;  // nothing active under this def: nothing to complete
     state.completed.push_back(it->def_id);  // recorded in completion order
+    state.active.erase(it);
+}
+
+void fail(QuestState& state, const Id& def_id) {
+    const auto it = std::find_if(state.active.begin(), state.active.end(),
+                                 [&](const Quest& q) { return q.def_id == def_id; });
+    if (it == state.active.end()) return;  // nothing active under this def: nothing to fail
+    state.failed_list.push_back(it->def_id);
     state.active.erase(it);
 }
 

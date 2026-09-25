@@ -25,6 +25,11 @@ struct QuestDef {
     Id id;               // quests.csv id
     std::string kind;    // history_arc|background|companion|sourced|systemic|faction|emergent
     int deadline_days = 0;  // 0 = no deadline
+    // W2-A: quests.csv reward_silver/reward_faction/reward_standing columns
+    // (INVENTED — quests.csv carried no reward data before this wave).
+    Silver reward_silver = 0;   // paid to the purse on completion; 0 = none
+    Id reward_faction;          // "" = no standing reward
+    int reward_standing = 0;    // add_standing delta when reward_faction is set
 };
 
 struct Quest {
@@ -49,5 +54,9 @@ void tick_quests(const WorldContext& ctx, QuestState& state, int days = 1);
 
 Quest& accept(QuestState& state, const Id& def_id, DayNumber day);
 void complete(QuestState& state, const Id& def_id, DayNumber day);
+
+// W2-A: explicitly fails an active quest (independent of tick_quests'
+// deadline sweep) — e.g. the player abandons it. No-op if not active.
+void fail(QuestState& state, const Id& def_id);
 
 }  // namespace sim
