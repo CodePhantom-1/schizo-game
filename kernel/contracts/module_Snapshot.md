@@ -87,3 +87,7 @@ byte-deterministic and a restored world advances identically to its source.
 reference only once every section has parsed without throwing. A
 truncated/malformed save now throws with the caller's live world left
 byte-for-byte untouched (see `test_load_world_is_atomic_on_failure`).
+
+## W4-B update (combat)
+
+The combat sections follow the K-1 sections: `COMBAT_ACTORS` with its armour, wound, lasting-effect and durability sub-rows, then `COMBAT_HOSTILITY`, `COMBAT_DUELS`, `COMBAT_PRISONERS`, `COMBAT_DEATHS` and `COMBAT_SEQ`. They are optional on load. `Reader::peek_tag()` recognises them by tag, so they load correctly whatever other optional sections precede them. A save without them loads with an empty `CombatState`. See `tests/test_scenario_duel.cpp` `test_saves_before_and_after_combat`.

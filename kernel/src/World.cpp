@@ -4,6 +4,7 @@
 #include "sim/World.hpp"
 
 #include "sim/Actions.hpp"
+#include "sim/CombatActions.hpp"  // W4-B
 
 #include <cstdlib>
 
@@ -50,6 +51,7 @@ void WorldState::init(const std::string& canon_dir, std::uint64_t world_seed) {
     inventories.clear();
     inventories["player"] = Inventory{};  // the prisoner start (D-009): empty-handed
     rite_effects = RiteEffectsState{};    // K-1: no ward laid, no omen read
+    combat = CombatState{};               // W4-B: nobody hurt yet
 
     WorldContext ctx = context();
     for (const Row& city : db.rows("cities"))
@@ -75,6 +77,9 @@ void WorldState::advance_days(int days) {
         // World-orchestrated hearings (commit_crime) need several modules'
         // state, so they run here, after the module ticks, on the same day.
         hold_due_hearings(*this);
+        // W4-B: wounds heal (or bleed out) once a day; deaths reach
+        // Population and Events through the caller layer.
+        tick_combat_world(*this);
         ++day;
     }
 }

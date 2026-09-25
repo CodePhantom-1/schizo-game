@@ -12,6 +12,7 @@
 #include "sim/Population.hpp"
 #include "sim/Schedule.hpp"
 #include "sim/Rites.hpp"
+#include "sim/CombatActions.hpp"  // W4-B
 
 #include <algorithm>
 #include <climits>
@@ -581,4 +582,354 @@ int sim_world_npc_schedule_at(const SimWorld* world, const char* npc, int hour, 
                               int cap) {
     const std::optional<ScheduledTask> t = npc_now(world, npc, hour);
     return t ? write_str(out, cap, t->schedule_id) : -1;
+}
+
+// Combat (W4-B) ---------------------------------------------------------------
+namespace {
+std::vector<Id> w4b_split(const char* list) {
+    std::vector<Id> out;
+    if (list == nullptr) return out;
+    std::stringstream ss{std::string(list)};
+    std::string entry;
+    while (std::getline(ss, entry, ';')) {
+        const std::size_t b = entry.find_first_not_of(" \t");
+        if (b == std::string::npos) continue;
+        out.push_back(entry.substr(b, entry.find_last_not_of(" \t") - b + 1));
+    }
+    return out;
+}
+
+std::string w4b_join(const std::vector<Id>& ids, char sep) {
+    std::string s;
+    for (const Id& id : ids) {
+        if (!s.empty()) s += sep;
+        s += id;
+    }
+    return s;
+}
+
+const Combatant& w4b_body(const SimWorld* world, const char* actor) {
+    static const Combatant kFresh{};
+    const Combatant* c = find_combatant(world->world.combat, Id(actor));
+    return c ? *c : kFresh;
+}
+
+const char* w4b_treatment(int t) {
+    switch (t) {
+        case kTreatBound: return "bound";
+        case kTreatHerbs: return "herbs";
+        case kTreatHealer: return "healer";
+        default: return "none";
+    }
+}
+}  // namespace
+
+int sim_world_equip(SimWorld* world, const char* actor, const char* item) {
+    try {
+        if (world == nullptr || actor == nullptr || item == nullptr) return -1;
+        return equip_in_world(world->world, Id(actor), Id(item));
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_unequip(SimWorld* world, const char* actor, const char* item) {
+    try {
+        if (world == nullptr || actor == nullptr || item == nullptr) return -1;
+        return unequip(world->world.combat, Id(actor), Id(item)) ? 0 : 1;
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_equipped(const SimWorld* world, const char* actor, char* out, int cap) {
+    try {
+        if (world == nullptr || actor == nullptr) return -1;
+        return write_str(out, cap, w4b_join(equipped(w4b_body(world, actor)), ';'));
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_attack(SimWorld* world, const char* attacker, const char* defender, int zone_hint,
+                     char* out, int cap) {
+    try {
+        if (world == nullptr || attacker == nullptr || defender == nullptr) return -1;
+        const AttackResult r = attack_in_world(world->world, Id(attacker), Id(defender), zone_hint);
+        if (out != nullptr && cap > 0) (void)write_str(out, cap, r.text);
+        return r.outcome == AttackOutcome::Invalid ? -2 : static_cast<int>(r.outcome);
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_health(const SimWorld* world, const char* actor) {
+    try {
+        return (world && actor) ? w4b_body(world, actor).health : -1;
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_stamina(const SimWorld* world, const char* actor) {
+    try {
+        return (world && actor) ? w4b_body(world, actor).stamina : -1;
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_morale(const SimWorld* world, const char* actor) {
+    try {
+        return (world && actor) ? w4b_body(world, actor).morale : -1;
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_wound(const SimWorld* world, const char* actor, int zone) {
+    try {
+        if (world == nullptr || actor == nullptr || zone < 0 || zone >= kZoneCount) return -1;
+        return open_damage(w4b_body(world, actor), zone);
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_bleeding(const SimWorld* world, const char* actor) {
+    try {
+        return (world && actor) ? bleeding(w4b_body(world, actor)) : -1;
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_is_dead(const SimWorld* world, const char* actor) {
+    try {
+        return (world && actor) ? (w4b_body(world, actor).dead ? 1 : 0) : -1;
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_combat_status(const SimWorld* world, const char* actor, char* out, int cap) {
+    try {
+        if (world == nullptr || actor == nullptr) return -1;
+        return write_str(out, cap, w4b_join(combat_effects(w4b_body(world, actor)), ';'));
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_wounds(const SimWorld* world, const char* actor, char* out, int cap) {
+    try {
+        if (world == nullptr || actor == nullptr) return -1;
+        std::vector<Id> parts;
+        for (const Wound& w : w4b_body(world, actor).wounds)
+            if (w.remaining > 0)
+                parts.push_back(std::string(zone_name(w.zone)) + ":" + w.type + ":" +
+                                severity_name(w.severity) + ":" + std::to_string(w.remaining) + ":" +
+                                std::to_string(w.bleed) + ":" + w4b_treatment(w.treatment));
+        return write_str(out, cap, w4b_join(parts, '|'));
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_rest(SimWorld* world, const char* actor, int hours) {
+    try {
+        if (world == nullptr || actor == nullptr) return -1;
+        return rest_in_world(world->world, Id(actor), hours) ? 1 : 0;
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_combat_advance(SimWorld* world, const char* actor, int hours) {
+    try {
+        if (world == nullptr || actor == nullptr) return -1;
+        return advance_body_hours(world->world, Id(actor), hours, false) ? 1 : 0;
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_catch_breath(SimWorld* world, const char* actor, int rounds) {
+    try {
+        if (world == nullptr || actor == nullptr) return -1;
+        (void)combatant_of(world->world.combat, Id(actor));
+        catch_breath(world->world.combat, Id(actor), rounds);
+        return w4b_body(world, actor).stamina;
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_treat_wounds(SimWorld* world, const char* actor, const char* method,
+                           const char* healer) {
+    try {
+        if (world == nullptr || actor == nullptr || method == nullptr) return -1;
+        return treat_in_world(world->world, Id(actor), std::string(method), healer ? Id(healer) : Id());
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_stance(const SimWorld* world, const char* actor, int allies, int enemies, char* out,
+                     int cap) {
+    try {
+        if (world == nullptr || actor == nullptr) return -1;
+        const Stance st = choose_stance(w4b_body(world, actor),
+                                        combat_inputs_for(world->world, Id(actor)), allies, enemies);
+        if (out != nullptr && cap > 0) (void)write_str(out, cap, stance_name(st));
+        return st == Stance::None ? 3 : static_cast<int>(st);
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_apply_combat_style(SimWorld* world, const char* actor, const char* style) {
+    try {
+        if (world == nullptr || actor == nullptr || style == nullptr) return -1;
+        return apply_style_in_world(world->world, Id(actor), Id(style)) ? 0 : -2;
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_combat_style_of(const SimWorld* world, const char* npc, char* out, int cap) {
+    try {
+        if (world == nullptr || npc == nullptr) return -1;
+        return write_str(out, cap, style_of_npc(world->world, Id(npc)));
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_surrender(SimWorld* world, const char* who, const char* to) {
+    try {
+        if (world == nullptr || who == nullptr || to == nullptr) return -1;
+        return surrender(world->world.combat, Id(who), Id(to)) ? 0 : -2;
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_take_prisoner(SimWorld* world, const char* captor, const char* captive) {
+    try {
+        if (world == nullptr || captor == nullptr || captive == nullptr) return -1;
+        return take_prisoner(world->world.combat, Id(captor), Id(captive), world->world.day) ? 0 : -2;
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_release_prisoner(SimWorld* world, const char* captive) {
+    try {
+        if (world == nullptr || captive == nullptr) return -1;
+        return release_prisoner(world->world.combat, Id(captive)) ? 0 : -2;
+    } catch (...) {
+        return -1;
+    }
+}
+
+int64_t sim_world_ransom(SimWorld* world, const char* captive, char* loan_out, int cap) {
+    try {
+        if (world == nullptr || captive == nullptr) return -1;
+        Id loan;
+        const Silver paid = ransom_prisoner(world->world, Id(captive), &loan);
+        if (loan_out != nullptr && cap > 0) (void)write_str(loan_out, cap, paid < 0 ? Id() : loan);
+        return paid;
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_loot(SimWorld* world, const char* looter, const char* body) {
+    try {
+        if (world == nullptr || looter == nullptr || body == nullptr) return -1;
+        const int moved = loot_body(world->world, Id(looter), Id(body));
+        return moved < 0 ? -2 : moved;
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_agree_duel(SimWorld* world, const char* a, const char* b) {
+    try {
+        if (world == nullptr || a == nullptr || b == nullptr) return -1;
+        agree_duel(world->world.combat, Id(a), Id(b), world->world.day);
+        return 0;
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_set_outlaw(SimWorld* world, const char* actor, int flag) {
+    try {
+        if (world == nullptr || actor == nullptr) return -1;
+        set_outlaw(world->world.combat, Id(actor), flag != 0);
+        return 0;
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_combat_crime(SimWorld* world, const char* attacker, const char* victim,
+                           const char* place_city, const char* witnesses, char* out, int cap) {
+    try {
+        if (world == nullptr || attacker == nullptr || victim == nullptr) return -1;
+        Id crime;
+        const Id law = file_combat_crime(world->world, Id(attacker), Id(victim),
+                                         place_city ? Id(place_city) : Id(), w4b_split(witnesses), &crime);
+        if (out != nullptr && cap > 0) (void)write_str(out, cap, law.empty() ? Id() : law + ";" + crime);
+        return law.empty() ? 0 : 1;
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_repair(SimWorld* world, const char* actor, const char* item, const char* smith) {
+    try {
+        if (world == nullptr || actor == nullptr || item == nullptr || smith == nullptr) return -1;
+        return repair_at_smith(world->world, Id(actor), Id(item), Id(smith));
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_recast(SimWorld* world, const char* actor, const char* from, const char* into,
+                     const char* smith) {
+    try {
+        if (world == nullptr || actor == nullptr || from == nullptr || into == nullptr || smith == nullptr)
+            return -1;
+        return recast_at_smith(world->world, Id(actor), Id(from), Id(into), Id(smith));
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_skirmish(SimWorld* world, const char* side_a, const char* side_b, int max_rounds,
+                       char* out, int cap) {
+    try {
+        if (world == nullptr || side_a == nullptr || side_b == nullptr) return -1;
+        const SkirmishResult r =
+            skirmish_in_world(world->world, w4b_split(side_a), w4b_split(side_b), max_rounds);
+        if (out != nullptr && cap > 0)
+            (void)write_str(out, cap,
+                            "rounds=" + std::to_string(r.rounds) + ";blows=" + std::to_string(r.log.size()) +
+                                ";fled=" + w4b_join(r.fled, ',') + ";surrendered=" +
+                                w4b_join(r.surrendered, ',') + ";fallen=" + w4b_join(r.fallen, ','));
+        return r.winner < 0 ? 2 : r.winner;
+    } catch (...) {
+        return -1;
+    }
+}
+
+int sim_world_death_count(const SimWorld* world) {
+    try {
+        return world ? static_cast<int>(world->world.combat.deaths.size()) : -1;
+    } catch (...) {
+        return -1;
+    }
 }

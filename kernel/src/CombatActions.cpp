@@ -1,0 +1,392 @@
+// CombatActions.cpp — W4-B: implements sim/CombatActions.hpp (the caller
+// layer over Combat). Like Actions.cpp, one of the few files allowed to
+// write several modules' state; every write below is a sequencing of the
+// modules' own public verbs (needs_of, witness, commit_crime, purses,
+// issue_loan) plus the documented Population/Events removals of a death.
+#include "sim/CombatActions.hpp"
+
+#include "sim/Actions.hpp"
+
+#include <algorithm>
+
+namespace sim {
+namespace {
+
+std::string lower(std::string s) {
+    for (char& c : s)
+        if (c >= 'A' && c <= 'Z') c = static_cast<char>(c - 'A' + 'a');
+    return s;
+}
+
+int held(const WorldState& w, const Id& actor, const Id& item) {
+    const auto inv = w.inventories.find(actor);
+    if (inv == w.inventories.end()) return 0;
+    const auto it = inv->second.counts.find(item);
+    return it == inv->second.counts.end() ? 0 : it->second;
+}
+
+void give(WorldState& w, const Id& actor, const Id& item, int qty) {
+    int& n = w.inventories[actor].counts[item];
+    n = std::max(0, n + qty);
+    if (n == 0) w.inventories[actor].counts.erase(item);
+}
+
+Silver band_of(const Db& db, const Id& item) {
+    const auto row = db.find("items", item);
+    if (!row || row->get("tag") == "OPEN") return 1;
+    Silver band = 0;
+    for (const char c : row->get("price_band")) {
+        if (c < '0' || c > '9') break;
+        band = band * 10 + (c - '0');
+    }
+    return band > 0 ? band : 1;
+}
+
+const Needs* needs_ptr(const WorldState& w, const Id& actor) {
+    const auto it = w.needs.by_actor.find(actor);
+    return it == w.needs.by_actor.end() ? nullptr : &it->second;
+}
+
+std::string display_name(const WorldState& w, const Id& id) {
+    if (id.empty()) return "an unknown hand";
+    if (const Npc* n = find_npc(w.population, id); n && !n->name.empty()) return n->name;
+    return id;
+}
+
+bool is_castable(const std::string& tier) {
+    return tier == "copper" || tier == "arsenical" || tier == "tin_bronze";
+}
+
+bool is_smith(const WorldState& w, const Id& smith) {
+    if (find_npc(w.population, smith) == nullptr) return false;
+    if (const Combatant* c = find_combatant(w.combat, smith); c && c->dead) return false;
+    const auto person = w.db.find("people", smith);
+    if (!person) return false;
+    const auto place = w.db.find("places", person->get("work_place"));
+    return place && lower(place->get("kind")) == "smithy";
+}
+
+bool is_healer(const WorldState& w, const Id& healer) {
+    const Npc* n = find_npc(w.population, healer);
+    if (n == nullptr || lower(n->role) != "physician") return false;
+    const Combatant* c = find_combatant(w.combat, healer);
+    return c == nullptr || conscious(*c);
+}
+
+bool pay(WorldState& w, const Id& from, const Id& to, Silver fee) {
+    if (fee <= 0) return true;
+    if (!take_from_purse(w.property, from, fee)) return false;
+    credit_purse(w.property, to, fee);
+    return true;
+}
+
+void unequip_ranged_without_ammo(WorldState& w, const Id& actor) {
+    Combatant& c = combatant_of(w.combat, actor);
+    const auto def = arms_def(w.db, c.weapon);
+    if (def && def->slot == "ranged" && !def->ammo.empty() && held(w, actor, def->ammo) <= 0)
+        c.weapon.clear();
+}
+
+}  // namespace
+
+CombatInputs combat_inputs_for(const WorldState& w, const Id& actor) {
+    // W4-A MERGE POINT: fill strength/agility/endurance from attribute() and
+    // skills from effective_skill() here.
+    const Combatant* c = find_combatant(w.combat, actor);
+    if (c != nullptr && !c->style.empty())
+        if (const auto st = combat_style(w.db, c->style)) return style_inputs(*st);
+    CombatInputs in;
+    in.default_skill = actor == "player" ? 20 : 15;
+    return in;
+}
+
+Id style_of_npc(const WorldState& w, const Id& npc) {
+    const Npc* n = find_npc(w.population, npc);
+    if (n == nullptr) return {};
+    return style_for(w.db, n->faction_id, n->role);
+}
+
+bool apply_style_in_world(WorldState& w, const Id& actor, const Id& style_id) {
+    const auto st = combat_style(w.db, style_id);
+    if (!st) return false;
+    std::vector<Id> kit = st->armour;
+    if (!st->weapon.empty()) kit.push_back(st->weapon);
+    if (!st->shield.empty()) kit.push_back(st->shield);
+    for (const Id& item : kit)
+        if (held(w, actor, item) <= 0) give(w, actor, item, 1);
+    if (const auto wd = arms_def(w.db, st->weapon); wd && !wd->ammo.empty() && held(w, actor, wd->ammo) <= 0)
+        give(w, actor, wd->ammo, wd->ammo == st->weapon ? 3 : 12);  // a quiver / a pouch
+    return apply_style(w.db, w.combat, actor, style_id);
+}
+
+void ensure_combatant(WorldState& w, const Id& actor) {
+    if (actor.empty() || actor == "player" || find_combatant(w.combat, actor) != nullptr) return;
+    const Id style = style_of_npc(w, actor);
+    if (!style.empty()) (void)apply_style_in_world(w, actor, style);
+    (void)combatant_of(w.combat, actor);
+}
+
+int equip_in_world(WorldState& w, const Id& actor, const Id& item) {
+    if (!arms_def(w.db, item)) return -2;
+    if (held(w, actor, item) <= 0) return -3;
+    ensure_combatant(w, actor);
+    switch (equip(w.db, w.combat, actor, item)) {
+        case EquipResult::Ok: return 0;
+        case EquipResult::Dead: return -4;
+        default: return -2;
+    }
+}
+
+AttackResult attack_in_world(WorldState& w, const Id& attacker, const Id& defender, int zone_hint) {
+    ensure_combatant(w, attacker);
+    ensure_combatant(w, defender);
+    const Combatant& a = combatant_of(w.combat, attacker);
+    const auto wd = arms_def(w.db, a.weapon);
+    const bool uses_ammo = wd && wd->slot == "ranged" && !wd->ammo.empty();
+    if (uses_ammo && held(w, attacker, wd->ammo) <= 0) {
+        AttackResult r;
+        r.attacker = attacker;
+        r.defender = defender;
+        r.refusal = "no_ammunition";
+        r.text = "outcome=invalid;refusal=no_ammunition";
+        return r;
+    }
+    const Fighter fa{attacker, combat_inputs_for(w, attacker), needs_ptr(w, attacker)};
+    const Fighter fd{defender, combat_inputs_for(w, defender), needs_ptr(w, defender)};
+    AttackResult r = resolve_attack(w.db, w.rng, w.combat, fa, fd, zone_hint, w.day);
+    if (r.outcome == AttackOutcome::Invalid) return r;
+    if (uses_ammo) {
+        give(w, attacker, wd->ammo, -1);
+        if (wd->ammo == wd->id && held(w, attacker, wd->id) <= 0) (void)unequip(w.combat, attacker, wd->id);
+    }
+    if (r.outcome == AttackOutcome::Killed) on_killed(w, defender, attacker, "slain");
+    return r;
+}
+
+SkirmishResult skirmish_in_world(WorldState& w, const std::vector<Id>& side_a,
+                                 const std::vector<Id>& side_b, int max_rounds) {
+    std::map<Id, CombatInputs> inputs;
+    std::map<Id, const Needs*> needs;
+    for (const auto* side : {&side_a, &side_b})
+        for (const Id& id : *side) {
+            ensure_combatant(w, id);
+            unequip_ranged_without_ammo(w, id);
+            inputs[id] = combat_inputs_for(w, id);
+            needs[id] = needs_ptr(w, id);
+        }
+    const std::size_t deaths_before = w.combat.deaths.size();
+    SkirmishResult r = resolve_skirmish(w.db, w.rng, w.combat, side_a, side_b, inputs, needs, w.day,
+                                        max_rounds);
+    for (const AttackResult& blow : r.log) {
+        const auto wd = arms_def(w.db, blow.weapon);
+        if (wd && wd->slot == "ranged" && !wd->ammo.empty()) give(w, blow.attacker, wd->ammo, -1);
+    }
+    const std::vector<DeathRecord> fresh(w.combat.deaths.begin() + static_cast<std::ptrdiff_t>(deaths_before),
+                                         w.combat.deaths.end());
+    for (const DeathRecord& d : fresh) on_killed(w, d.id, d.killer, d.cause);
+    return r;
+}
+
+void on_killed(WorldState& w, const Id& victim, const Id& killer, const std::string& cause) {
+    mark_dead(w.combat, victim, killer, cause, w.day);  // idempotent
+    const std::string name = display_name(w, victim);
+    const std::string killer_name = display_name(w, killer);
+
+    const auto npc_it = std::find_if(w.population.npcs.begin(), w.population.npcs.end(),
+                                     [&](const Npc& n) { return n.id == victim; });
+    if (npc_it != w.population.npcs.end()) {
+        std::vector<Id> mourners;
+        if (const auto k = w.population.knows.find(victim); k != w.population.knows.end())
+            mourners = k->second;
+        w.population.npcs.erase(npc_it);  // out of the population: no schedule answers for him
+        w.population.knows.erase(victim);
+        for (auto& [id, edges] : w.population.knows)
+            edges.erase(std::remove(edges.begin(), edges.end(), victim), edges.end());
+        for (const Id& m : mourners)
+            if (m != killer)
+                witness(w.population, m, victim,
+                        "mourns " + name + ", " + (cause == "bled_out" ? "bled to death" : "killed") +
+                            " by " + killer_name,
+                        w.day);
+    }
+    w.needs.by_actor.erase(victim);
+
+    // The dead hold no prisoners, and are no one's.
+    std::vector<Id> freed;
+    for (const Prisoner& p : w.combat.prisoners)
+        if (p.captor == victim || p.captive == victim) freed.push_back(p.captive);
+    for (const Id& id : freed) (void)release_prisoner(w.combat, id);
+
+    w.events.fired.push_back(TriggeredEvent{
+        "combat_death", w.day,
+        name + (cause == "bled_out" ? " bled to death of wounds from " : " was killed by ") + killer_name});
+}
+
+bool advance_body_hours(WorldState& w, const Id& actor, int hours, bool resting) {
+    if (hours <= 0) return false;
+    const Combatant* c = find_combatant(w.combat, actor);
+    if (c == nullptr || c->dead) return false;
+    const int pain = open_damage(*c, -1) / 25;
+    const int bleeding_now = bleeding(*c) > 0 ? 1 : 0;
+    const int heat = resting ? 0 : armour_heat(w.db, *c) / 4;
+    const Id killer = c->last_attacker;
+    const bool died = advance_combat_hours(w.combat, actor, hours, resting, w.day);
+    Needs& n = needs_of(w.needs, actor);
+    n.fatigue = std::min(100, n.fatigue + (pain + heat) * hours);
+    n.thirst = std::min(100, n.thirst + bleeding_now * hours);
+    if (died) on_killed(w, actor, killer, "bled_out");
+    return died;
+}
+
+bool rest_in_world(WorldState& w, const Id& actor, int hours) {
+    if (hours <= 0) return false;
+    advance_needs(w.needs, actor, hours, /*sleeping=*/true);
+    return advance_body_hours(w, actor, hours, /*resting=*/true);
+}
+
+int treat_in_world(WorldState& w, const Id& actor, const std::string& method, const Id& healer) {
+    const Combatant* c = find_combatant(w.combat, actor);
+    if (c != nullptr && c->dead) return -6;
+    if (method == "bind") {
+        const bool linen = held(w, actor, "linen_bandage") > 0;
+        const int n = treat_wounds(w.combat, actor, kTreatBound, linen);
+        if (linen && n > 0) give(w, actor, "linen_bandage", -1);
+        return n;
+    }
+    if (method == "herbs") {
+        if (held(w, actor, "healing_herbs") <= 0) return -3;
+        const int n = treat_wounds(w.combat, actor, kTreatHerbs, false);
+        if (n > 0) give(w, actor, "healing_herbs", -1);
+        return n;
+    }
+    if (method == "healer") {
+        if (!is_healer(w, healer) || healer == actor) return -4;
+        if (!pay(w, actor, healer, kHealerFee)) return -5;
+        return treat_wounds(w.combat, actor, kTreatHealer, true);
+    }
+    return -2;
+}
+
+Id file_combat_crime(WorldState& w, const Id& attacker, const Id& victim, const Id& place_city,
+                     const std::vector<Id>& witnesses, Id* crime_id) {
+    if (crime_id != nullptr) crime_id->clear();
+    // The pair's quarrel on record (Combat keeps one per pair: its day and first blow).
+    const Hostility* h = nullptr;
+    for (const Hostility& x : w.combat.hostilities)
+        if ((x.aggressor == attacker && x.other == victim) || (x.aggressor == victim && x.other == attacker))
+            h = &x;
+    if (h == nullptr) return {};
+    const DayNumber day = h->day;
+    const Combatant& v = combatant_of(w.combat, victim);
+    bool killed = false;
+    for (const DeathRecord& d : w.combat.deaths)
+        if (d.id == victim && d.killer == attacker) killed = true;
+
+    bool victim_outlaw = v.outlaw;
+    if (victim == "player")
+        for (const auto& [faction, flag] : w.faction.outlawed_by_faction)
+            if (flag) victim_outlaw = true;
+
+    Id law;
+    if (v.surrendered_to == attacker || v.captor == attacker)
+        law = killed ? "murder" : "assault";   // a man who yielded is under protection
+    else if (victim_outlaw)
+        law = "slaying_a_robber";
+    else if (duel_agreed(w.combat, attacker, victim, day))
+        law = killed ? "duel_killing" : "";
+    else if (first_aggressor(w.combat, attacker, victim, day) == victim)
+        law = "self_defence";
+    else
+        law = killed ? "murder" : "assault";
+    if (law.empty()) return {};
+    const Id id = commit_crime(w, attacker, law, place_city, witnesses, victim);
+    if (crime_id != nullptr) *crime_id = id;
+    return law;
+}
+
+Silver ransom_prisoner(WorldState& w, const Id& captive, Id* loan_id) {
+    if (loan_id != nullptr) loan_id->clear();
+    const Prisoner* p = find_prisoner(w.combat, captive);
+    if (p == nullptr) return -1;
+    const Id captor = p->captor;
+    const Silver paid = std::min<Silver>(kRansomSilver, std::max<Silver>(0, purse(w.property, captive)));
+    if (paid > 0) (void)pay(w, captive, captor, paid);
+    if (paid < kRansomSilver) {
+        Loan& l = issue_loan(w.property, captive, captor, kRansomSilver - paid, kRansomLoanRatePct, w.day,
+                             kRansomLoanTermDays);
+        if (loan_id != nullptr) *loan_id = l.id;
+    }
+    (void)release_prisoner(w.combat, captive);
+    return paid;
+}
+
+int loot_body(WorldState& w, const Id& looter, const Id& body) {
+    if (looter == body) return -1;
+    Combatant& b = combatant_of(w.combat, body);
+    if (!b.dead && b.captor != looter) return -1;
+    const auto inv = w.inventories.find(body);
+    int moved = 0;
+    Combatant& l = combatant_of(w.combat, looter);
+    if (inv != w.inventories.end()) {
+        const std::map<Id, int> goods = inv->second.counts;
+        for (const auto& [item, qty] : goods) {
+            if (qty <= 0) continue;
+            if (const auto d = b.durability.find(item); d != b.durability.end() && held(w, looter, item) <= 0)
+                l.durability[item] = d->second;  // the dead man's notched blade stays notched
+            give(w, looter, item, qty);
+            moved += qty;
+        }
+        inv->second.counts.clear();
+    }
+    b.weapon.clear();
+    b.shield.clear();
+    b.armour.clear();
+    b.durability.clear();
+    return moved;
+}
+
+int repair_at_smith(WorldState& w, const Id& actor, const Id& item, const Id& smith) {
+    const auto def = arms_def(w.db, item);
+    if (!def) return -2;
+    if (held(w, actor, item) <= 0) return -3;
+    if (!is_smith(w, smith)) return -4;
+    Combatant& c = combatant_of(w.combat, actor);
+    const int cur = current_durability(w.db, c, item);
+    if (def->durability <= 0 || cur >= def->durability) return -6;
+    if (cur <= 0 && is_castable(def->material_tier)) return -7;
+    const Silver fee = std::max<Silver>(1, band_of(w.db, item) * kRepairFeePerBand *
+                                               (def->durability - cur) / def->durability);
+    if (!pay(w, actor, smith, fee)) return -5;
+    c.durability.erase(item);  // full again
+    return 0;
+}
+
+int recast_at_smith(WorldState& w, const Id& actor, const Id& from, const Id& into, const Id& smith) {
+    const auto fd = arms_def(w.db, from);
+    const auto id = arms_def(w.db, into);
+    if (!fd || !id) return -2;
+    if (held(w, actor, from) <= 0) return -3;
+    if (!is_smith(w, smith)) return -4;
+    if (!is_castable(fd->material_tier) || !is_castable(id->material_tier)) return -7;
+    Silver fee = band_of(w.db, into) * kRecastFeePerBand;
+    if (id->weight_g > fd->weight_g) fee += (id->weight_g - fd->weight_g) / 100;  // more metal
+    if (id->material_tier == "tin_bronze" && fd->material_tier != "tin_bronze") fee += kTinFee;
+    if (!pay(w, actor, smith, fee)) return -5;
+    Combatant& c = combatant_of(w.combat, actor);
+    give(w, actor, from, -1);
+    if (held(w, actor, from) <= 0) {
+        (void)unequip(w.combat, actor, from);
+        c.durability.erase(from);
+    }
+    give(w, actor, into, 1);
+    c.durability.erase(into);  // fresh from the mould
+    return 0;
+}
+
+void tick_combat_world(WorldState& w) {
+    std::map<Id, Id> killer;
+    for (const auto& [id, c] : w.combat.by_actor) killer[id] = c.last_attacker;
+    for (const Id& id : tick_combat(w.combat, w.day)) on_killed(w, id, killer[id], "bled_out");
+}
+
+}  // namespace sim

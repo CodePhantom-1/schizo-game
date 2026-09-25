@@ -138,6 +138,19 @@ public:
             throw std::runtime_error("snapshot: bad integer '" + s + "'");
         }
     }
+    // W4-B: the first field of the next line, without consuming it ("" at
+    // the end) — lets a trailing optional section be recognised by its tag,
+    // whatever other optional sections precede it.
+    std::string peek_tag() {
+        const std::streampos pos = in_.tellg();
+        std::string line;
+        std::string tag;
+        if (std::getline(in_, line)) tag = unesc(split_tab(line).front());
+        in_.clear();
+        in_.seekg(pos);
+        return tag;
+    }
+
     static bool parse_bool(const std::string& s) {
         if (s == "1") return true;
         if (s == "0") return false;
@@ -330,6 +343,35 @@ std::string save_world(const WorldState& w) {
         wr.line({"RITE_OMENS", s64(static_cast<std::int64_t>(w.rite_effects.omens.size()))});
         for (const Omen& o : w.rite_effects.omens)
             wr.line({s64(o.day), o.rite_id, o.subject, o.sign, s64(o.confidence_pct)});
+    }
+
+    // W4-B COMBAT (additive trailing sections; optional on load, recognised
+    // by tag, so a save written before W4-B still loads).
+    {
+        wr.line({"COMBAT_ACTORS", s64(static_cast<std::int64_t>(w.combat.by_actor.size()))});
+        for (const auto& [id, c] : w.combat.by_actor) {
+            wr.line({id, s64(c.health), s64(c.stamina), s64(c.morale), s64(c.ko_hours), sbool(c.dead),
+                     sbool(c.outlaw), s64(c.rest_hours), c.style, c.surrendered_to, c.captor,
+                     c.last_attacker, c.weapon, c.shield, s64(static_cast<std::int64_t>(c.armour.size())),
+                     s64(static_cast<std::int64_t>(c.wounds.size())),
+                     s64(static_cast<std::int64_t>(c.lasting.size())),
+                     s64(static_cast<std::int64_t>(c.durability.size()))});
+            for (const Id& a : c.armour) wr.line({a});
+            for (const Wound& wd : c.wounds)
+                wr.line({s64(wd.zone), wd.type, s64(wd.severity), s64(wd.damage), s64(wd.remaining),
+                         s64(wd.bleed), s64(wd.clot_hours), s64(wd.treatment), s64(wd.day)});
+            for (const std::string& m : c.lasting) wr.line({m});
+            for (const auto& [item, dur] : c.durability) wr.line({item, s64(dur)});
+        }
+        wr.line({"COMBAT_HOSTILITY", s64(static_cast<std::int64_t>(w.combat.hostilities.size()))});
+        for (const Hostility& h : w.combat.hostilities) wr.line({h.aggressor, h.other, s64(h.day)});
+        wr.line({"COMBAT_DUELS", s64(static_cast<std::int64_t>(w.combat.duels.size()))});
+        for (const Duel& d : w.combat.duels) wr.line({d.a, d.b, s64(d.day)});
+        wr.line({"COMBAT_PRISONERS", s64(static_cast<std::int64_t>(w.combat.prisoners.size()))});
+        for (const Prisoner& p : w.combat.prisoners) wr.line({p.captive, p.captor, s64(p.day)});
+        wr.line({"COMBAT_DEATHS", s64(static_cast<std::int64_t>(w.combat.deaths.size()))});
+        for (const DeathRecord& d : w.combat.deaths) wr.line({d.id, s64(d.day), d.killer, d.cause});
+        wr.line({"COMBAT_SEQ", u64(w.combat.seq)});
     }
 
     return wr.str();
@@ -707,6 +749,92 @@ void load_world(WorldState& out, const std::string& canon_dir, const std::string
                 o.confidence_pct = static_cast<int>(Reader::parse_i64(f[4]));
                 w.rite_effects.omens.push_back(std::move(o));
             }
+        }
+
+        // W4-B COMBAT — absent in a pre-W4-B save: nobody is hurt.
+        w.combat = CombatState{};
+        if (rd.peek_tag() == "COMBAT_ACTORS") {
+            std::size_t n = rd.section("COMBAT_ACTORS");
+            for (std::size_t i = 0; i < n; ++i) {
+                std::vector<std::string> f = rd.next();
+                if (f.size() != 18) throw std::runtime_error("snapshot: bad combatant row");
+                Combatant c;
+                c.id = f[0];
+                c.health = static_cast<int>(Reader::parse_i64(f[1]));
+                c.stamina = static_cast<int>(Reader::parse_i64(f[2]));
+                c.morale = static_cast<int>(Reader::parse_i64(f[3]));
+                c.ko_hours = static_cast<int>(Reader::parse_i64(f[4]));
+                c.dead = Reader::parse_bool(f[5]);
+                c.outlaw = Reader::parse_bool(f[6]);
+                c.rest_hours = static_cast<int>(Reader::parse_i64(f[7]));
+                c.style = f[8];
+                c.surrendered_to = f[9];
+                c.captor = f[10];
+                c.last_attacker = f[11];
+                c.weapon = f[12];
+                c.shield = f[13];
+                const std::size_t na = static_cast<std::size_t>(Reader::parse_u64(f[14]));
+                const std::size_t nw = static_cast<std::size_t>(Reader::parse_u64(f[15]));
+                const std::size_t nl = static_cast<std::size_t>(Reader::parse_u64(f[16]));
+                const std::size_t nd = static_cast<std::size_t>(Reader::parse_u64(f[17]));
+                for (std::size_t j = 0; j < na; ++j) {
+                    std::vector<std::string> g = rd.next();
+                    if (g.size() != 1) throw std::runtime_error("snapshot: bad armour row");
+                    c.armour.push_back(g[0]);
+                }
+                for (std::size_t j = 0; j < nw; ++j) {
+                    std::vector<std::string> g = rd.next();
+                    if (g.size() != 9) throw std::runtime_error("snapshot: bad wound row");
+                    Wound wd;
+                    wd.zone = static_cast<int>(Reader::parse_i64(g[0]));
+                    wd.type = g[1];
+                    wd.severity = static_cast<int>(Reader::parse_i64(g[2]));
+                    wd.damage = static_cast<int>(Reader::parse_i64(g[3]));
+                    wd.remaining = static_cast<int>(Reader::parse_i64(g[4]));
+                    wd.bleed = static_cast<int>(Reader::parse_i64(g[5]));
+                    wd.clot_hours = static_cast<int>(Reader::parse_i64(g[6]));
+                    wd.treatment = static_cast<int>(Reader::parse_i64(g[7]));
+                    wd.day = Reader::parse_i64(g[8]);
+                    c.wounds.push_back(std::move(wd));
+                }
+                for (std::size_t j = 0; j < nl; ++j) {
+                    std::vector<std::string> g = rd.next();
+                    if (g.size() != 1) throw std::runtime_error("snapshot: bad lasting-effect row");
+                    c.lasting.push_back(g[0]);
+                }
+                for (std::size_t j = 0; j < nd; ++j) {
+                    std::vector<std::string> g = rd.next();
+                    if (g.size() != 2) throw std::runtime_error("snapshot: bad durability row");
+                    c.durability[g[0]] = static_cast<int>(Reader::parse_i64(g[1]));
+                }
+                const Id key = c.id;
+                w.combat.by_actor[key] = std::move(c);
+            }
+            n = rd.section("COMBAT_HOSTILITY");
+            for (std::size_t i = 0; i < n; ++i) {
+                std::vector<std::string> f = rd.next();
+                if (f.size() != 3) throw std::runtime_error("snapshot: bad hostility row");
+                w.combat.hostilities.push_back(Hostility{f[0], f[1], Reader::parse_i64(f[2])});
+            }
+            n = rd.section("COMBAT_DUELS");
+            for (std::size_t i = 0; i < n; ++i) {
+                std::vector<std::string> f = rd.next();
+                if (f.size() != 3) throw std::runtime_error("snapshot: bad duel row");
+                w.combat.duels.push_back(Duel{f[0], f[1], Reader::parse_i64(f[2])});
+            }
+            n = rd.section("COMBAT_PRISONERS");
+            for (std::size_t i = 0; i < n; ++i) {
+                std::vector<std::string> f = rd.next();
+                if (f.size() != 3) throw std::runtime_error("snapshot: bad prisoner row");
+                w.combat.prisoners.push_back(Prisoner{f[0], f[1], Reader::parse_i64(f[2])});
+            }
+            n = rd.section("COMBAT_DEATHS");
+            for (std::size_t i = 0; i < n; ++i) {
+                std::vector<std::string> f = rd.next();
+                if (f.size() != 4) throw std::runtime_error("snapshot: bad death row");
+                w.combat.deaths.push_back(DeathRecord{f[0], Reader::parse_i64(f[1]), f[2], f[3]});
+            }
+            w.combat.seq = Reader::parse_u64(rd.scalar("COMBAT_SEQ"));
         }
 
         out = std::move(w);  // atomic: only reached once parsing fully succeeded

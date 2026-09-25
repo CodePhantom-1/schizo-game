@@ -9,6 +9,8 @@
 // performed impure, a rumour crosses the city at walking speed.
 #include "sim/Context.hpp"
 #include "sim/RiteEffects.hpp"
+// W4-B: combat
+#include "sim/Combat.hpp"
 
 namespace sim {
 
@@ -39,6 +41,11 @@ struct WorldState {
     // by the caller-side applier in sim/Rites.hpp — never by Magic, never by
     // the daily tick.
     RiteEffectsState rite_effects;
+
+    // W4-B: combat — health, stamina, zonal wounds, arms and armour worn,
+    // prisoners, duels, deaths. Written by sim/Combat.hpp and its caller layer
+    // sim/CombatActions.hpp; healed once a day by advance_days.
+    CombatState combat;
 
     // Loads canon from canon_dir, seeds markets and people, prepares the calendar.
     void init(const std::string& canon_dir, std::uint64_t world_seed);
