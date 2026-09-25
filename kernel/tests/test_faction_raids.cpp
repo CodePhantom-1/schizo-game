@@ -94,8 +94,9 @@ static bool test_raid_politics_rules() {
     SIM_CHECK(!imperial.blocked);
 
     // An outlawed faction's law is broken: the sworn peace is void and its
-    // bands owe nobody quarter.
-    outlaw(w.faction, "neo_sumerian_rebellion");
+    // bands owe nobody quarter. (VERIFY-A B7.11: this is the FACTION book —
+    // the player's own exile with the rebellion must not void this pact.)
+    w.faction.outlawed_factions.insert("neo_sumerian_rebellion");
     const wild::RaidPolitics outlawed = wild::raid_politics(w, *sons, city);
     SIM_CHECK(!outlawed.blocked);
     SIM_CHECK_EQ(outlawed.defence, 0);
@@ -151,7 +152,7 @@ static bool test_assess_target_carries_the_politics_points() {
     SIM_CHECK(reined.blocked);
     SIM_CHECK_EQ(reined.chance_bp, 0);
     SIM_CHECK_EQ(reined.defence - wild::assess_target(w, p, sons, "fields", w.day).defence, 0);
-    outlaw(w.faction, "neo_sumerian_rebellion");
+    w.faction.outlawed_factions.insert("neo_sumerian_rebellion");
     const RaidAssessment loosed = wild::assess_target(w, p, sons, "fields", w.day);
     SIM_CHECK(!loosed.blocked);
     SIM_CHECK(loosed.chance_bp > 0);

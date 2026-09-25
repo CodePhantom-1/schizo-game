@@ -133,3 +133,6 @@ hardcoded player-faction id (none exists in canon).
 - Unaligned bands carry grudges again: the grudge rule fires before the faction check (the W4-C caravan-grudge weight's original reading, restored on review; dormant in today's canon either way).
 - `sim_world_band_politics` returns -1 for an unknown group id (an unaligned band still reads ";0;0;" — the two are distinguishable now, as the header always promised).
 - `sim_world_treaty`'s terms field carries only the machine tokens ('|'-joined, e.g. `no_raids`); the prose terms stay in treaties.csv.
+
+## VERIFY-A follow-up (B7.11, 2026-09-25)
+- Faction outlawry (a faction declared outlaw — voids its treaties, frees its bands) now lives in its own book (`FactionState::outlawed_factions`); the player's per-jurisdiction exile (`outlawed_by_faction`, written by death/exile verdicts) no longer voids factions' pacts. Nothing in canon writes the faction book yet.

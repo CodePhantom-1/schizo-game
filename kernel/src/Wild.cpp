@@ -340,7 +340,10 @@ const TreatyDef* live_treaty_between(const WorldState& w, const Id& a, const Id&
         for (const std::string& term : split(t.terms, ';'))
             no_raids = no_raids || term == "no_raids";
         if (!no_raids) continue;
-        if (is_outlawed(w.faction, a) || is_outlawed(w.faction, b)) continue;  // void
+        if (w.faction.outlawed_factions.count(a) > 0 ||
+            w.faction.outlawed_factions.count(b) > 0)
+            continue;  // a declared-outlaw party voids the pact (VERIFY-A B7.11:
+                       // the player's own exile must NOT void factions' treaties)
         return &t;
     }
     return nullptr;

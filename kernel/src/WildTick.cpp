@@ -136,7 +136,7 @@ RaidPolitics raid_politics(const WorldState& w, const GroupDef& def, const Id& h
         if (!p.note.empty()) p.note += ',';
         p.note += why;
     };
-    const bool outlawed = is_outlawed(w.faction, def.faction);
+    const bool outlawed = w.faction.outlawed_factions.count(def.faction) > 0;
     if (outlawed) {
         // An outlawed faction's law is broken: its sworn peace is void and its
         // bands owe nobody quarter — they raid anyone opportunity allows.

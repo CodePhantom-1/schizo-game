@@ -13,6 +13,7 @@
 #include "sim/Types.hpp"
 
 #include <map>
+#include <set>
 #include <vector>
 
 
@@ -39,6 +40,12 @@ struct FactionState {
     // exactly "stateless outside any city's protection", i.e. zero standing
     // and marked outlawed with that jurisdiction.
     std::map<Id, bool> outlawed_by_faction;
+    // W5-B review split (VERIFY-A B7.11): genuine FACTION outlawry (a
+    // faction declared outlaw, voiding its treaties) — distinct from
+    // outlawed_by_faction, which is the PLAYER's per-jurisdiction exile
+    // record written by death/exile verdicts. Nothing writes this yet; the
+    // wild-lands politics reads it.
+    std::set<Id> outlawed_factions;
 };
 
 void tick_faction(const WorldContext& ctx, FactionState& state, int days = 1);

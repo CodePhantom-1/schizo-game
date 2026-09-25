@@ -117,25 +117,25 @@ def build_sky_material():
     mat.set_editor_property("two_sided", True)
 
     horizon = MEL.create_material_expression(mat, unreal.MaterialExpressionConstant3Vector, -600, 100)
-    horizon.set_editor_property("constant_value", SKY_HORIZON)
+    horizon.set_editor_property("constant", SKY_HORIZON)
     zenith = MEL.create_material_expression(mat, unreal.MaterialExpressionConstant3Vector, -600, 340)
-    zenith.set_editor_property("constant_value", SKY_ZENITH)
+    zenith.set_editor_property("constant", SKY_ZENITH)
     lerp = MEL.create_material_expression(mat, unreal.MaterialExpressionLinearInterpolate, -330, 220)
-    MEL.connect_material_properties(horizon, "", lerp, "A")
-    MEL.connect_material_properties(zenith, "", lerp, "B")
+    MEL.connect_material_expressions(horizon, "", lerp, "A")
+    MEL.connect_material_expressions(zenith, "", lerp, "B")
 
     world_pos = MEL.create_material_expression(mat, unreal.MaterialExpressionWorldPosition, -950, 480)
     divide = MEL.create_material_expression(mat, unreal.MaterialExpressionDivide, -730, 480)
-    MEL.connect_material_properties(world_pos, "", divide, "A")
+    MEL.connect_material_expressions(world_pos, "", divide, "A")
     radius = MEL.create_material_expression(mat, unreal.MaterialExpressionScalarParameter, -950, 640)
     radius.set_editor_property("parameter_name", "DomeRadius")
     radius.set_editor_property("default_value", SKY_DOME_RADIUS_CM)
-    MEL.connect_material_properties(radius, "", divide, "B")
+    MEL.connect_material_expressions(radius, "", divide, "B")
     clamp = MEL.create_material_expression(mat, unreal.MaterialExpressionClamp, -510, 480)
-    MEL.connect_material_properties(divide, "", clamp, "Input")  # Min/Max default 0..1
-    MEL.connect_material_properties(clamp, "", lerp, "Alpha")
+    MEL.connect_material_expressions(divide, "", clamp, "")  # main in/out pins are unnamed; Min/Max default 0..1
+    MEL.connect_material_expressions(clamp, "", lerp, "Alpha")
 
-    MEL.connect_material_property(mat, unreal.MaterialProperty.MP_EMISSIVE, lerp, "")
+    MEL.connect_material_property(lerp, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     MEL.recompile_material(mat)
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
     unreal.log(f"ue_import_props: M_SkyDome authored (unlit two-sided gradient, "

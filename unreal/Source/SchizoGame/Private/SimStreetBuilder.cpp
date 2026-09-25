@@ -359,14 +359,17 @@ void ASimStreetBuilder::SpawnDoorSlot(const FSimDoorSlotInfo& Slot)
 
 FVector ASimStreetBuilder::BuildGate(const FVector2D& Center)
 {
-	// Two chunky wall-piece pillars (1x1 m footprints) flanking a 2 m
-	// opening on the street axis, one timber lintel scaled across the
-	// opening at pillar-top height (the lintel piece's own geometry sits
+	// Two chunky pillars (1x1 m, full wall height) flanking the street's
+	// 2 m passage: the street runs along X, so the pillars stand NORTH and
+	// SOUTH of the centreline (Y +100..+200 and -200..-100) and the player
+	// walks between them along X. The timber lintel bridges the passage
+	// across Y at pillar-top height (the lintel piece's own geometry sits
 	// at door-head height above its origin, so z-scale 1.3 = 260/200 lifts
-	// it from 2.0 m to exactly the wall top).
-	ISM_WallPlain->AddInstance(PieceTransform(Center.X - 2.f * GRID, Center.Y - GRID * 0.5f, 0.f, 90.f, GRID, GRID, FVector(1.f, 2.5f, 1.f)));
-	ISM_WallPlain->AddInstance(PieceTransform(Center.X + GRID, Center.Y - GRID * 0.5f, 0.f, 270.f, GRID, GRID, FVector(1.f, 2.5f, 1.f)));
-	ISM_Lintel->AddInstance(PieceTransform(Center.X - GRID, Center.Y - WALL_THICK * 0.5f, 0.f, 0.f, 220.f, WALL_THICK, FVector(2.f, 1.f, 1.3f)));
+	// it from 2.0 m to exactly the wall top). Audit P1-1: the previous
+	// orientation flanked along X and blocked the street centreline.
+	ISM_WallPlain->AddInstance(PieceTransform(Center.X - GRID * 0.5f, Center.Y + GRID, 0.f, 0.f, GRID, GRID));
+	ISM_WallPlain->AddInstance(PieceTransform(Center.X - GRID * 0.5f, Center.Y - 2.f * GRID, 0.f, 0.f, GRID, GRID));
+	ISM_Lintel->AddInstance(PieceTransform(Center.X - WALL_THICK * 0.5f, Center.Y - 110.f, 0.f, 0.f, WALL_THICK, 220.f, FVector(1.f, 1.f, 1.3f)));
 	return FVector(Center.X, Center.Y, 0.f);
 }
 

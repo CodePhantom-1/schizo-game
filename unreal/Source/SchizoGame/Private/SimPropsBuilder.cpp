@@ -126,7 +126,7 @@ ASimSkyDome::ASimSkyDome()
 	// Spawned after begin play: movable registers; static would not draw.
 	DomeMesh->SetMobility(EComponentMobility::Movable);
 	DomeMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	DomeMesh->bCastShadow = false;
+	DomeMesh->SetCastShadow(false);
 }
 
 void ASimSkyDome::SetupDome(float RadiusCm)
@@ -166,7 +166,8 @@ void ASimSkyDome::SetupDome(float RadiusCm)
 			TEXT("Sky dome: M_SkyDome not imported (run tools/art/ue_import_props.py) — flat fallback colour."));
 		if (UMaterial* Base = LoadObject<UMaterial>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial")))
 		{
-			if (UMaterialInstanceDynamic* Mic = DomeMesh->CreateAndSetMaterialInstanceDynamic(0, Base))
+			DomeMesh->SetMaterial(0, Base);
+			if (UMaterialInstanceDynamic* Mic = DomeMesh->CreateAndSetMaterialInstanceDynamic(0))
 			{
 				Mic->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.55f, 0.65f, 0.78f));
 			}
@@ -271,19 +272,19 @@ void USimPropsBuilder::SpawnPostPolish()
 #if WITH_EDITOR
 	Volume->SetActorLabel(TEXT("SimPostPolish"));
 #endif
-	FPostProcessSettings& P = Volume->Settings;
-	P.bUnbound = true;
-	P.Weight = 1.f;
+	Volume->bUnbound = true;
+	Volume->BlendWeight = 1.f;
 	// Conservative D-023 grade — the look is carried by grading, not
 	// fidelity. Values logged in docs/proposals/invented-ledger-dressing.md.
+	FPostProcessSettings& P = Volume->Settings;
 	P.bOverride_WhiteTemp = true;         // warm-white balance (6500 neutral)
 	P.WhiteTemp = 6000.f;
 	P.bOverride_VignetteIntensity = true; // a slight eye-draw to the street
 	P.VignetteIntensity = 0.5f;
-	P.bOverride_FilmSaturation = true;    // mild filmic saturation
-	P.FilmSaturation = 1.1f;
-	P.bOverride_FilmContrast = true;
-	P.FilmContrast = 0.05f;
+	P.bOverride_ColorSaturation = true;   // mild filmic saturation (5.8: per-channel)
+	P.ColorSaturation = FVector4(1.1f, 1.1f, 1.1f, 1.1f);
+	P.bOverride_ColorContrast = true;
+	P.ColorContrast = FVector4(1.05f, 1.05f, 1.05f, 1.05f);
 }
 
 int32 USimPropsBuilder::PlaceStreetProps()

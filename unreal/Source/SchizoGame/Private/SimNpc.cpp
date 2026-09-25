@@ -39,7 +39,7 @@ namespace
 	// carry a ~4x export scale and whether the importer applied the metre
 	// -> cm conversion is its call, so the capsule (2 x 88 half-height) is
 	// the one honest ruler in the room.
-	constexpr float kBodyHeightCm = 176.f;
+	constexpr float kNpcBodyHeightCm = 176.f;
 }
 
 ASimNpc::ASimNpc()
@@ -104,7 +104,7 @@ bool ASimNpc::ApplyCharacterBody()
 			const float MeshHeightCm = SkelMesh->GetBounds().BoxExtent.Z * 2.f;
 			if (MeshHeightCm > 1.f)
 			{
-				SkelComp->SetRelativeScale3D(FVector(kBodyHeightCm / MeshHeightCm));
+				SkelComp->SetRelativeScale3D(FVector(kNpcBodyHeightCm / MeshHeightCm));
 			}
 			SkelComp->SetVisibility(true);
 			SkelComp->SetHiddenInGame(false);
@@ -136,7 +136,7 @@ bool ASimNpc::ApplyCharacterBody()
 			const float MeshHeightCm = SourceBounds.GetSize().Z;
 			if (MeshHeightCm > 1.f)
 			{
-				const float Scale = kBodyHeightCm / MeshHeightCm;
+				const float Scale = kNpcBodyHeightCm / MeshHeightCm;
 				BodyMesh->SetRelativeScale3D(FVector(Scale));
 				// Put the mesh's own box floor on the capsule floor,
 				// wherever the artist put the pivot.

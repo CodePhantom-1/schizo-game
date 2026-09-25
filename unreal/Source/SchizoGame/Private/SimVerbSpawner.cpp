@@ -63,7 +63,6 @@ void USimVerbSpawner::SpawnDoorsAtSlots()
 	// 2 m leaf off the ground instead of half-burying it.
 	constexpr float kApproachOffset = 80.f;  // GRID 100 - WALL_THICK/2 20
 	constexpr float kLeafHalfHeight = 100.f;
-	const bool bGateOpensAlongX = true;  // the gate's opening spans X (street runs Y through it)
 
 	int32 Count = 0;
 	TArray<FSimDoorSlotInfo> Slots;
@@ -80,10 +79,9 @@ void USimVerbSpawner::SpawnDoorsAtSlots()
 			float LeafWidthScale = 1.f;
 			if (Slot.PlaceId == TEXT("moon_gate_place"))
 			{
-				// The gate straddles the street axis: the opening spans X, so
-				// the leaf swings across it — quarter-turn the yaw and double
-				// the width to fill the 2 m gap.
-				LeafRot.Yaw += bGateOpensAlongX ? 90.f : -90.f;
+				// The gate's 2 m opening spans Y (the street walks along X):
+				// the leaf keeps the wall-face yaw and doubles its width to
+				// fill the gap (audit P1-1 fix — no quarter-turn).
 				LeafWidthScale = 2.f;
 			}
 			FActorSpawnParameters Params;

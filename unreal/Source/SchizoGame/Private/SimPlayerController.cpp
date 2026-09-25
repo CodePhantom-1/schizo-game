@@ -205,7 +205,7 @@ void ASimPlayerController::OnUse()
 	}
 	else
 	{
-		UE_LOG(LogSchizoGame, Log, TEXT("Use hit nothing within 300 units."));
+		UE_LOG(LogSchizoGame, Log, TEXT("Use hit nothing within 500 units."));
 	}
 }
 

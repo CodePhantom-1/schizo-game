@@ -64,10 +64,13 @@ AUTHORED_MATS = [
 # UE's default 0.5 roughness without this.
 KIT_MAT_ROUGHNESS = 0.95
 
-# Pieces with interior cuts (doorways, windows, the roof-access hatch, the
-# awning over the stalls): a convex hull of these is the solid slab, so they
-# must NOT carry auto collision — see import_fbx.
-NO_COLLISION_PIECES = {"SM_WallDoor", "SM_WallWindow", "SM_RoofAccess", "SM_Awning"}
+# Pieces with interior cuts where a convex hull would seal the cut: a hull
+# of a wall-with-doorway is the solid slab, so doorways must stay collision-
+# free (passage is the door leaf's job). Windows and the roof hatch KEEP a
+# hull (audit P2-1: the 35 cm clerestory cut cannot fit a 68 cm capsule, so
+# the hull only seals what the wall around the cut should seal anyway); the
+# awning stays collision-free so it cannot wedge over the stalls.
+NO_COLLISION_PIECES = {"SM_WallDoor", "SM_Awning"}
 
 
 def kit_pieces():
