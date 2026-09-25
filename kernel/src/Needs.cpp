@@ -52,6 +52,7 @@ int hunger_restore_for_category(const std::string& category) {
     if (category == "staple") return 30;                      // grain, wheat
     if (category == "ration") return 25;                      // drought_ration_measure
     if (category == "staple food") return 20;                 // dates
+    if (category == "staple baked food") return 30;           // bread (T4) — a staple, same as grain
     return 0;
 }
 

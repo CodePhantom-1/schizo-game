@@ -40,6 +40,16 @@ static bool test_eat_reduces_hunger() {
     return true;
 }
 
+static bool test_bread_is_food() {
+    Db db = load_canon();
+    NeedsState s;
+    advance_needs(s, "player", 20, false);
+    const int before = needs_of(s, "player").hunger;
+    SIM_CHECK(eat(db, s, "player", "bread"));  // T4's crafted bread, staple baked food, -30
+    SIM_CHECK_EQ(needs_of(s, "player").hunger, before - 30);
+    return true;
+}
+
 static bool test_drink_reduces_thirst() {
     Db db = load_canon();
     NeedsState s;
@@ -118,6 +128,6 @@ static bool test_per_actor_independent() {
     return true;
 }
 
-SIM_MAIN(test_decay_over_hours, test_sleeping_restores_fatigue, test_eat_reduces_hunger,
+SIM_MAIN(test_decay_over_hours, test_bread_is_food, test_sleeping_restores_fatigue, test_eat_reduces_hunger,
           test_drink_reduces_thirst, test_refuses_non_food_non_drink, test_effect_thresholds,
           test_clamping_0_100, test_determinism, test_per_actor_independent)
