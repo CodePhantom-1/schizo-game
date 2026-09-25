@@ -5,10 +5,13 @@
 #include "SimWorldSubsystem.h"
 
 #include "Components/DirectionalLightComponent.h"
+#include "Components/ExponentialHeightFogComponent.h"
 #include "Components/SkyLightComponent.h"
 #include "Engine/DirectionalLight.h"
+#include "Engine/ExponentialHeightFog.h"
 #include "Engine/SkyLight.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "Kismet/GameplayStatics.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogSimDayNight, Log, All);
@@ -19,6 +22,10 @@ constexpr float kNightIntensity = 0.05f;  // real darkness — moonlight only
 constexpr float kDayIntensity = 8.f;
 constexpr float kFillNightIntensity = 0.02f;
 constexpr float kFillDayIntensity = 1.0f;
+// The shadowless stand-in for sky bounce (a real SkyLight would wedge the
+// GPU — see the header): dim, from high above, never casts shadows.
+constexpr float kSkyFillDayIntensity = 1.6f;
+constexpr float kSkyFillNightIntensity = 0.08f;
 }  // namespace
 
 ASimDayNight::ASimDayNight()
@@ -90,6 +97,62 @@ void ASimDayNight::FindOrSpawnLights()
 			break;
 		}
 	}
+
+	// The sky-bounce stand-in: a second, dim, SHADOWLESS directional from
+	// high overhead. A one-light world crushes every unlit face to black —
+	// "shapes floating in darkness" — and this is the safe ambient (no
+	// cubemap capture anywhere near the GPU-hang path).
+	TArray<AActor*> FillTagged;
+	UGameplayStatics::GetAllActorsWithTag(this, FName("SimSkyFill"), FillTagged);
+	for (AActor* Actor : FillTagged)
+	{
+		if (ADirectionalLight* Found = Cast<ADirectionalLight>(Actor))
+		{
+			SkyFill = Found;
+			break;
+		}
+	}
+	if (SkyFill == nullptr)
+	{
+		FActorSpawnParameters Params;
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		SkyFill = World->SpawnActor<ADirectionalLight>(FVector::ZeroVector, FRotator(65.f, 35.f, 0.f), Params);
+		if (SkyFill != nullptr)
+		{
+			SkyFill->Tags.Add(FName("SimSkyFill"));
+			if (UDirectionalLightComponent* Comp = Cast<UDirectionalLightComponent>(SkyFill->GetLightComponent()))
+			{
+				Comp->SetCastShadows(false);
+				Comp->SetIntensity(kSkyFillDayIntensity);
+			}
+		}
+	}
+
+	// The sky itself: without something in the distance the world floats in
+	// a pure-black void. Height fog (a warm-dust haze by day, near-black at
+	// night) reads as Mesopotamian dust instead of nothing.
+	if (Haze == nullptr)
+	{
+		TActorIterator<AExponentialHeightFog> ExistingFog(World);
+		if (ExistingFog)
+		{
+			Haze = *ExistingFog;
+		}
+	}
+	if (Haze == nullptr)
+	{
+		FActorSpawnParameters Params;
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		Haze = World->SpawnActor<AExponentialHeightFog>(FVector(0.f, 0.f, 0.f), FRotator::ZeroRotator, Params);
+		if (Haze != nullptr)
+		{
+			if (UExponentialHeightFogComponent* Fog = Haze->GetComponent())
+			{
+				Fog->SetFogDensity(0.015f);
+				Fog->SetFogHeightFalloff(0.4f);
+			}
+		}
+	}
 }
 
 void ASimDayNight::Tick(float DeltaSeconds)
@@ -117,6 +180,23 @@ void ASimDayNight::Tick(float DeltaSeconds)
 	if (UDirectionalLightComponent* Comp = Cast<UDirectionalLightComponent>(Sun->GetLightComponent()))
 	{
 		Comp->SetIntensity(bNight ? kNightIntensity : kDayIntensity);
+	}
+	if (SkyFill != nullptr)
+	{
+		if (UDirectionalLightComponent* Comp = Cast<UDirectionalLightComponent>(SkyFill->GetLightComponent()))
+		{
+			Comp->SetIntensity(bNight ? kSkyFillNightIntensity : kSkyFillDayIntensity);
+		}
+	}
+	if (Haze != nullptr)
+	{
+		if (UExponentialHeightFogComponent* Fog = Haze->GetComponent())
+		{
+			// Warm dust by day; near-black at night so darkness stays real.
+			Fog->SetFogInscatteringColor(bNight
+				? FLinearColor(0.005f, 0.006f, 0.01f)
+				: FLinearColor(0.28f, 0.22f, 0.15f));
+		}
 	}
 	if (Fill != nullptr)
 	{

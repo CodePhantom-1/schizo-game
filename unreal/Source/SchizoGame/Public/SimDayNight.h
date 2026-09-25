@@ -4,6 +4,11 @@
 // immersion rule). Purely a REFLECTION of the kernel's clock and schedule
 // world: the kernel already closes the shops (schedule rows move residents
 // home); this actor only makes the light agree.
+//
+// Ambient: a captured SkyLight wedges the GPU on this machine (DECISIONS.md),
+// so a second, dim, shadowless directional ("SimSkyFill") stands in for sky
+// bounce, and an exponential height fog stands in for the sky itself — no
+// cubemap captures anywhere.
 #pragma once
 
 #include "CoreMinimal.h"
@@ -11,6 +16,7 @@
 #include "SimDayNight.generated.h"
 
 class ADirectionalLight;
+class AExponentialHeightFog;
 class ASkyLight;
 
 UCLASS()
@@ -33,15 +39,23 @@ protected:
 	virtual void BeginPlay() override;
 
 private:
-	/** Finds actors tagged SimSun / SimSkyLight in the level; spawns a
-	    directional light (+ a sky light for night fill) where none exists. */
+	/** Finds actors tagged SimSun / SimSkyLight / SimSkyFill in the level;
+	    spawns the sun, the shadowless fill and the fog where none exist. */
 	void FindOrSpawnLights();
 
 	UPROPERTY()
 	TObjectPtr<ADirectionalLight> Sun;
 
+	/** A sky light the level already placed (kept for authored maps); never
+	    spawned here — see the header comment. */
 	UPROPERTY()
 	TObjectPtr<ASkyLight> Fill;
+
+	UPROPERTY()
+	TObjectPtr<ADirectionalLight> SkyFill;
+
+	UPROPERTY()
+	TObjectPtr<AExponentialHeightFog> Haze;
 
 	float LastLoggedHour = -1.f;
 };
