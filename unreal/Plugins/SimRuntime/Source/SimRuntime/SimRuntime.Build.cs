@@ -13,14 +13,14 @@ public class SimRuntime : ModuleRules
 		PublicIncludePaths.Add(System.IO.Path.Combine(
 			ModuleDirectory, "..", "..", "..", "..", "..", "kernel", "include"));
 
-		// The CMake-built kernel static library (Release). Built by:
-		//   cmake -S kernel -B kernel/build -DCMAKE_BUILD_TYPE=Release && cmake --build kernel/build
-		// TODO(Phase 3 bring-up): verify the artifact name/path per configuration,
-		// and decide static-link vs shared once the editor's module lifetime is known.
+		// The CMake-built kernel static library (Release). MUST be built with
+		// tools/build_kernel_for_ue.sh, not a plain `cmake -S kernel -B kernel/build-ue`:
+		// that uses the host g++/glibc, which fails to link into this module (ABI/symbol
+		// mismatch against UBT's bundled clang+sysroot toolchain). See that script's
+		// header comment for the full story.
 		// Fully qualified: UBT warns (slow deps) on unresolvable relative library paths.
 		PublicAdditionalLibraries.Add(System.IO.Path.Combine(
 			ModuleDirectory, "..", "..", "..", "..", "..", "kernel", "build-ue", "libsim_core.a"));
-
 
 		PublicDependencyModuleNames.AddRange(new string[]
 		{
