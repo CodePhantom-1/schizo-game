@@ -1,5 +1,6 @@
-// SimNpc.h — W6-C: the street lives. One kernel npc made visible: a capsule
-// with a basic engine body (no skeletons yet — a later wave), walking on foot
+// SimNpc.h — W6-C: the street lives. One kernel npc made visible: a low-poly
+// rigged body from the CC0 character cast (/Game/Art/Characters, ART-2) —
+// or, until that import runs, a tinted engine cylinder — walking on foot
 // toward wherever ASimNpcDirector last pointed it. The actor MIRRORS the
 // kernel's schedule; it never decides where to be (the kernel's rule is the
 // engine's rule).
@@ -48,15 +49,42 @@ public:
 	FString GetCurrentScheduleId() const { return CurrentScheduleId; }
 
 private:
-	/** The grey-box body: no skeleton exists yet, so a scaled engine cylinder
-	    stands in for the character mesh (ACharacter's own
-	    SkeletalMeshComponent stays hidden until one does). */
+	/** The grey-box body: a scaled engine cylinder stands in for the
+	    character mesh until the art pass imports one (it is hidden, not
+	    destroyed, the moment a rigged body loads — see
+	    ApplyCharacterBody). */
 	UPROPERTY(VisibleAnywhere, Category = "Sim")
 	TObjectPtr<class UStaticMeshComponent> BodyMesh;
 
 	/** The kernel npc id (people.csv id). */
 	UPROPERTY(VisibleAnywhere, Category = "Sim")
 	FString NpcId;
+
+	/** ART-2 character pass: the imported body's looping clips
+	    (/Game/Art/Characters/NpcN/Anims — Walk/Idle), kept as UPROPERTYs so
+	    GC can't pull them mid-street. Null until a rigged mesh loads. */
+	UPROPERTY()
+	TObjectPtr<class UAnimationAsset> WalkAnim;
+
+	UPROPERTY()
+	TObjectPtr<class UAnimationAsset> IdleAnim;
+
+	/** Which of the two clips is playing (raw alias of Walk/Idle — they are
+	    referenced above, this only compares). */
+	class UAnimationAsset* CurrentAnim = nullptr;
+
+	/** True once a rigged /Game/Art/Characters body took over from the
+	    cylinder (the anim switch and the tint skip key off this). */
+	bool bSkeletalBody = false;
+
+	/** Try to replace the cylinder with the imported low-poly body for
+	    this npc's hash-picked variant (skeletal preferred, static mesh
+	    second, cylinder stays if neither asset exists yet). */
+	bool ApplyCharacterBody();
+
+	/** Single-clip locomotion: walk while moving, idle otherwise (no anim
+	    blueprint in the slice — see docs/proposals/invented-ledger-humans.md). */
+	void UpdateBodyAnimation(bool bMoving);
 
 	FVector TargetLocation = FVector::ZeroVector;
 	FString CurrentScheduleId;

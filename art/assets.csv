@@ -50,3 +50,13 @@ SM_PropBreadLoaves,art/generated/props/meshes/SM_PropBreadLoaves.fbx,mesh_street
 SM_PropBrazier,art/generated/props/meshes/SM_PropBrazier.fbx,mesh_street_prop,"original (procedural, generated code)",docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
 SM_PropWaterSkin,art/generated/props/meshes/SM_PropWaterSkin.fbx,mesh_street_prop,"original (procedural, generated code)",docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
 SM_SkyDome,art/generated/props/meshes/SM_SkyDome.fbx,mesh_street_prop,"original (procedural, generated code)",docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
+Player,art/source/characters/Casual3_Male.gltf,character_model,CC0,https://quaternius.com/packs/ultimatedanimatedcharacter.html,A
+Npc0,art/source/characters/Worker_Male.gltf,character_model,CC0,https://quaternius.com/packs/ultimatedanimatedcharacter.html,A
+Npc1,art/source/characters/Worker_Female.gltf,character_model,CC0,https://quaternius.com/packs/ultimatedanimatedcharacter.html,A
+Npc2,art/source/characters/Casual_Male.gltf,character_model,CC0,https://quaternius.com/packs/ultimatedanimatedcharacter.html,A
+Npc3,art/source/characters/Casual_Female.gltf,character_model,CC0,https://quaternius.com/packs/ultimatedanimatedcharacter.html,A
+Npc4,art/source/characters/Casual2_Female.gltf,character_model,CC0,https://quaternius.com/packs/ultimatedanimatedcharacter.html,A
+Npc5,art/source/characters/OldClassy_Male.gltf,character_model,CC0,https://quaternius.com/packs/ultimatedanimatedcharacter.html,A
+Npc6,art/source/characters/OldClassy_Female.gltf,character_model,CC0,https://quaternius.com/packs/ultimatedanimatedcharacter.html,A
+Npc7,art/source/characters/Kimono_Male.gltf,character_model,CC0,https://quaternius.com/packs/ultimatedanimatedcharacter.html,A
+Npc8,art/source/characters/Wizard.gltf,character_model,CC0,https://quaternius.com/packs/ultimatedanimatedcharacter.html,A
