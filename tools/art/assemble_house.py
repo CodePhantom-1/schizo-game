@@ -149,7 +149,13 @@ def build_courtyard_floor(x0, y0, w, d):
     for i in range(w):
         for j in range(d):
             t = hk.build_courtyard_tile()
-            objs.append(place(t, (x0 + i) * G, (y0 + j) * G, 0.0, 0, CELL_SIZE))
+            # sit the floor slab just below z=0 (the walls' own base), so it
+            # reads as a foundation slab flush under the walls rather than
+            # sharing the same z-band as the wall base (which volumetrically
+            # overlapped every wall tile it was under).
+            objs.append(
+                place(t, (x0 + i) * G, (y0 + j) * G, -kc.TILE_THICK, 0, CELL_SIZE)
+            )
             bpy.data.objects.remove(t, do_unlink=True)
     return objs
 
