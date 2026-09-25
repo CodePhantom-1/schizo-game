@@ -1,0 +1,6 @@
+id,name,inputs,outputs,station,hours,tag,source_ref
+mill_flour,Milling flour,grain:1,barley_flour:1,quern,1,A,Ur III temple and palace ration lists and lexical lists (barley ground in stone querns for bread; db/canon/foods.csv barley_bread)
+bake_bread,Baking bread,barley_flour:2;water:1,bread:1,oven,1,A,Ur III temple and palace ration lists (barley flour kneaded and baked as flat loaves in clay ovens; db/canon/foods.csv barley_bread)
+malt_barley,Malting barley,grain:2,malted_barley:1,quern,2,A,Sumerian Hymn to Ninkasi (Old Babylonian copies; barley malted for brewing; db/canon/foods.csv barley_beer)
+bake_bappir,Baking beer-bread,malted_barley:2;water:1,bappir:1,oven,1,A,Sumerian Hymn to Ninkasi (Old Babylonian copies; malted barley part-baked into bappir loaves; db/canon/foods.csv barley_beer)
+brew_beer,Brewing beer,bappir:1;water:2,beer:1,brewing_vat,24,A,Sumerian Hymn to Ninkasi (Old Babylonian copies; bappir fermented in great vats; drunk unfiltered through reed straws; db/canon/foods.csv barley_beer; db/canon/items.csv beer)

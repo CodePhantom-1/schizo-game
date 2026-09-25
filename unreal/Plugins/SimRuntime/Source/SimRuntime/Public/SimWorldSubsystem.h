@@ -76,6 +76,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Sim")
 	static void AdvanceSimDays(int32 Days);
 
+	/**
+	 * Skips the sub-day clock forward by Hours (e.g. sleeping through the
+	 * night). Rolls the kernel day forward via sim_world_advance_days for
+	 * every midnight crossed. Added for UE-2 (player body): needs advance
+	 * through the kernel separately (sim_world_advance_needs) — this only
+	 * keeps GetSimHour()/the day counter in step with that skip.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Sim")
+	static void SkipSimHours(float Hours);
+
 private:
 	/** The opaque kernel world (sim/CApi.h). Owned; never null after Initialize. */
 	struct SimWorld* SimHandle = nullptr;

@@ -110,6 +110,24 @@ void USimWorldSubsystem::AdvanceSimDays(int32 Days)
 	}
 }
 
+void USimWorldSubsystem::SkipSimHours(float Hours)
+{
+	USimWorldSubsystem* Sim = GetSim(GEngine ? GEngine->GetCurrentPlayWorld() : nullptr);
+	if (Sim == nullptr || Sim->SimHandle == nullptr || Hours <= 0.f)
+	{
+		return;
+	}
+	const float DaySeconds = Sim->SecondsPerDay();
+	Sim->SecondsSinceLastDay += (Hours / 24.0f) * DaySeconds;
+	while (Sim->SecondsSinceLastDay >= DaySeconds)
+	{
+		sim_world_advance_days(Sim->SimHandle, 1);
+		Sim->SecondsSinceLastDay -= DaySeconds;
+	}
+	UE_LOG(LogSimRuntime, Log, TEXT("Skipped %.1f sim hours — now day %lld, hour %.1f."),
+		Hours, sim_world_day(Sim->SimHandle), GetSimHour());
+}
+
 float USimWorldSubsystem::SecondsPerDay() const
 {
 	const float MinutesPerDay = CVarSimDaysPerRealMinute.GetValueOnGameThread() > 0.f

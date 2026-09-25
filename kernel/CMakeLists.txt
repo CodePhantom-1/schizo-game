@@ -4,6 +4,9 @@ project(sim_kernel CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+# UE5's editor links this static lib into a shared module (UnrealEditor-SchizoGame.so);
+# ld.lld refuses non-PIC relocations there. Harmless for the plain ctest gate build.
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 file(GLOB SIM_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
 add_library(sim_core STATIC ${SIM_SOURCES})

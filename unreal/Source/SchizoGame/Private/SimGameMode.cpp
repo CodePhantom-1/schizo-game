@@ -4,6 +4,7 @@
 #include "SimWorldSubsystem.h"
 
 // The kernel's C API through SimRuntime's public include path.
+#include "SimHUD.h"
 #include "SimPlayerController.h"
 #include "SimTablet.h"
 #include "sim/CApi.h"
@@ -20,6 +21,9 @@ ASimGameMode::ASimGameMode()
 	// The slice's player controller arrives with its own work; the engine's
 	// default pawn is enough for the grey-box smoke.
 	PlayerControllerClass = ASimPlayerController::StaticClass();
+	// Minimal registration (UE-2 owns SimHUD; the street/game mode agent owns
+	// this file otherwise) — the player's body needs its HUD active.
+	HUDClass = ASimHUD::StaticClass();
 	// The clock on screen needs the game mode to tick (actors don't by default).
 	PrimaryActorTick.bCanEverTick = true;
 }
