@@ -223,6 +223,78 @@ static bool test_every_module_changes_the_save_bytes() {
         accept(w.quests, "some_quest", w.day);
         SIM_CHECK(save_world(w) != s0);
     }
+    {
+        WorldState w = base;
+        learn_rite(w.magic, "zisurru_warding");
+        SIM_CHECK(save_world(w) != s0);
+    }
+    {
+        WorldState w = base;
+        w.rite_effects.wards_by_place["household:player"] =
+            Ward{"household:player", "zisurru_warding", 1, 30};
+        SIM_CHECK(save_world(w) != s0);
+    }
+    {
+        WorldState w = base;
+        w.rite_effects.omens.push_back(Omen{1, "barutu_haruspicy", "inanna", "favourable", 75});
+        SIM_CHECK(save_world(w) != s0);
+    }
+    return true;
+}
+
+// K-1: rite knowledge, wards and omens survive a save/load, and a save
+// written before K-1 (no trailing rite sections) still loads with nothing
+// known, no ward and no omen.
+static bool test_k1_rite_state_round_trips() {
+    WorldState w;
+    w.init("../db/canon", 21);
+    learn_rite(w.magic, "sacrifice_fish_sea_gems");
+    learn_rite(w.magic, "zisurru_warding");
+    w.rite_effects.wards_by_place["temple:city_of_the_moon"] =
+        Ward{"temple:city_of_the_moon", "zisurru_warding", 3, 32};
+    w.rite_effects.omens.push_back(Omen{4, "barutu_haruspicy", "the_two_waters", "unfavourable", 75});
+    w.advance_days(10);
+
+    const std::string s = save_world(w);
+    WorldState r;
+    load_world(r, "../db/canon", s);
+    SIM_CHECK(save_world(r) == s);
+    SIM_CHECK_EQ(r.magic.known_rites.size(), std::size_t{2});
+    SIM_CHECK(knows_rite(r.magic, "zisurru_warding"));
+    const Ward& wd = r.rite_effects.wards_by_place.at("temple:city_of_the_moon");
+    SIM_CHECK_EQ(wd.rite_id, std::string("zisurru_warding"));
+    SIM_CHECK_EQ(wd.laid, DayNumber{3});
+    SIM_CHECK_EQ(wd.until, DayNumber{32});
+    SIM_CHECK_EQ(r.rite_effects.omens.size(), std::size_t{1});
+    SIM_CHECK_EQ(r.rite_effects.omens.front().sign, std::string("unfavourable"));
+    SIM_CHECK_EQ(r.rite_effects.omens.front().confidence_pct, 75);
+
+    // Restored and source keep advancing identically.
+    w.advance_days(30);
+    r.advance_days(30);
+    SIM_CHECK(save_world(w) == save_world(r));
+
+    // A pre-K-1 save: cut the trailing rite sections off.
+    const std::size_t cut = s.find("MAGIC_KNOWN\t");
+    SIM_CHECK(cut != std::string::npos);
+    WorldState legacy;
+    load_world(legacy, "../db/canon", s.substr(0, cut));
+    SIM_CHECK(legacy.magic.known_rites.empty());
+    SIM_CHECK(legacy.rite_effects.wards_by_place.empty());
+    SIM_CHECK(legacy.rite_effects.omens.empty());
+    SIM_CHECK_EQ(legacy.day, w.day - 30);
+
+    // A save cut mid-way through the rite sections is still malformed.
+    const std::size_t omens = s.find("RITE_OMENS\t");
+    SIM_CHECK(omens != std::string::npos);
+    bool threw = false;
+    try {
+        WorldState bad;
+        load_world(bad, "../db/canon", s.substr(0, omens));
+    } catch (const std::runtime_error&) {
+        threw = true;
+    }
+    SIM_CHECK(threw);
     return true;
 }
 
@@ -230,4 +302,5 @@ SIM_MAIN(test_wave2_fields_round_trip, test_save_load_round_trips,
          test_restored_world_advances_identically,
          test_malformed_save_throws,
          test_load_world_is_atomic_on_failure,
-         test_every_module_changes_the_save_bytes)
+         test_every_module_changes_the_save_bytes,
+         test_k1_rite_state_round_trips)

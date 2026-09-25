@@ -397,6 +397,31 @@ static bool test_determinism_same_seed_same_state_bytes() {
     return true;
 }
 
+// K-1: rite knowledge is MagicState (known_rites). learn_rite/knows_rite
+// write/read only it; perform_rite's contract is unchanged — it still reads
+// the gate from RiteInputs::performer_knows_rite, which the caller fills
+// from knows_rite() (sim/Rites.hpp).
+static bool test_rite_knowledge_state() {
+    MagicState s;
+    SIM_CHECK(!knows_rite(s, "sacrifice_fish_sea_gems"));
+    SIM_CHECK(learn_rite(s, "sacrifice_fish_sea_gems"));
+    SIM_CHECK(knows_rite(s, "sacrifice_fish_sea_gems"));
+    SIM_CHECK(!learn_rite(s, "sacrifice_fish_sea_gems"));  // already known: no change
+    SIM_CHECK(!learn_rite(s, ""));
+    SIM_CHECK_EQ(s.known_rites.size(), std::size_t{1});
+    SIM_CHECK(s.favour_by_deity.empty());  // learning touches nothing else
+
+    World w{1, 5, "../db/canon"};
+    w.magic.place = "temple:city_of_the_moon";
+    learn_rite(w.magic, "sacrifice_fish_sea_gems");
+    RiteInputs unflagged;  // the caller forgot to read knows_rite(): still refused
+    unflagged.materials_held = {{"fish", 1}, {"sea_gems", 1}};
+    const RiteResult r = perform_rite(w.ctx, w.magic, "sacrifice_fish_sea_gems", unflagged);
+    SIM_CHECK(!r.performed);
+    SIM_CHECK_EQ(r.refusal_reason, std::string("rite_not_known"));
+    return true;
+}
+
 SIM_MAIN(test_favour_defaults_and_clamps,
          test_unknown_rite_is_refused,
          test_open_rite_row_is_refused,
@@ -411,4 +436,5 @@ SIM_MAIN(test_favour_defaults_and_clamps,
          test_deity_any_applies_no_favour,
          test_festival_time_window,
          test_purity_requirement_defaults_to_zero,
-         test_determinism_same_seed_same_state_bytes)
+         test_determinism_same_seed_same_state_bytes,
+         test_rite_knowledge_state)

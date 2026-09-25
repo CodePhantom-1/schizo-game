@@ -199,7 +199,101 @@ static bool test_save_load_null_and_bad_path() {
     return ok;
 }
 
-SIM_MAIN(test_lifecycle_and_clock,
+// K-1: the magic loop through extern "C" alone — learn, offer, perform,
+// read the effect, save/load it.
+static bool test_rites_through_c() {
+    SimWorld* w = sim_world_create("../db/canon", 1);
+    if (!w) return false;
+    sim_world_advance_days(w, 4);  // day 5 (the verified draw 0.099786)
+    char buf[256];
+
+    bool ok = sim_world_knows_rite(w, "sacrifice_fish_sea_gems") == 0;
+    ok = ok && sim_world_perform_rite(w, "sacrifice_fish_sea_gems", nullptr, buf, sizeof(buf)) == -3;
+    ok = ok && sim_world_perform_rite(w, "no_such_rite", nullptr, nullptr, 0) == -2;
+
+    ok = ok && sim_world_rites_taught_by(w, "lu_dingira_priest_moon", buf, sizeof(buf)) > 0 &&
+         std::strcmp(buf, "hymns_deity_names;sacrifice_fish_sea_gems") == 0;
+    ok = ok && sim_world_learn_rite_from_teacher(w, "sacrifice_fish_sea_gems", "ea_nasir_grain_trader") == -4;
+    ok = ok && sim_world_learn_rite_from_teacher(w, "sacrifice_fish_sea_gems", "nobody") == -3;
+    ok = ok && sim_world_learn_rite_from_teacher(w, "sacrifice_fish_sea_gems", "lu_dingira_priest_moon") == 0;
+    ok = ok && sim_world_learn_rite_from_teacher(w, "sacrifice_fish_sea_gems", "lu_dingira_priest_moon") == 1;
+    ok = ok && sim_world_knows_rite(w, "sacrifice_fish_sea_gems") == 1;
+
+    sim_world_set_rite_place(w, "temple:city_of_the_moon");
+    ok = ok && sim_world_rite_place(w, buf, sizeof(buf)) > 0 &&
+         std::strcmp(buf, "temple:city_of_the_moon") == 0;
+    sim_world_give_item(w, "player", "fish", 1);
+    sim_world_give_item(w, "player", "sea_gems", 1);
+    ok = ok && sim_world_perform_rite(w, "sacrifice_fish_sea_gems", nullptr, buf, sizeof(buf)) == 1;
+    ok = ok && std::strcmp(buf, "favour:the_two_waters:+5") == 0;
+    ok = ok && sim_world_item_count(w, "player", "fish") == 0;
+    ok = ok && sim_world_item_count(w, "player", "sea_gems") == 0;
+    ok = ok && sim_world_favour(w, "the_two_waters") == 57;
+
+    // Text learning and a ward.
+    ok = ok && sim_world_learn_rite_from_text(w, "zisurru_warding", "zisurru_incantation_tablet") == -5;
+    sim_world_give_item(w, "player", "zisurru_incantation_tablet", 1);
+    ok = ok && sim_world_rites_taught_in(w, "zisurru_incantation_tablet", buf, sizeof(buf)) > 0 &&
+         std::strcmp(buf, "zisurru_warding") == 0;
+    ok = ok && sim_world_learn_rite_from_text(w, "zisurru_warding", "zisurru_incantation_tablet") == 0;
+    sim_world_give_item(w, "player", "different_types_of_flour", 1);
+    sim_world_set_rite_place(w, "household:player");
+    ok = ok && sim_world_perform_rite(w, "zisurru_warding", "", buf, sizeof(buf)) == 1;
+    ok = ok && std::strcmp(buf, "ward:household:player:until=34") == 0;
+    ok = ok && sim_world_ward_until(w, "household:player") == 34;
+    ok = ok && sim_world_warded(w, "household:player") == 1;
+    ok = ok && sim_world_ward_until(w, "nowhere") == 0;
+
+    // An "any" rite with no god addressed is refused, nothing spent.
+    ok = ok && sim_world_learn_rite_from_teacher(w, "hymns_deity_names", "lu_dingira_priest_moon") == 0;
+    ok = ok && sim_world_perform_rite(w, "hymns_deity_names", nullptr, buf, sizeof(buf)) == -4;
+    ok = ok && sim_world_perform_rite(w, "hymns_deity_names", "not_a_god", buf, sizeof(buf)) == -5;
+
+    // An omen.
+    sim_world_give_item(w, "player", "clay_liver_model", 1);
+    sim_world_give_item(w, "player", "a_burned_goat's_liver", 1);
+    ok = ok && sim_world_learn_rite_from_text(w, "barutu_haruspicy", "clay_liver_model") == 0;
+    sim_world_set_rite_place(w, "house:diviner");
+    ok = ok && sim_world_omen_count(w) == 0;
+    ok = ok && sim_world_perform_rite(w, "barutu_haruspicy", "the_two_waters", buf, sizeof(buf)) == 1;
+    ok = ok && sim_world_omen_count(w) == 1;
+    ok = ok && sim_world_omen(w, 0, buf, sizeof(buf)) > 0 &&
+         std::strncmp(buf, "5;barutu_haruspicy;the_two_waters;", 34) == 0;
+    ok = ok && sim_world_omen(w, 1, buf, sizeof(buf)) == -1;
+
+    ok = ok && sim_world_known_rites(w, buf, sizeof(buf)) > 0 &&
+         std::strcmp(buf, "barutu_haruspicy;hymns_deity_names;sacrifice_fish_sea_gems;zisurru_warding") == 0;
+
+    // Purity clamps.
+    sim_world_set_purity(w, 140);
+    ok = ok && sim_world_purity(w) == 100;
+    sim_world_set_purity(w, -3);
+    ok = ok && sim_world_purity(w) == 0;
+
+    // Buffer save/load carries all of it.
+    static char save[1 << 16];
+    const int len = sim_world_save_to_buffer(w, save, sizeof(save));
+    ok = ok && len > 0 && len < static_cast<int>(sizeof(save));
+    SimWorld* r = sim_world_load_from_buffer("../db/canon", save);
+    ok = ok && r != nullptr;
+    ok = ok && sim_world_knows_rite(r, "zisurru_warding") == 1;
+    ok = ok && sim_world_ward_until(r, "household:player") == 34;
+    ok = ok && sim_world_omen_count(r) == 1;
+    ok = ok && sim_world_purity(r) == 0;
+
+    // Nulls.
+    ok = ok && sim_world_knows_rite(nullptr, "x") == -1;
+    ok = ok && sim_world_perform_rite(nullptr, "x", nullptr, nullptr, 0) == -1;
+    ok = ok && sim_world_learn_rite_from_text(w, nullptr, "x") == -1;
+    ok = ok && sim_world_omen_count(nullptr) == -1;
+
+    sim_world_destroy(r);
+    sim_world_destroy(w);
+    return ok;
+}
+
+SIM_MAIN(test_rites_through_c,
+         test_lifecycle_and_clock,
          test_prices_and_the_drought_through_c,
          test_standing_and_favour_clamps,
          test_two_worlds_same_seed_agree,

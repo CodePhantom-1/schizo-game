@@ -58,7 +58,19 @@ latter three all `deity=any`). `sacrifice_fish_sea_gems` is the pick:
 | Purity and place | Place: yes. Purity: proven non-gating, not proven gating — no canon row carries a `purity_required` value to gate against (gap 3). |
 | Time | Trivially only | No canon rite sets a real `time_window`; see gap 4. |
 
-## Missing kernel surfaces for the slice rite (report only — not built here)
+## K-1 update — gaps 1, 2 and 5 closed
+
+Track K-1 built the caller side (`sim/Rites.hpp`; module_Magic.md): gap 1 —
+`MagicState::known_rites`, learned from a teacher (`rite_teachings.csv`, the
+priest of the moon) or a held text; gap 2 — offerings debited from
+`inventories["player"]` on every performed rite; gap 5 — the four canon
+effect families applied on success (favour, a ward, an omen), all
+`INVENTED: EFFECT` (docs/proposals/invented-ledger-rites.md). The `deity=any`
+favour gap is closed for rites that name a target god. Gaps 3 (purity data)
+and 4 (festival data) remain content decisions. Tests: `test_k1_*` below the
+original script in test_scenario_rite.cpp.
+
+## Missing kernel surfaces for the slice rite (as reported before K-1)
 
 1. **No persistent rite-knowledge state.** `RiteInputs::performer_knows_rite`
    is, per `Magic.hpp:45`, "learned from text or teacher (**caller tracks**)" —

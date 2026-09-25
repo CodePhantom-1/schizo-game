@@ -130,6 +130,72 @@ int sim_world_craft(SimWorld* world, const char* actor, const char* recipe,
 // -1 on a null argument or no schedule rows at all for that role.
 int sim_world_task_at(const SimWorld* world, const char* role, int hour, char* out, int cap);
 
+// Rites (K-1: knowledge -> offerings -> effects; sim/Rites.hpp) -------------
+// The performer is the player: MagicState is one performer's magic, and
+// offerings are debited from the "player" inventory (sim_world_give_item).
+
+// 1 if the player knows `rite`, 0 if not, -1 on a null argument.
+int sim_world_knows_rite(const SimWorld* world, const char* rite);
+// Known rite ids, sorted, semicolon-joined. Buffer convention (writes at most
+// cap-1 bytes plus NUL; returns the untruncated length, -1 on null).
+int sim_world_known_rites(const SimWorld* world, char* out, int cap);
+
+// Learns `rite` from the npc `teacher` (a Population npc whose schedule role
+// rite_teachings.csv lists for it) / from the text item `item` held in the
+// player's inventory (read, not consumed).
+// Return codes (both functions):
+//   0   learned
+//   1   already known (nothing changes)
+//  -1   null argument
+//  -2   unknown or OPEN rite
+//  -3   unknown teacher npc                        (teacher variant only)
+//  -4   this teacher / text does not teach the rite
+//  -5   the text is not in the player's inventory  (text variant only)
+int sim_world_learn_rite_from_teacher(SimWorld* world, const char* rite, const char* teacher);
+int sim_world_learn_rite_from_text(SimWorld* world, const char* rite, const char* item);
+
+// Rite ids the npc teaches / the text item teaches, sorted, semicolon-joined
+// (empty for an unknown npc/item). Buffer convention; -1 on null.
+int sim_world_rites_taught_by(const SimWorld* world, const char* teacher, char* out, int cap);
+int sim_world_rites_taught_in(const SimWorld* world, const char* item, char* out, int cap);
+
+// The performer's place tag ("temple:city_of_the_moon", "household:player"...)
+// the rite's place requirement is matched against, and his purity (0..100,
+// set clamps). Getters: buffer convention / -1 on null.
+void sim_world_set_rite_place(SimWorld* world, const char* place);
+int sim_world_rite_place(const SimWorld* world, char* out, int cap);
+int sim_world_purity(const SimWorld* world);
+void sim_world_set_purity(SimWorld* world, int purity);
+
+// Performs `rite` in the world (Rites.hpp perform_rite_in_world). `target`
+// (may be null/empty): the deities.csv id a deity="any" rite addresses, or
+// asks about (divination); the place tag a protection rite wards ("" = the
+// rite place). `effect_out` (may be null) receives what the success did, e.g.
+// "favour:the_two_waters:+5", "ward:household:player:until=35",
+// "omen:inanna:favourable:75" -- empty on failure or refusal.
+// Return codes:
+//   1   performed and succeeded (effect applied; offerings consumed)
+//   0   performed and failed (offerings still consumed; favour may fall)
+//  -1   null world/rite
+//  -2   unknown or OPEN rite
+//  -3   the player does not know the rite
+//  -4   nothing addressed (an "any" rite with no god, a ward with no place)
+//  -5   target names no live deities.csv row
+// A negative code changes no state.
+int sim_world_perform_rite(SimWorld* world, const char* rite, const char* target,
+                           char* effect_out, int cap);
+
+// Last day (inclusive) a ward holds on `place`; 0 if none was ever laid; -1 null.
+int64_t sim_world_ward_until(const SimWorld* world, const char* place);
+// 1 if a ward holds on `place` today, else 0; -1 on null.
+int sim_world_warded(const SimWorld* world, const char* place);
+
+// Omens read so far, oldest first. sim_world_omen writes omen `index` as
+// "day;rite;subject;sign;confidence_pct" (buffer convention); -1 on a null
+// argument or an index out of range.
+int sim_world_omen_count(const SimWorld* world);
+int sim_world_omen(const SimWorld* world, int index, char* out, int cap);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

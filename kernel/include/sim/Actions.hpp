@@ -5,7 +5,8 @@
 // state (Population, Justice, Property, Faction, Quests) — a WorldState&
 // verb, exactly the escalation scenario_crime.md #6 and scenario_quest.md's
 // missing pipes ask for. Per the track brief, this file and World.cpp are
-// the only places allowed to write more than one module's state.
+// the only places allowed to write more than one module's state (K-1 adds
+// one more of the same kind: sim/Rites.hpp, the rite verbs).
 //
 // Determinism: no wall clock, no static mutable state; the only randomness
 // available is ctx.rng, and nothing here draws from it — every outcome is a

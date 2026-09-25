@@ -25,6 +25,7 @@
 #include "sim/Types.hpp"
 
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -38,6 +39,11 @@ struct MagicState {
     int purity = 100;                   // 0..100, the condition from rpg-systems §1.2
     // performer's current place tag, e.g. "temple:city_of_the_moon", "riverbank"
     std::string place;
+    // K-1: the rites this performer has learned (rites.csv ids) — from a
+    // teacher or a text (sim/Rites.hpp, rite_teachings.csv). The caller
+    // fills RiteInputs::performer_knows_rite from knows_rite(); the fixed
+    // formula and perform_rite() are unchanged.
+    std::set<Id> known_rites;
 };
 
 struct RiteInputs {
@@ -59,6 +65,12 @@ struct RiteResult {
 // the engine layer share one path.
 void add_favour(MagicState& state, const Id& deity, int delta);
 int favour(const MagicState& state, const Id& deity);
+
+// K-1 (additive): rite knowledge, the state the RiteInputs flag is read from.
+// learn_rite returns false (and changes nothing) when already known or the id
+// is empty; it does not check canon — the teaching verbs in sim/Rites.hpp do.
+bool knows_rite(const MagicState& state, const Id& rite_id);
+bool learn_rite(MagicState& state, const Id& rite_id);
 
 RiteResult perform_rite(const WorldContext& ctx, MagicState& state,
                         const Id& rite_id, const RiteInputs& inputs);
