@@ -9,6 +9,8 @@
 // contracts explicitly leave to it (see the W2-A comments on those fields).
 #include "sim/Actions.hpp"
 
+#include "sim/Progression.hpp"  // W4-A: stealth by use; outlawry strips rank
+
 #include <algorithm>
 #include <map>
 #include <optional>
@@ -99,6 +101,9 @@ Id commit_crime(WorldState& w, const Id& criminal, const Id& law_row,
         // not auto-hear this crime before w.day + kHearingDelayDays.
         crime.hearing_day = w.day + kHearingDelayDays;
     }
+    // W4-A: a deed nobody saw is use of the stealth skill (skills.csv
+    // grows_by verb:crime_unseen). Only the player's sheet grows.
+    if (first_witness.empty()) (void)note_use(w, criminal, "verb:crime_unseen", kStealthXp);
     return crime.id;
 }
 
@@ -142,7 +147,10 @@ Hearing hold_crime_hearing(WorldState& w, const Id& crime_id, const Id& victim,
 
     const Id faction = city_faction(w.db, place_city);
     add_standing(w.faction, faction, standing_penalty(sealed.verdict));
-    if (sealed.verdict == "exile" || sealed.verdict == "death") outlaw(w.faction, faction);
+    if (sealed.verdict == "exile" || sealed.verdict == "death") {
+        outlaw(w.faction, faction);
+        strip_rank(w, criminal, faction);  // W4-A: mechanics.md row 12 "outlawry -> rank 0"
+    }
 
     return sealed;
 }

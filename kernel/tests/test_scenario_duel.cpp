@@ -9,6 +9,7 @@
 #include "sim/CombatActions.hpp"
 #include "sim/Actions.hpp"
 #include "sim/Population.hpp"
+#include "sim/Progression.hpp"
 #include "sim/Snapshot.hpp"
 
 #include "sim/Test.hpp"
@@ -86,6 +87,13 @@ bool test_duel_self_defence_and_healing() {
     SIM_CHECK_EQ(w.combat.deaths[0].killer, Id("player"));
     SIM_CHECK_EQ(w.events.fired.back().rule_id, Id("combat_death"));
     SIM_CHECK_EQ(first_aggressor(w.combat, "player", kBandit, w.day), Id(kBandit));
+
+    // W4-A wired: the fight taught him the spear (skills grow by use), and
+    // the inputs he fights with are his sheet's.
+    SIM_CHECK(actor_skill(w, "player", "spear") > 0);
+    const CombatInputs in = combat_inputs_for(w, "player");
+    SIM_CHECK_EQ(in.strength, actor_attribute(w, "player", "strength"));
+    SIM_CHECK(in.skill("spears") >= actor_effective_skill(w, "player", "spear"));
 
     // Wounded: the pain and the bleeding cost the body (Needs).
     const int fatigue_before = needs_of(w.needs, "player").fatigue;

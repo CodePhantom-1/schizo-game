@@ -95,6 +95,7 @@ Db Db::load(const std::string& canon_dir) {
         "schedules", "seasons", "skills", "story", "talents",
         "terrain_schemes", "treaties", "world_lore", "recipes",
         "festivals", "person_schedules",  // K-2
+        "attributes", "skill_teachings", "work_roles",  // W4-A
         "arms", "combat_styles"};         // W4-B: combat
 
     for (const std::string& table : tables) {

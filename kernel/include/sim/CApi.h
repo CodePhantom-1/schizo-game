@@ -23,6 +23,7 @@ typedef struct SimWorld SimWorld;  // opaque — one deterministic world
 
 // Lifecycle ---------------------------------------------------------------
 SimWorld* sim_world_create(const char* canon_dir, uint64_t seed);
+// Frees the world. A null world is a no-op; never throws.
 void sim_world_destroy(SimWorld* world);
 
 // Clock -------------------------------------------------------------------
@@ -185,7 +186,8 @@ void sim_world_set_purity(SimWorld* world, int purity);
 //  -3   the player does not know the rite
 //  -4   nothing addressed (an "any" rite with no god, a ward with no place)
 //  -5   target names no live deities.csv row
-// A negative code changes no state.
+// A negative code changes no state, except a -1 from an internal failure
+// (e.g. out of memory), which may leave the rite partly applied.
 int sim_world_perform_rite(SimWorld* world, const char* rite, const char* target,
                            char* effect_out, int cap);
 
@@ -194,7 +196,8 @@ int64_t sim_world_ward_until(const SimWorld* world, const char* place);
 // 1 if a ward holds on `place` today, else 0; -1 on null.
 int sim_world_warded(const SimWorld* world, const char* place);
 
-// Omens read so far, oldest first. sim_world_omen writes omen `index` as
+// Omens read so far, oldest first: sim_world_omen_count returns how many, or
+// -1 on a null world. sim_world_omen writes omen `index` as
 // "day;rite;subject;sign;confidence_pct" (buffer convention); -1 on a null
 // argument or an index out of range.
 int sim_world_omen_count(const SimWorld* world);
@@ -232,6 +235,106 @@ int sim_world_npc_task_at(const SimWorld* world, const char* npc, int hour, char
 int sim_world_npc_place_at(const SimWorld* world, const char* npc, int hour, char* out, int cap);
 int sim_world_npc_schedule_at(const SimWorld* world, const char* npc, int hour, char* out,
                               int cap);
+
+// Character progression (W4-A; sim/Character.hpp, sim/Progression.hpp) -------
+// mechanics.md rows 20-25. Actors: "player" (the full sheet) or any npc id
+// (a light, read-only sheet). Nothing here gates on act, story or quest state
+// (D-021); every gate is a number earned in play.
+//
+// The W4-A verbs share one set of refusal codes; a refusal changes no state:
+//   -1  null argument or internal error
+//   -2  unknown id (skill, talent, calling, teacher, employer, market, polity, patron)
+//   -3  a requirement not met yet (level, skill, standing, literacy, calling held, outlawed)
+//   -4  nothing more to gain here (practice/teacher/text cap reached, already chosen, top rank)
+//   -5  cannot pay / not held / out of stock / no unspent talent point
+//   -6  exhausted: sleep first (sim_world_advance_needs with sleeping = 1)
+//   -7  refused by the other side (does not teach / hire / trade that; market
+//       closed today; not a calling / not a specialisation of yours; bad hours
+//       or quantity)
+// sim_world_progression_refusal names the exact reason of the last refusal.
+
+// Reads. Attribute 1..10, skill 0..100 (base or effective = base + talent
+// and specialisation bonuses). -1 on a null argument, -2 for an unknown
+// actor, attribute or skill.
+int sim_world_attribute(const SimWorld* world, const char* actor, const char* attr);
+int sim_world_skill(const SimWorld* world, const char* actor, const char* skill);
+int sim_world_effective_skill(const SimWorld* world, const char* actor, const char* skill);
+
+// The player's level (1..40), skill points earned (xp), the xp total at which
+// the next level comes (0 at the cap), and unspent talent points. -1 on null.
+int sim_world_level(const SimWorld* world);
+int sim_world_character_xp(const SimWorld* world);
+int sim_world_xp_for_next_level(const SimWorld* world);
+int sim_world_talent_points(const SimWorld* world);
+
+// Talents taken (in order) / choosable right now (sorted), semicolon-joined.
+// Buffer convention (writes at most cap-1 bytes plus NUL; returns the
+// untruncated length, -1 on null).
+int sim_world_talents(const SimWorld* world, char* out, int cap);
+int sim_world_talents_available(const SimWorld* world, char* out, int cap);
+// 0 taken; else a refusal code.
+int sim_world_choose_talent(SimWorld* world, const char* talent);
+
+// The calling in `slot` (0 first calling, 1 specialisation, 2 second
+// calling), "" when not chosen. Buffer convention; -1 on null or a bad slot.
+int sim_world_calling(const SimWorld* world, int slot, char* out, int cap);
+// 0 chosen; else a refusal code. Levels: 5 / 15 / 25.
+int sim_world_choose_calling(SimWorld* world, const char* calling);
+int sim_world_choose_specialisation(SimWorld* world, const char* specialisation);
+int sim_world_choose_second_calling(SimWorld* world, const char* calling);
+
+// Growing a skill. Each returns the skill points gained (>= 0; a session can
+// gain 0 points and still count) or a refusal code. `hours` 1..12. Each
+// session advances the player's needs by `hours` awake.
+//   practice: alone, any skill, up to 25
+//   train:    with a resident teacher (skill_teachings.csv), paying the fee
+//             from the player's purse to the teacher, up to the teacher's skill
+//   study:    from a text item the player holds (read, not consumed); needs
+//             scribal arts 10; up to the text's limit
+//   work:     a shift for a resident employer (work_roles.csv): the work's
+//             skills grow and the wage (silver to the purse, or rations to
+//             the inventory) is paid
+int sim_world_practice_skill(SimWorld* world, const char* skill, int hours);
+int sim_world_train_skill(SimWorld* world, const char* skill, const char* teacher, int hours);
+int sim_world_study_skill(SimWorld* world, const char* skill, const char* item, int hours);
+int sim_world_work(SimWorld* world, const char* employer, int hours);
+
+// Who teaches a skill: "npc:max_level:fee_per_hour;..." (sorted by npc id);
+// what an npc teaches: "skill:max_level:fee_per_hour;..." (sorted by skill).
+// The fee is what the player would pay now. Buffer convention; -1 on null.
+int sim_world_skill_teachers(const SimWorld* world, const char* skill, char* out, int cap);
+int sim_world_skills_taught_by(const SimWorld* world, const char* npc, char* out, int cap);
+// Every skill id (sorted), semicolon-joined. Buffer convention; -1 on null.
+int sim_world_skill_ids(const SimWorld* world, char* out, int cap);
+
+// Trade at a city's market (the verb trade skills grow by). Silver moves
+// through the actor's purse; goods through its inventory and the market's
+// stock. Prices: the market price, bettered by bargaining, talents and rank
+// with the city's polity. Returns the silver paid / received (>= 0) or a
+// refusal code. Quotes: the silver the deal would move, -1 on null, -7 when
+// the market does not trade the item.
+int64_t sim_world_purse(const SimWorld* world, const char* actor);  // -1 on null
+int64_t sim_world_buy(SimWorld* world, const char* actor, const char* city, const char* item, int qty);
+int64_t sim_world_sell(SimWorld* world, const char* actor, const char* city, const char* item, int qty);
+int64_t sim_world_buy_quote(const SimWorld* world, const char* actor, const char* city,
+                            const char* item, int qty);
+int64_t sim_world_sell_quote(const SimWorld* world, const char* actor, const char* city,
+                             const char* item, int qty);
+
+// Social rank with a polity (factions.csv id): 0 the Outsider .. 6 Lugal
+// (ranks.csv). raise: one tier up, by deeds (standing) and a patron's act (a
+// resident of that polity; none needed for tier 6). Returns the new tier or
+// a refusal code. Outlawry (an exile/death verdict) drops the rank to 0.
+int sim_world_rank(const SimWorld* world, const char* polity);
+int sim_world_raise_rank(SimWorld* world, const char* polity, const char* patron);
+
+// A readable multi-line summary of the player's sheet for the UI (level, xp,
+// callings, attributes, skills with effective values, talents, ranks).
+// Buffer convention; -1 on null.
+int sim_world_character_summary(const SimWorld* world, char* out, int cap);
+// The exact reason of the last W4-A refusal ("" after a success), e.g.
+// "teacher_surpassed". Buffer convention; -1 on null.
+int sim_world_progression_refusal(const SimWorld* world, char* out, int cap);
 
 // Combat (W4-B; sim/Combat.hpp + sim/CombatActions.hpp) ------------------------
 // Actors are "player" or npc ids (any other id is a stranger the engine

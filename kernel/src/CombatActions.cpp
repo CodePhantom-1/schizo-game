@@ -6,6 +6,7 @@
 #include "sim/CombatActions.hpp"
 
 #include "sim/Actions.hpp"
+#include "sim/Progression.hpp"  // W4-A: attributes, skills, growth by use
 
 #include <algorithm>
 
@@ -87,16 +88,68 @@ void unequip_ranged_without_ammo(WorldState& w, const Id& actor) {
         c.weapon.clear();
 }
 
+// W4-A: the combat skill tokens (arms.csv `skill`, plus dodge and unarmed)
+// read W4-A's skills.csv. Dodging is footwork, the wrestler's art.
+struct TokenSkill {
+    const char* token;
+    const char* skill;
+};
+constexpr TokenSkill kTokenSkills[] = {
+    {"blades", "dagger"},  {"axes", "mace_and_axe"},  {"maces", "mace_and_axe"},
+    {"spears", "spear"},   {"bows", "bow_and_sling"}, {"slings", "bow_and_sling"},
+    {"shields", "shield"}, {"unarmed", "wrestling"},  {"dodge", "wrestling"},
+};
+// Anyone can swing a club: an untrained fighter still counts this much.
+constexpr int kUntrainedFloor = 10;
+
+Id skill_for_token(const std::string& token) {
+    for (const TokenSkill& t : kTokenSkills)
+        if (token == t.token) return t.skill;
+    return {};
+}
+
+// Skill growth by use (W4-A note_skill_use: the player's sheet only).
+void note_combat_xp(WorldState& w, const AttackResult& r) {
+    if (r.outcome == AttackOutcome::Invalid) return;
+    const auto wd = arms_def(w.db, r.weapon);
+    const std::string token = wd ? wd->skill : std::string("unarmed");
+    const bool landed = static_cast<int>(r.outcome) >= static_cast<int>(AttackOutcome::Wounded);
+    (void)note_skill_use(w, r.attacker, skill_for_token(token), landed ? 3 : 1);
+    if (r.outcome == AttackOutcome::Blocked) (void)note_skill_use(w, r.defender, "shield", 2);
+    if (r.outcome == AttackOutcome::Dodged) (void)note_skill_use(w, r.defender, "wrestling", 1);
+    if (r.outcome == AttackOutcome::Parried) {
+        const Combatant* d = find_combatant(w.combat, r.defender);
+        const auto dw = d != nullptr ? arms_def(w.db, d->weapon) : std::nullopt;
+        (void)note_skill_use(w, r.defender, skill_for_token(dw ? dw->skill : "unarmed"), 2);
+    }
+}
+
 }  // namespace
 
 CombatInputs combat_inputs_for(const WorldState& w, const Id& actor) {
-    // W4-A MERGE POINT: fill strength/agility/endurance from attribute() and
-    // skills from effective_skill() here.
+    // A combat style is the fighter's drill; W4-A's sheet is what he has
+    // learned. Each skill takes the better of the two (never below the
+    // untrained floor); the attributes are the sheet's.
+    CombatInputs in;
+    in.default_skill = kUntrainedFloor;
     const Combatant* c = find_combatant(w.combat, actor);
     if (c != nullptr && !c->style.empty())
-        if (const auto st = combat_style(w.db, c->style)) return style_inputs(*st);
-    CombatInputs in;
-    in.default_skill = actor == "player" ? 20 : 15;
+        if (const auto st = combat_style(w.db, c->style)) in = style_inputs(*st);
+    struct AttrSlot {
+        const char* id;
+        int* slot;
+    };
+    for (const AttrSlot a : {AttrSlot{"strength", &in.strength}, AttrSlot{"agility", &in.agility},
+                             AttrSlot{"endurance", &in.endurance}}) {
+        const int v = actor_attribute(w, actor, a.id);
+        if (v > 0) *a.slot = v;
+    }
+    for (const TokenSkill& t : kTokenSkills) {
+        const auto have = in.skills.find(t.token);
+        const int drilled = have == in.skills.end() ? kUntrainedFloor : have->second;
+        in.skills[t.token] =
+            std::max({drilled, kUntrainedFloor, actor_effective_skill(w, actor, t.skill)});
+    }
     return in;
 }
 
@@ -155,6 +208,7 @@ AttackResult attack_in_world(WorldState& w, const Id& attacker, const Id& defend
     const Fighter fd{defender, combat_inputs_for(w, defender), needs_ptr(w, defender)};
     AttackResult r = resolve_attack(w.db, w.rng, w.combat, fa, fd, zone_hint, w.day);
     if (r.outcome == AttackOutcome::Invalid) return r;
+    note_combat_xp(w, r);
     if (uses_ammo) {
         give(w, attacker, wd->ammo, -1);
         if (wd->ammo == wd->id && held(w, attacker, wd->id) <= 0) (void)unequip(w.combat, attacker, wd->id);
@@ -178,6 +232,7 @@ SkirmishResult skirmish_in_world(WorldState& w, const std::vector<Id>& side_a,
     SkirmishResult r = resolve_skirmish(w.db, w.rng, w.combat, side_a, side_b, inputs, needs, w.day,
                                         max_rounds);
     for (const AttackResult& blow : r.log) {
+        note_combat_xp(w, blow);
         const auto wd = arms_def(w.db, blow.weapon);
         if (wd && wd->slot == "ranged" && !wd->ammo.empty()) give(w, blow.attacker, wd->ammo, -1);
     }
@@ -247,16 +302,21 @@ bool rest_in_world(WorldState& w, const Id& actor, int hours) {
 int treat_in_world(WorldState& w, const Id& actor, const std::string& method, const Id& healer) {
     const Combatant* c = find_combatant(w.combat, actor);
     if (c != nullptr && c->dead) return -6;
+    // W4-A: a hand that knows medicine binds as well as clean linen does.
+    const bool physician_hand =
+        actor_effective_skill(w, actor, "medicine") >= kSkilledBinderMedicine;
     if (method == "bind") {
         const bool linen = held(w, actor, "linen_bandage") > 0;
-        const int n = treat_wounds(w.combat, actor, kTreatBound, linen);
+        const int n = treat_wounds(w.combat, actor, kTreatBound, linen || physician_hand);
         if (linen && n > 0) give(w, actor, "linen_bandage", -1);
+        if (n > 0) (void)note_use(w, actor, "verb:treat", 1);
         return n;
     }
     if (method == "herbs") {
         if (held(w, actor, "healing_herbs") <= 0) return -3;
         const int n = treat_wounds(w.combat, actor, kTreatHerbs, false);
         if (n > 0) give(w, actor, "healing_herbs", -1);
+        if (n > 0) (void)note_use(w, actor, "verb:treat", 2);
         return n;
     }
     if (method == "healer") {

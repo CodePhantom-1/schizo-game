@@ -4,3 +4,6 @@ bake_bread,Baking bread,barley_flour:2;water:1,bread:1,oven,1,A,Ur III temple an
 malt_barley,Malting barley,grain:2,malted_barley:1,quern,2,A,Sumerian Hymn to Ninkasi (Old Babylonian copies; barley malted for brewing; db/canon/foods.csv barley_beer)
 bake_bappir,Baking beer-bread,malted_barley:2;water:1,bappir:1,oven,1,A,Sumerian Hymn to Ninkasi (Old Babylonian copies; malted barley part-baked into bappir loaves; db/canon/foods.csv barley_beer)
 brew_beer,Brewing beer,bappir:1;water:2,beer:1,brewing_vat,24,A,Sumerian Hymn to Ninkasi (Old Babylonian copies; bappir fermented in great vats; drunk unfiltered through reed straws; db/canon/foods.csv barley_beer; db/canon/items.csv beer)
+throw_pot,Throwing a pot,clay:2;water:1,pottery:1,potters_wheel,3,INVENTED,INVENTED (W4-A; D-018): the pottery skill's use (skills.csv pottery; items.csv pottery/clay/potters_wheel)
+weave_woolen_cloth,Weaving woolen cloth,wool:3,woolen_cloth:1,loom,8,INVENTED,INVENTED (W4-A; D-018): the weaving skill's use (skills.csv weaving; items.csv wool/woolen_cloth/loom)
+cast_bronze_sickle,Casting a bronze sickle,copper_ingots:2;tin:1,bronze_sickle:1,smithing_hearth,4,INVENTED,INVENTED (W4-A; D-018): the metalwork skill's use (skills.csv metalwork; items.csv copper_ingots/tin/bronze_sickle; mechanics.md row 29 tin bronze)

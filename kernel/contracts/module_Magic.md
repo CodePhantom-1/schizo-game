@@ -37,6 +37,30 @@ reading 3 cannot resolve the god; the caller can).
 Every effect value is `INVENTED: EFFECT` — ledger:
 [docs/proposals/invented-ledger-rites.md](../../docs/proposals/invented-ledger-rites.md).
 
+## D-022 — integer score, one roll per rite
+
+The designer's D-022 replaces the floating-point score and the shared daily
+draw (Magic.hpp holds the formula):
+
+- **Score in basis points** (`RiteResult::score_bp`, 0..10000): favour
+  `favour * 4000 / 100` (integer), materials 2000, purity 2000, place 1000,
+  time 1000. No floating point touches the outcome, so a rite resolves the
+  same on x86 and ARM64 builds. `RiteResult::score` stays as
+  `score_bp / 10000.0` for display.
+- **One roll per rite:** `ctx.rng.fork(day).fork(stable_hash(rite_id)).below(10000)`,
+  success when `roll < score_bp`. `stable_hash` is FNV-1a 64 over the id's
+  bytes (sim/Rng.hpp; never `std::hash`), and `Rng::below(n)` is an
+  unbiased bounded draw (rejection sampling), both new in Rng.hpp. Two rites
+  on the same day now roll independently. Retrying *the same* rite on the
+  same day still gets the same roll (the salt is the rite, not the attempt).
+- **Purity:** the purity term reads `rites.csv` `purity_required`; blank is
+  the default 0 (kernel review follow-up, 2026-09-25).
+
+Tests: test_magic (`test_d022_*`, `test_purity_required_column_gates_the_purity_term`),
+test_scenario_rite (`test_d022_rolls_survive_save_load`). Pinned fixtures
+were re-derived against the new rolls (seed 42 → 14 for the failure cases);
+the assertions are unchanged or stricter.
+
 **Time:** festival-demanding rites keep using `Calendar::is_festival` (Magic.cpp
 reading 7); K-1 adds no calendar surface.
 

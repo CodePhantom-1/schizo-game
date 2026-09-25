@@ -7,6 +7,8 @@
 // ONLY MagicState, and the fixed success formula is untouched.
 #include "sim/Rites.hpp"
 
+#include "sim/Progression.hpp"  // W4-A: the Sacred skills grow by performing
+
 #include <algorithm>
 #include <optional>
 
@@ -226,15 +228,22 @@ RiteOutcome perform_rite_in_world(WorldState& w, const Id& rite_id, const Id& ta
         if (!out.rite.succeeded) add_favour(w.magic, out.addressed, -5);
     }
 
+    // W4-A: a performed rite, success or failure, is use of its tradition's
+    // Sacred skill (skills.csv grows_by rite:<tradition>; mechanics.md row 21).
+    (void)note_rite(w, rite_id, out.rite.succeeded);
+
     if (!out.rite.succeeded) return out;  // a failed rite does nothing to the world
 
     // INVENTED: EFFECT — the effect families.
     if (family == "offering") {
-        add_favour(w.magic, out.addressed, kOfferingFavour);
-        out.effect = "favour:" + out.addressed + ":+" + std::to_string(kOfferingFavour);
+        // W4-A: rite_favour_bp talents/perks add to the favour (integer bp).
+        const int gain = kOfferingFavour + kOfferingFavour * w.character.derived.rite_favour_bp / kBp;
+        add_favour(w.magic, out.addressed, gain);
+        out.effect = "favour:" + out.addressed + ":+" + std::to_string(gain);
     } else if (family == "favour_raising") {
-        add_favour(w.magic, out.addressed, kHymnFavour);
-        out.effect = "favour:" + out.addressed + ":+" + std::to_string(kHymnFavour);
+        const int gain = kHymnFavour + kHymnFavour * w.character.derived.rite_favour_bp / kBp;  // W4-A
+        add_favour(w.magic, out.addressed, gain);
+        out.effect = "favour:" + out.addressed + ":+" + std::to_string(gain);
     } else if (family == "protection") {
         Ward& ward = w.rite_effects.wards_by_place[out.addressed];
         const DayNumber until = w.day + kWardDays - 1;

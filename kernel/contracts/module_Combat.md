@@ -39,8 +39,19 @@ anything that affects state or a draw; resolve an OPEN row; gate on story.
 | `people/places/names/schedules.csv` | the asû Urlugaledina (role `physician`, 4 schedule rows) and the coppersmith Nur-Ea (role `craftsman`), their houses | INVENTED (names: 1 A, 1 INVENTED) |
 
 The skill tokens (`blades`, `axes`, `maces`, `spears`, `bows`, `slings`,
-`shields`, plus `dodge`, `unarmed`) are the W4-A seam: W4-A's skills table
-maps them at merge.
+`shields`, plus `dodge`, `unarmed`) are the W4-A seam, and they are now wired
+to W4-A's `skills.csv` in `CombatActions.cpp`:
+
+| Token | W4-A skill |
+|---|---|
+| `blades` | `dagger` |
+| `axes`, `maces` | `mace_and_axe` |
+| `spears` | `spear` |
+| `bows`, `slings` | `bow_and_sling` |
+| `shields` | `shield` |
+| `unarmed`, `dodge` | `wrestling` |
+
+The module itself still takes plain numbers (`CombatInputs`).
 
 ## The body
 
@@ -149,7 +160,8 @@ Outcome codes: 0 dodged, 1 blocked, 2 parried, 3 deflected, 4 wounded,
 | `ransom_prisoner` | 30 silver captive → captor; shortfall as a loan (20%, 90 days) — Code of Hammurabi §32 as the model |
 | `loot_body` | a dead body, or the looter's own prisoner: all goods move; wear carries over |
 | `repair_at_smith` / `recast_at_smith` | a living npc whose `work_place` is a `smithy`; fees to the smith's purse. Broken copper/bronze must be recast; flint, iron, leather cannot be |
-| `combat_inputs_for` | **the W4-A merge point**: style inputs, else defaults (player skill 20, npcs 15) |
+| `combat_inputs_for` | W4-A wired: strength/agility/endurance from `actor_attribute`. For each token, the skill is the best of: the style's drill, `actor_effective_skill`, and the untrained floor of 10 |
+| skill growth | each blow calls `note_skill_use` (W4-A; the player's sheet only). The attacker's weapon skill gains 3 when the blow lands and 1 when it misses. The defender's shield skill gains 2 on a block, wrestling 1 on a dodge, and his weapon skill 2 on a parry. Treating wounds calls `note_use("verb:treat")` for medicine. Medicine ≥ 40 binds as well as linen |
 
 ## For W4-C (wild lands, bandits)
 

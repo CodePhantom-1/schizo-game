@@ -46,11 +46,11 @@ using namespace sim;
 
 namespace {
 
-// seed 1, day 5: Rng{1}.fork(5).unit() = 0.099786 (test_magic.cpp header) — a
-// full-offering score of 0.80 at this draw always succeeds; re-used here so
+// seed 1, day 5: this rite rolls 3493 of 10000 (D-022; test_magic.cpp header) — a
+// full-offering score of 8000 bp at this roll always succeeds; re-used here so
 // the success path is provably a success, not luck.
 constexpr std::uint64_t kScenarioSeed = 1;
-constexpr std::uint64_t kFailSeed = 42;          // Rng{42}.fork(5).unit() = 0.662594
+constexpr std::uint64_t kFailSeed = 14;          // day 5: this rite rolls 9589 (fails <= 9589 bp)
 constexpr std::uint64_t kDeterminismSeed = 5150;
 
 const Id kRite = "sacrifice_fish_sea_gems";
@@ -89,9 +89,9 @@ struct ScriptObs {
 };
 
 // The whole rite lifecycle, run identically on any world at the given seed.
-// Lands the world on day 5 first (the draw test_magic.cpp already verified
-// for this rite's formula), so every step below draws from the same,
-// pinned-down Rng{seed}.fork(5).unit().
+// Lands the world on day 5 first (the roll test_magic.cpp already verified
+// for this rite), so every attempt of this rite below uses the same
+// pinned-down Rng{seed}.fork(5).fork(stable_hash(rite)).below(10000).
 ScriptObs run_rite_script(WorldState& w) {
     ScriptObs obs;
     w.advance_days(4);  // day 1 -> day 5
@@ -120,12 +120,12 @@ ScriptObs run_rite_script(WorldState& w) {
     w.magic.purity = 100;
 
     // 4. A successful performance: full offering, correct place, this
-    // world's seed/day draw < score (kScenarioSeed at day 5 verified above).
+    // world's seed/day roll < score (kScenarioSeed at day 5 verified above).
     obs.success = perform_rite(w.context(), w.magic, kRite, full_offering(true));
 
     // 5. A weakened attempt: no materials, wrong place -> lower score. On
-    // THIS seed's day-5 draw it may still succeed once favour has climbed
-    // (the draw is fixed per day, not reset per attempt) — captured here
+    // THIS seed's day-5 roll it may still succeed once favour has climbed
+    // (the roll is fixed per rite and day, not reset per attempt) — captured here
     // only for the determinism check below; the guaranteed failure case
     // (documented -5 anger, kFailSeed) is proven on its own fresh world in
     // test_success_then_failure_move_favour.
@@ -209,7 +209,7 @@ static bool test_purity_is_carried_but_non_gating() {
 static bool test_successful_performance_raises_favour_by_two() {
     WorldState w;
     w.init("../db/canon", kScenarioSeed);  // seed 1
-    w.advance_days(4);  // day 5: Rng{1}.fork(5).unit() = 0.099786 (test_magic.cpp)
+    w.advance_days(4);  // day 5: this rite rolls 3493 (test_magic.cpp)
     w.magic.place = kCityTemple;
 
     const RiteResult r = perform_rite(w.context(), w.magic, kRite, full_offering(true));
@@ -217,14 +217,14 @@ static bool test_successful_performance_raises_favour_by_two() {
     SIM_CHECK_EQ(r.deity, kDeity);
     SIM_CHECK_EQ(r.effect_family, std::string("offering (favour)"));
     SIM_CHECK(close_enough(r.score, 0.80));
-    SIM_CHECK(r.succeeded);           // score 0.80, draw 0.099786 < 0.80
+    SIM_CHECK(r.succeeded);           // score 8000 bp, roll 3493 < 8000
     SIM_CHECK_EQ(favour(w.magic, kDeity), 52);  // 50 + 2 (performed, succeeded)
     return true;
 }
 
 static bool test_failed_performance_nets_negative_three() {
     // The documented failure arithmetic (+2 performed, -5 angered, net -3),
-    // exactly as test_magic.cpp verifies: score 0.50, draw 0.662594 >= 0.50.
+    // exactly as test_magic.cpp verifies: score 5000 bp, roll 9589 >= 5000.
     WorldState fw;
     fw.init("../db/canon", kFailSeed);
     fw.advance_days(4);  // day 5
@@ -335,7 +335,7 @@ int count_of(const WorldState& w, const Id& item) {
 static bool test_k1_sacrifice_learned_offered_and_answered() {
     WorldState w;
     w.init("../db/canon", kScenarioSeed);
-    w.advance_days(4);  // day 5: draw 0.099786
+    w.advance_days(4);  // day 5: this rite rolls 3493
     w.magic.place = kCityTemple;
     w.inventories["player"].counts["fish"] = 2;
     w.inventories["player"].counts["sea_gems"] = 1;
@@ -380,14 +380,14 @@ static bool test_k1_sacrifice_learned_offered_and_answered() {
 static bool test_k1_failed_rite_still_consumes_the_offering() {
     WorldState w;
     w.init("../db/canon", kFailSeed);
-    w.advance_days(4);  // day 5: draw 0.662594
+    w.advance_days(4);  // day 5: this rite rolls 9589
     w.magic.place = "riverbank";
     w.inventories["player"].counts["fish"] = 1;  // no sea gems: materials short
     SIM_CHECK(learn_rite_from_teacher(w, kRite, kPriest).learned);
 
     const RiteOutcome o = perform_rite_in_world(w, kRite);
     SIM_CHECK(o.rite.performed);
-    SIM_CHECK(!o.rite.succeeded);          // 0.50 < 0.662594
+    SIM_CHECK(!o.rite.succeeded);          // 5000 bp <= roll 9589
     SIM_CHECK_EQ(count_of(w, "fish"), 0);  // spent anyway
     SIM_CHECK(o.effect.empty());
     SIM_CHECK_EQ(favour(w.magic, kDeity), 47);  // Magic's own +2 -5, nothing more
@@ -439,7 +439,7 @@ static bool test_k1_zisurru_from_a_tablet_wards_a_household() {
     w.inventories["player"].counts["different_types_of_flour"] = 1;
     w.magic.place = "household:player";
     const RiteOutcome o = perform_rite_in_world(w, rite);
-    SIM_CHECK(o.rite.succeeded);  // 0.90 > 0.099786
+    SIM_CHECK(o.rite.succeeded);  // 9000 bp > roll 5312
     SIM_CHECK_EQ(count_of(w, "different_types_of_flour"), 0);
     SIM_CHECK_EQ(o.addressed, std::string("household:player"));
     const DayNumber until = 5 + kWardDays - 1;
@@ -514,6 +514,38 @@ static bool test_k1_loop_is_deterministic_and_saves() {
     return true;
 }
 
+// D-022: every rite's roll is its own (fork(day).fork(stable_hash(rite))) and
+// is taken from the saved rng state, so a world saved and loaded mid-day
+// rolls exactly as the world that never left memory.
+static bool test_d022_rolls_survive_save_load() {
+    WorldState a;
+    a.init("../db/canon", kDeterminismSeed);
+    a.advance_days(4);
+    a.magic.place = kCityTemple;
+    a.inventories["player"].counts["fish"] = 2;
+    a.inventories["player"].counts["sea_gems"] = 2;
+    SIM_CHECK(learn_rite_from_teacher(a, kRite, kPriest).learned);
+    SIM_CHECK(learn_rite_from_teacher(a, "hymns_deity_names", kPriest).learned);
+
+    WorldState r;
+    load_world(r, "../db/canon", save_world(a));
+    SIM_CHECK_EQ(r.rng.state(), a.rng.state());
+
+    for (WorldState* w : {&a, &r}) {
+        const RiteOutcome s = perform_rite_in_world(*w, kRite);
+        const RiteOutcome h = perform_rite_in_world(*w, "hymns_deity_names", "inanna");
+        SIM_CHECK(s.rite.performed && h.rite.performed);
+        const auto roll = [&](const Id& rite) {
+            return Rng{kDeterminismSeed}.fork(5).fork(stable_hash(rite)).below(10000);
+        };
+        SIM_CHECK_EQ(s.rite.succeeded, roll(kRite) < static_cast<std::uint64_t>(s.rite.score_bp));
+        SIM_CHECK_EQ(h.rite.succeeded,
+                     roll("hymns_deity_names") < static_cast<std::uint64_t>(h.rite.score_bp));
+    }
+    SIM_CHECK(save_world(a) == save_world(r));
+    return true;
+}
+
 SIM_MAIN(test_refusal_changes_no_state,
          test_refusal_then_knowledge_gates_attempt,
          test_purity_is_carried_but_non_gating,
@@ -526,4 +558,5 @@ SIM_MAIN(test_refusal_changes_no_state,
          test_k1_hymn_addresses_a_named_god,
          test_k1_zisurru_from_a_tablet_wards_a_household,
          test_k1_barutu_reads_an_omen,
-         test_k1_loop_is_deterministic_and_saves)
+         test_k1_loop_is_deterministic_and_saves,
+         test_d022_rolls_survive_save_load)

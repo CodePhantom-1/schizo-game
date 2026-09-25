@@ -53,3 +53,41 @@ File:line references point to the pre-fix tree (`73fdc53`).
 - `-DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -g"` in `build-asan`, full ctest with `UBSAN_OPTIONS=halt_on_error=1`: 26/26 passed, no sanitizer reports. (`test_capi_nothrow` sets `alloc_dealloc_mismatch=0` for itself only, because its replacement `operator new` otherwise trips ASan's interposed allocator.)
 - `python3 tools/canon_lint.py`: LINT PASSED.
 - `python3 tools/coverage_check.py`: COVERAGE PASSED.
+
+## Follow-up
+
+A second pass after the K-1 (rites) and K-2 (festivals, per-person schedules) merges, plus
+designer decision D-022, which a coordinator message added to the scope mid-pass. Same rule:
+a test that fails on the unfixed code, then the fix. Where the bug had already been fixed by
+the K-2 merge, the test was checked the other way: the old code was put back, the test failed,
+and the fix was restored.
+
+| # | Where | Failure scenario | Fix | Test |
+|---|---|---|---|---|
+| F1 | `kernel/src/CApi.cpp` (K-1/K-2 block) | The 24 rite, festival and people entry points were merged after finding 9 and had no guard. With allocation failing, `sim_world_knows_rite` (building an `Id`) let `std::bad_alloc` through, and the test binary aborted with `terminate`. `sim_world_market_open` on a festival day also allocates (the festivals.csv lookup). | Every one of them, and `sim_world_destroy`, now uses the file's `try`/`catch (...)` pattern and returns its documented value (-1, or a no-op for the setters). `CApi.h` now documents `sim_world_omen_count`'s -1 and `sim_world_destroy` (null is a no-op; never throws), and notes that `sim_world_perform_rite`'s -1 from an internal failure may leave the rite partly applied. | `test_capi_nothrow: test_k1_k2_entry_points_do_not_throw` |
+| F2 | `kernel/src/Magic.cpp` `add_favour` | `current += delta` in `int`: 50 + `INT_MAX` wrapped negative and clamped to **0**. | Add in `long long`, then clamp to 0..100 (as in finding 5). | `test_magic: test_add_favour_extreme_delta_saturates` |
+| F3 | `kernel/src/Magic.cpp` purity term | `kPurityRequirement = 0` ignored `rites.csv` `purity_required`. A rite that requires purity 60 still gave the 0.20 to a performer at 59. | Read the column. Blank means the default 0. A cell that is not a plain non-negative integer also counts as 0 (reading 8 in Magic.cpp). No canon row sets a value yet, so canon outcomes do not change. | `test_magic: test_purity_required_column_gates_the_purity_term` |
+| F4 | `kernel/src/Time.cpp` `is_festival` | {200, 10} in `festival_days`, then `is_festival(10)`. | **Already fixed by K-2:** the constructor sorts `festival_days` (Time.cpp:24). Duplicates are harmless to `binary_search`, so there is nothing to dedupe. A regression test was added. With the sort removed, it fails at `is_festival(10)`. | `test_time: test_unsorted_festival_days` |
+| F5 | `kernel/src/Schedule.cpp` hour parsing | "6am" was read as 6, and 30 was accepted. | **Already fixed by K-2:** `parse_hour` rejects trailing text, and `build_plan` skips hours outside 0..23. A regression test was added in its own file, `test_schedule_hours.cpp`, to stay clear of concurrent `test_schedule.cpp` edits. It covers 6am, 30, 24, -1, 6.5, blank, noon, 0x6, an out-of-int value, and bad person-level rows. With the old lax parse put back, it fails. | `test_schedule_hours` (2 functions) |
+| F6 | `kernel/src/Magic.cpp` roll (D-022 a) | Every rite on the same day drew `fork(day).unit()`, the same number. With seed 1 on day 5, two rites that each score 8000 bp both succeeded, and the second could never fail independently. | `ctx.rng.fork(day).fork(stable_hash(rite_id))`. `stable_hash` is FNV-1a 64, new in Rng.hpp. The same rite retried on the same day still gets the same roll. | `test_magic: test_d022_each_rite_gets_its_own_roll` (b succeeded on the old roll) |
+| F7 | `kernel/src/Magic.cpp` score (D-022 b) | The score was a sum of doubles compared with `unit()`, so FMA contraction could change outcomes across CPUs. | Integer basis points: `favour*4000/100` + 2000/2000/1000/1000. Success is `roll < score_bp`, with `roll = below(10000)`. `Rng::below` is a new unbiased bounded draw. `int_in` has modulo bias, but Events depends on it, so it was left alone. `RiteResult` gains `score_bp`, and `score` is now `score_bp / 10000.0`. | `test_magic: test_d022_score_is_exact_basis_points`, `test_d022_bounded_draw`; `test_scenario_rite: test_d022_rolls_survive_save_load` |
+
+**Re-derived fixtures (D-022).** The new rolls were probed with a throwaway program and are
+listed in the header of `test_magic.cpp`. Seed 1, day 5 still gives success for every canon rite
+that previously relied on it (sacrifice 3493, hymns 4837, zisurru 5312, all under their
+scores). Seed 42 no longer fails the weakened sacrifice (roll 2131), so the failure fixtures
+moved to seed 14 (roll 9589, which fails at both 5000 and 3000 bp). No assertion was
+weakened. `test_full_formula_and_draw` now also asserts the exact roll (5807) and the success.
+
+**Noted, not changed.** `World.cpp` reads festival `day_of_year` and season starts with lax
+`strtol` ("10x" is read as 10). The `Calendar` constructor still range-checks festival days.
+Snapshot casts a saved `MAGIC_PURITY` or favour to `int` without a range check. Favour is
+clamped where the score reads it, so a hand-edited save cannot overflow the multiply.
+`Rites.cpp`'s omen truth roll (`unit() < 0.75`) is exact in binary floating point, so it is
+the same on every CPU.
+
+### Gate (follow-up)
+
+- `cmake -S kernel -B build && cmake --build build -j4`, `ctest`: 28/28 passed.
+- ASan+UBSan (`build-asan`, `UBSAN_OPTIONS=halt_on_error=1`): 28/28 passed, no reports.
+- `python3 tools/canon_lint.py`: LINT PASSED. `python3 tools/coverage_check.py`: COVERAGE PASSED.

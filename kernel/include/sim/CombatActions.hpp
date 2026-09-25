@@ -13,9 +13,12 @@
 // then lawful, laws.csv slaying_a_robber) and give them role "bandit" or
 // apply_style_in_world(w, id, "drought_bandit").
 //
-// W4-A (character progression): combat_inputs_for() is the one merge point —
-// replace its defaults with attribute()/effective_skill(). Nothing else reads
-// attributes or skills.
+// W4-A (character progression) is wired: combat_inputs_for() reads
+// actor_attribute (strength, agility, endurance) and actor_effective_skill
+// through the token map (blades->dagger, axes/maces->mace_and_axe,
+// spears->spear, bows/slings->bow_and_sling, shields->shield,
+// unarmed/dodge->wrestling). Every blow grows the player's skills by use
+// (note_skill_use); treating wounds grows medicine (note_use "verb:treat").
 //
 // Determinism: all draws come from w.rng.fork(...) inside Combat.cpp; the
 // world rng is never advanced. Integer maths only (D-022).
@@ -35,10 +38,11 @@ constexpr Silver kTinFee = 20;            // tin bought to make bronze of copper
 constexpr Silver kRansomSilver = 30;      // a captive's price (Code of Hammurabi §32 model)
 constexpr int kRansomLoanRatePct = 20;    // the shortfall becomes a debt at the customary rate
 constexpr int kRansomLoanTermDays = 90;
+constexpr int kSkilledBinderMedicine = 40;  // medicine at which bare hands bind like linen
 
-// The W4-A merge point: the inputs an actor fights with. Today: the actor's
-// combat style (style_inputs) when one is applied, else defaults (the
-// player: skill 20 in everything; npcs: 15).
+// The inputs an actor fights with: per skill token, the better of his combat
+// style's drill and his W4-A sheet (never below 10, the untrained floor);
+// attributes from his sheet (5 for a stranger with none).
 CombatInputs combat_inputs_for(const WorldState& w, const Id& actor);
 
 // Arms an npc on his first fight: applies style_for(faction, role) (giving

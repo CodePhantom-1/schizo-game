@@ -35,12 +35,13 @@ latter three all `deity=any`). `sacrifice_fish_sea_gems` is the pick:
 - Knowledge as a hard gate (rpg-systems §10.1 power 2): the attempt is refused,
   not merely scored lower, without it.
 - Materials, place and (the always-satisfied case of) time each independently
-  move the score by their documented weight (0.20 / 0.10 / 0.10).
+  move the score by their documented weight (2000 / 1000 / 1000 bp, D-022).
 - Favour (rpg-systems §10.1 power 1): absent → neutral 50; a performed rite
   moves it; +2 on success, net −3 on failure (+2 performed, −5 angered), pinned
-  to the exact verified `Rng{seed}.fork(day).unit()` draws `test_magic.cpp`
-  already establishes for this rite (seed 1 day 5 → success; seed 42 day 5 →
-  failure).
+  to the exact verified rolls `test_magic.cpp` already establishes for this
+  rite (D-022: `Rng{seed}.fork(day).fork(stable_hash(rite)).below(10000)`;
+  seed 1 day 5 → 3493, success at 8000 bp; seed 14 day 5 → 9589, failure at
+  5000 bp).
 - Purity carried but non-gating exactly as D-011 describes: identical score
   (and therefore identical outcome) at `purity=100` and `purity=0`, since
   `rites.csv` sets no `purity_required` value for this row and the fixed

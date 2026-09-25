@@ -199,6 +199,74 @@ Additive throughout — no existing C API signature changed; no new save state.
 - `tests/test_festivals.cpp` (new), plus additions to `test_time.cpp`, `test_schedule.cpp`,
   `test_events.cpp`.
 
+# Kernel review follow-up + D-022 (2026-09-25)
+
+## Rng.hpp (additive)
+
+- `Rng::below(n)`: an unbiased uniform integer in `[0, n)` (rejection sampling), pure integer
+  maths. `int_in` keeps its modulo draw because Events' existing rolls depend on it.
+- `sim::stable_hash(std::string_view)`: FNV-1a 64, the same on every standard library, for
+  `fork()` salts.
+
+## Magic.hpp
+
+- D-022: the fixed formula is now integer basis points with one roll per rite
+  (module_Magic.md). `RiteResult` gains `int score_bp`; `double score` is kept as
+  `score_bp / 10000.0`. Outcomes for a given seed and day changed, so tests that pinned exact
+  draws were re-derived.
+
+## CApi.h / CApi.cpp
+
+- Every K-1/K-2 entry point and `sim_world_destroy` now catches everything and returns its
+  documented error value. `sim_world_omen_count`'s -1 and `sim_world_destroy`'s no-throw are
+  now documented.
+
+# SEAM CHANGELOG — W4-A (character progression)
+
+Contract: module_Character.md. New files: `sim/Character.hpp` + `src/Character.cpp` (the pure
+sheet), `sim/Progression.hpp` + `src/Progression.cpp` (the world verbs). Every edit to a shared
+file is a labelled "W4-A" addition; no module contract changed.
+
+## Db.cpp
+
+- Table list gains `attributes`, `skill_teachings`, `work_roles`.
+
+## World.hpp / World.cpp
+
+- `WorldState` gains `progression` (catalog, rebuilt by `init`, never saved), `character` (the
+  player's sheet), `npc_sheets` (light sheets). `init` builds all three after `seed_people`.
+
+## Actions.cpp / Rites.cpp (caller-side hooks)
+
+- `commit_crime`: an unwitnessed deed grows the criminal's stealth (player only).
+- `hold_crime_hearing`: an exile/death verdict also strips the player's rank with that polity.
+- `perform_rite_in_world`: a performed rite grows its tradition's Sacred skill; a successful
+  offering/hymn's favour is scaled by `rite_favour_bp` (0 by default: K-1 numbers unchanged).
+
+## Snapshot.cpp
+
+- `Reader::peek_tag()` (new): detects an optional trailing section by its tag.
+- Trailing optional `CHAR_CORE`, `CHAR_ATTRS`, `CHAR_SKILLS`, `CHAR_TALENTS`, `CHAR_RANKS`,
+  `CHAR_NPCS`; absent in a pre-W4-A save, which loads as a fresh level-1 prisoner.
+
+## CApi.h / CApi.cpp (additive)
+
+- `SimWorld` gains `w4a_refusal`. `sim_world_craft` (success) grows the station's craft skill;
+  `sim_world_eat` (success, when hungry) grows survival.
+- New: the "Character progression (W4-A)" block (30 functions; see module_Character.md).
+
+## Data / tools
+
+- New tables `attributes.csv`, `skill_teachings.csv`, `work_roles.csv`; `skills.csv`,
+  `talents.csv`, `callings.csv` filled (headers extended); `items.csv` +4, `recipes.csv` +3.
+  All INVENTED, ledgered in docs/proposals/invented-ledger-character.md.
+- `tools/export_datatables.py` exports attributes, callings, talents, skill_teachings, work_roles.
+
+## Tests
+
+- `tests/test_character.cpp` (new), `tests/test_scenario_progression.cpp` (new: the D-021
+  reachability proof through the C API alone).
+
 # SEAM CHANGELOG — W4-B (combat)
 
 Additive only. Every shared-file change sits in a block labelled `W4-B` at the end of its section.
