@@ -4,6 +4,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
+#include "Materials/MaterialInterface.h"
 #include "UObject/ConstructorHelpers.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogSimTablet, Log, All);
@@ -29,6 +30,12 @@ ASimTablet::ASimTablet()
 	{
 		Mesh->SetStaticMesh(Cube.Object);
 		Mesh->SetWorldScale3D(FVector(0.3f, 0.05f, 0.4f));
+		// D-023 flat colour (tools/art/ue_make_style_materials.py), not the engine checker.
+		static ConstructorHelpers::FObjectFinder<UMaterialInterface> StyleMat(TEXT("/Game/Art/Style/MI_Tablet.MI_Tablet"));
+		if (StyleMat.Succeeded())
+		{
+			Mesh->SetMaterial(0, StyleMat.Object);
+		}
 	}
 }
 

@@ -144,37 +144,37 @@ void ASimPlayerController::EnsureSimHud()
 bool ASimPlayerController::TraceLook(FHitResult& OutHit) const
 {
 	UWorld* World = GetWorld();
-	APawn* Pawn = GetPawn();
-	if (World == nullptr || Pawn == nullptr)
+	APawn* ControlledPawn = GetPawn();
+	if (World == nullptr || ControlledPawn == nullptr)
 	{
 		return false;
 	}
 
 	FVector Eyes;
 	FRotator EyesRot;
-	if (UCameraComponent* Camera = Pawn->FindComponentByClass<UCameraComponent>())
+	if (UCameraComponent* Camera = ControlledPawn->FindComponentByClass<UCameraComponent>())
 	{
 		Eyes = Camera->GetComponentLocation();
 		EyesRot = Camera->GetComponentRotation();
 	}
 	else
 	{
-		Eyes = Pawn->GetActorLocation() + FVector(0, 0, 40);
-		EyesRot = Pawn->GetActorRotation();
+		Eyes = ControlledPawn->GetActorLocation() + FVector(0, 0, 40);
+		EyesRot = ControlledPawn->GetActorRotation();
 	}
 
 	const FVector End = Eyes + EyesRot.Vector() * 500.f;
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(SimUse), false);
 	// The protagonist has a body now: the shoulder camera's sightline starts
 	// behind it, so the trace must step over its own capsule and meshes.
-	Params.AddIgnoredActor(Pawn);
+	Params.AddIgnoredActor(ControlledPawn);
 	return World->LineTraceSingleByChannel(OutHit, Eyes, End, ECC_Visibility, Params);
 }
 
 void ASimPlayerController::OnUse()
 {
-	APawn* Pawn = GetPawn();
-	if (Pawn == nullptr)
+	APawn* ControlledPawn = GetPawn();
+	if (ControlledPawn == nullptr)
 	{
 		return;
 	}
@@ -187,7 +187,7 @@ void ASimPlayerController::OnUse()
 			*Hit.GetActor()->GetName(), Hit.ImpactPoint.X, Hit.ImpactPoint.Y, Hit.ImpactPoint.Z);
 		if (ISimInteractable* Interactable = Cast<ISimInteractable>(Hit.GetActor()))
 		{
-			Interactable->Interact(Pawn);
+			Interactable->Interact(ControlledPawn);
 		}
 		else if (ASimTablet* Tablet = Cast<ASimTablet>(Hit.GetActor()))
 		{

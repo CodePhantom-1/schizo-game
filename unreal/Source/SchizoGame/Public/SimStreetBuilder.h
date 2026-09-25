@@ -144,6 +144,13 @@ private:
 	bool bKitMeshesFound = true;
 	void LoadKitMeshes();
 
+	/** The current building's tint (M_Flat per-instance custom data). */
+	FLinearColor CurrentTint = FLinearColor::White;
+	/** Kit pillars + lintel at the gate (only without SimEnvironment's Moon Gate). */
+	bool bLegacyGate = true;
+	/** AddInstance + the current tint as the instance's custom data. */
+	void AddPiece(UInstancedStaticMeshComponent* ISM, const FTransform& T);
+
 	static TArray<FSimPlaceRow> LoadPlaces();
 
 	/** Builds a walled room (perimeter of wall/door/window pieces) with

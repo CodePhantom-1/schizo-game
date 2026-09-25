@@ -8,6 +8,7 @@
 
 #include "Components/StaticMeshComponent.h"
 #include "Engine/Engine.h"
+#include "Materials/MaterialInterface.h"
 #include "UObject/ConstructorHelpers.h"
 
 ASimWell::ASimWell()
@@ -22,6 +23,12 @@ ASimWell::ASimWell()
 		WellMesh->SetStaticMesh(Cylinder.Object);
 	}
 	WellMesh->SetWorldScale3D(FVector(1.0f, 1.0f, 0.8f));
+	// D-023 flat colour (tools/art/ue_make_style_materials.py), not the engine checker.
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> StyleMat(TEXT("/Game/Art/Style/MI_Well.MI_Well"));
+	if (StyleMat.Succeeded())
+	{
+		WellMesh->SetMaterial(0, StyleMat.Object);
+	}
 }
 
 void ASimWell::Interact(APawn* /*Instigator*/)

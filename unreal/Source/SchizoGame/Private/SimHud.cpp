@@ -9,8 +9,20 @@
 #include "SimWorldSubsystem.h"
 #include "sim/CApi.h"
 
+#include "CanvasItem.h"
 #include "Engine/Canvas.h"
 #include "Engine/Engine.h"
+
+namespace
+{
+	// Readable over bright sky and dark night alike.
+	FFontRenderInfo ShadowText()
+	{
+		FFontRenderInfo Info;
+		Info.bEnableShadow = true;
+		return Info;
+	}
+}
 
 void ASimHud::BeginPlay()
 {
@@ -27,14 +39,14 @@ void ASimHud::DrawNeedRow(const FString& Label, int Value, float X, float& Y)
 	const float BarHeight = 10.f;
 	const float LabelWidth = 90.f;
 
-	Canvas->DrawText(GEngine->GetSmallFont(), Label, X, Y, 1.2f, 1.2f);
+	Canvas->DrawText(GEngine->GetSmallFont(), Label, X, Y, 1.2f, 1.2f, ShadowText());
 	DrawRect(FLinearColor::Black, X + LabelWidth, Y + 2.f, BarWidth, BarHeight);
 	// Health reads the other way (full is good); the bar mirrors the number.
 	const FLinearColor FillColor = Label == TEXT("Health") ? FLinearColor(0.2f, 0.5f, 0.2f)
 	                                                       : FLinearColor(0.6f, 0.4f, 0.15f);
 	DrawRect(FillColor, X + LabelWidth, Y + 2.f, BarWidth * Fill, BarHeight);
 	Canvas->DrawText(GEngine->GetSmallFont(), FString::Printf(TEXT("%d"), Value),
-		X + LabelWidth + BarWidth + 10.f, Y, 1.2f, 1.2f);
+		X + LabelWidth + BarWidth + 10.f, Y, 1.2f, 1.2f, ShadowText());
 	Y += 22.f;
 }
 
@@ -50,6 +62,25 @@ void ASimHud::DrawHUD()
 	float Y = 40.f;
 	const ASimPlayerController* SimPC = Cast<ASimPlayerController>(PlayerOwner);
 
+	// The clock, top right: day, season and hour from the kernel.
+	{
+		const int64 Day = USimWorldSubsystem::GetSimDayFor(GetWorld());
+		const float Hour = USimWorldSubsystem::GetSimHourFor(GetWorld());
+		if (Day >= 0 && Hour >= 0.f)
+		{
+			const int32 H = FMath::Clamp(FMath::FloorToInt(Hour), 0, 23);
+			const int32 M = FMath::Clamp(FMath::FloorToInt((Hour - H) * 60.f), 0, 59);
+			const FString Clock = FString::Printf(TEXT("Day %lld  -  %s  -  %02d:%02d"), Day,
+				*USimWorldSubsystem::GetSimSeasonFor(GetWorld()), H, M);
+			float W = 0.f, Hh = 0.f;
+			Canvas->StrLen(GEngine->GetMediumFont(), Clock, W, Hh);
+			FCanvasTextItem Item(FVector2D(Canvas->ClipX - W - 40.f, 36.f), FText::FromString(Clock),
+				GEngine->GetMediumFont(), FLinearColor(0.95f, 0.9f, 0.8f));
+			Item.EnableShadow(FLinearColor(0.f, 0.f, 0.f, 0.8f), FVector2D(1.f, 1.f));
+			Canvas->DrawItem(Item);
+		}
+	}
+
 	// The crosshair's verb prompt: what the Use key would do right now.
 	if (SimPC != nullptr)
 	{
@@ -57,7 +88,7 @@ void ASimHud::DrawHUD()
 		if (!Verb.IsEmpty())
 		{
 			Canvas->DrawText(GEngine->GetSmallFont(), FString::Printf(TEXT("[E] %s"), *Verb),
-				X, Y, 1.5f, 1.5f);
+				X, Y, 1.5f, 1.5f, ShadowText());
 			Y += 30.f;
 		}
 	}
@@ -82,7 +113,7 @@ void ASimHud::DrawHUD()
 			const FString EffectsLine = FString(UTF8_TO_TCHAR(Effects)).Replace(TEXT(";"), TEXT(", "));
 			if (!EffectsLine.IsEmpty())
 			{
-				Canvas->DrawText(GEngine->GetSmallFont(), EffectsLine, X, Y, 1.2f, 1.2f);
+				Canvas->DrawText(GEngine->GetSmallFont(), EffectsLine, X, Y, 1.2f, 1.2f, ShadowText());
 				Y += 22.f;
 			}
 		}
@@ -90,14 +121,14 @@ void ASimHud::DrawHUD()
 		// The purse, weighed in silver grains (CApi's sim_world_purse).
 		Canvas->DrawText(GEngine->GetSmallFont(),
 			FString::Printf(TEXT("Silver %lld"), sim_world_purse(Handle, "player")),
-			X, Y, 1.2f, 1.2f);
+			X, Y, 1.2f, 1.2f, ShadowText());
 		Y += 26.f;
 
 		// Carried goods while Tab is held: the kernel's own inventory list
 		// ("beer:2;grain:3"), not a shortlist.
 		if (SimPC != nullptr && SimPC->IsInventoryShown())
 		{
-			Canvas->DrawText(GEngine->GetSmallFont(), TEXT("Carried"), X, Y, 1.2f, 1.2f);
+			Canvas->DrawText(GEngine->GetSmallFont(), TEXT("Carried"), X, Y, 1.2f, 1.2f, ShadowText());
 			Y += 22.f;
 			char Inventory[512] = {};
 			if (sim_world_inventory(Handle, "player", Inventory, sizeof(Inventory)) > 0)
@@ -111,14 +142,14 @@ void ASimHud::DrawHUD()
 					if (Record.Split(TEXT(":"), &Item, &Count))
 					{
 						Canvas->DrawText(GEngine->GetSmallFont(),
-							FString::Printf(TEXT("%s x %s"), *Item, *Count), X + 16.f, Y, 1.2f, 1.2f);
+							FString::Printf(TEXT("%s x %s"), *Item, *Count), X + 16.f, Y, 1.2f, 1.2f, ShadowText());
 						Y += 20.f;
 					}
 				}
 			}
 			else
 			{
-				Canvas->DrawText(GEngine->GetSmallFont(), TEXT("nothing"), X + 16.f, Y, 1.2f, 1.2f);
+				Canvas->DrawText(GEngine->GetSmallFont(), TEXT("nothing"), X + 16.f, Y, 1.2f, 1.2f, ShadowText());
 				Y += 20.f;
 			}
 		}

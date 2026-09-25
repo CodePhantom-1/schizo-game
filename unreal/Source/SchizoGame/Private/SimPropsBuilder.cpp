@@ -15,7 +15,9 @@
 #include "HAL/IConsoleManager.h"
 #include "Materials/Material.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "Misc/CommandLine.h"
 #include "Misc/Crc.h"
+#include "Misc/Parse.h"
 #include "UObject/UObjectGlobals.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogSimPropsBuilder, Log, All);
@@ -205,8 +207,15 @@ void USimPropsBuilder::Tick(float DeltaTime)
 	}
 
 	bDressed = true;
-	SpawnSkyDome();
-	SpawnPostPolish();
+	// The painted dome (a 120 m shell — it walled off everything past the
+	// street) and this pass's post volume are superseded by SimDayNight's
+	// physical sky and grade; two unbound post volumes would also fight.
+	// -SimLegacySky brings them back.
+	if (FParse::Param(FCommandLine::Get(), TEXT("SimLegacySky")))
+	{
+		SpawnSkyDome();
+		SpawnPostPolish();
+	}
 	const int32 NumProps = PlaceIds.Num() > 0 ? PlaceStreetProps() : 0;
 	UE_LOG(LogSimPropsBuilder, Log,
 		TEXT("Dressing pass: sky dome + post polish up%s, %d prop(s) placed."),

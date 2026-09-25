@@ -13,8 +13,17 @@
 #include "SimTablet.h"
 #include "sim/CApi.h"
 
+#include "SimEnvironment.h"  // the city around the quarter, built by code (D-023)
+
+#include "Camera/CameraActor.h"
+#include "Camera/CameraComponent.h"
+#include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerStart.h"
+#include "HAL/IConsoleManager.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
+#include "UnrealClient.h"
 #include "UObject/UObjectGlobals.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogSimGameMode, Log, All);
@@ -85,12 +94,25 @@ void ASimGameMode::StartPlay()
 		return;
 	}
 
+	// Development screens (the HUD draws the clock): off unless asked for.
+	if (GEngine != nullptr && !FParse::Param(FCommandLine::Get(), TEXT("SimDebugMessages")))
+	{
+		GEngine->bEnableOnScreenDebugMessages = false;
+	}
+
+	// --- the city around the quarter (terrain, walls, ziggurat, lighthouse,
+	// fields, sea) — first, because its terrain is the street's ground.
+	Environment = ASimEnvironment::BuildWorld(World);
+
 	// --- the street (W6-B) ---------------------------------------------------
 	// Built BEFORE Super::StartPlay(): the pawn must find our PlayerStart,
-	// not the engine's fallback. The builder owns the ground, the kit meshes
-	// and the tagged sun/sky (SimDayNight finds those instead of spawning
-	// its own — the street is lit once).
+	// not the engine's fallback. The builder owns the kit meshes; the
+	// environment owns the ground and SimDayNight the sky.
 	const FSimStreetBuildResult Street = ASimStreetBuilder::BuildQuarter(World);
+	if (Environment != nullptr)
+	{
+		Environment->BuildStreetDressing();
+	}
 	if (!Street.bOk)
 	{
 		UE_LOG(LogSimGameMode, Warning, TEXT("The street failed to build — the quarter is missing."));
@@ -111,7 +133,7 @@ void ASimGameMode::StartPlay()
 	}
 
 	// A PlayerStart so the pawn has somewhere to be: facing through the gate.
-	StreetStart = World->SpawnActor<APlayerStart>(Street.GateLocation + FVector(500, 0, 50), FRotator(0, 180, 0));
+	StreetStart = World->SpawnActor<APlayerStart>(Street.GateLocation + FVector(1100, 0, 50), FRotator(0, 180, 0));
 	if (StreetStart == nullptr)
 	{
 		UE_LOG(LogSimGameMode, Warning, TEXT("PlayerStart spawn failed — the pawn will start at the default."));
@@ -161,9 +183,149 @@ AActor* ASimGameMode::FindPlayerStart_Implementation(AController* Player, const 
 	return Super::FindPlayerStart_Implementation(Player, IncomingName);
 }
 
+namespace
+{
+	struct FSimShotView
+	{
+		const TCHAR* Name;
+		FVector Loc;
+		FVector Target;  // ZeroVector + bPlayer = the player's own camera
+		bool bPlayer;
+	};
+	const FSimShotView GShotViews[] = {
+		{ TEXT("player"),   FVector::ZeroVector,                 FVector::ZeroVector,              true },
+		{ TEXT("street"),   FVector(2600.f, -260.f, 175.f),      FVector(12000.f, 1200.f, 500.f),  false },
+		{ TEXT("gate"),     FVector(-4200.f, -1600.f, 260.f),    FVector(0.f, 0.f, 900.f),         false },
+		{ TEXT("fields"),   FVector(-1800.f, 1200.f, 1100.f),    FVector(-30000.f, -4000.f, 0.f),  false },
+		{ TEXT("zig"),      FVector(16200.f, -2600.f, 260.f),    FVector(22000.f, 3000.f, 1500.f), false },
+		{ TEXT("overview"), FVector(-9000.f, -14000.f, 6500.f),  FVector(16000.f, 5000.f, 0.f),    false },
+		{ TEXT("harbor"),   FVector(33000.f, -9000.f, 2400.f),   FVector(48500.f, 6000.f, 2500.f), false },
+	};
+}
+
+void ASimGameMode::TickShots(float DeltaSeconds)
+{
+	// Development capture: -SimShots=<dir> [-SimShotHours=7,12,17.5,21]
+	// [-SimShotViews=player,street,...] walks every hour x view, saves a PNG
+	// per pair and quits. The clock is slowed so each frame holds its hour.
+	UWorld* World = GetWorld();
+	if (World == nullptr || ShotStage < 0)
+	{
+		return;
+	}
+	if (ShotStage == 0)
+	{
+		if (!FParse::Value(FCommandLine::Get(), TEXT("SimShots="), ShotDir))
+		{
+			ShotStage = -1;
+			return;
+		}
+		FString HoursArg = TEXT("7,12,17.5,21");
+		FParse::Value(FCommandLine::Get(), TEXT("SimShotHours="), HoursArg, false);
+		TArray<FString> Parts;
+		HoursArg.ParseIntoArray(Parts, TEXT(","), true);
+		for (const FString& P : Parts)
+		{
+			ShotHours.Add(FCString::Atof(*P));
+		}
+		FString ViewsArg;
+		FParse::Value(FCommandLine::Get(), TEXT("SimShotViews="), ViewsArg, false);
+		for (int32 i = 0; i < UE_ARRAY_COUNT(GShotViews); ++i)
+		{
+			if (ViewsArg.IsEmpty() || ViewsArg.Contains(GShotViews[i].Name))
+			{
+				ShotViews.Add(i);
+			}
+		}
+		ShotStage = 1;
+		ShotTimer = 0.f;
+		return;
+	}
+	if (USimWorldSubsystem::GetSimHourFor(World) < 0.f)
+	{
+		return;  // no kernel world yet
+	}
+	ShotTimer += DeltaSeconds;
+	APlayerController* PC = World->GetFirstPlayerController();
+	if (PC == nullptr)
+	{
+		return;
+	}
+	if (ShotStage == 1)
+	{
+		// Let the world settle (shader compiles, the director's first spawn).
+		if (ShotTimer < 6.f)
+		{
+			return;
+		}
+		if (IConsoleVariable* Rate = IConsoleManager::Get().FindConsoleVariable(TEXT("sim.DaysPerRealMinute")))
+		{
+			Rate->Set(100000.f, ECVF_SetByCode);
+		}
+		FActorSpawnParameters Params;
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		ShotCamera = World->SpawnActor<ACameraActor>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
+		if (ShotCamera != nullptr && ShotCamera->GetCameraComponent() != nullptr)
+		{
+			ShotCamera->GetCameraComponent()->SetFieldOfView(80.f);
+			ShotCamera->GetCameraComponent()->bConstrainAspectRatio = false;
+		}
+		ShotIndex = 0;
+		ShotStage = 2;
+		ShotTimer = 0.f;
+		bShotPrepared = false;
+		return;
+	}
+	const int32 Total = ShotHours.Num() * ShotViews.Num();
+	if (ShotIndex >= Total)
+	{
+		if (ShotTimer > 1.5f)
+		{
+			UE_LOG(LogSimGameMode, Log, TEXT("SimShots: %d captures written to %s — quitting."), Total, *ShotDir);
+			FGenericPlatformMisc::RequestExit(false);
+			ShotStage = -1;
+		}
+		return;
+	}
+	const float Hour = ShotHours[ShotIndex / ShotViews.Num()];
+	const FSimShotView& View = GShotViews[ShotViews[ShotIndex % ShotViews.Num()]];
+	if (!bShotPrepared)
+	{
+		if (ShotIndex % ShotViews.Num() == 0)
+		{
+			const float Now = USimWorldSubsystem::GetSimHourFor(World);
+			const float Delta = FMath::Fmod(Hour - Now + 48.f, 24.f);
+			USimWorldSubsystem::SkipSimHoursFor(World, Delta);
+		}
+		if (View.bPlayer || ShotCamera == nullptr)
+		{
+			PC->SetViewTarget(PC->GetPawn());
+		}
+		else
+		{
+			ShotCamera->SetActorLocationAndRotation(View.Loc, (View.Target - View.Loc).Rotation());
+			PC->SetViewTarget(ShotCamera);
+		}
+		bShotPrepared = true;
+		ShotTimer = 0.f;
+		return;
+	}
+	const float Settle = (ShotIndex % ShotViews.Num() == 0) ? 5.f : 3.f;
+	if (ShotTimer >= Settle)
+	{
+		const FString File = FPaths::Combine(ShotDir, FString::Printf(TEXT("%05.2f_%s.png"), Hour, View.Name));
+		FScreenshotRequest::RequestScreenshot(File, true, false);
+		UE_LOG(LogSimGameMode, Log, TEXT("SimShots: %s"), *File);
+		++ShotIndex;
+		bShotPrepared = false;
+		ShotTimer = -0.5f;
+	}
+}
+
 void ASimGameMode::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	TickShots(DeltaSeconds);
 
 	// The clock on screen: sim day, season and hour, from the kernel via the
 	// C API. The world subsystem drives the clock; the sim itself is owned by

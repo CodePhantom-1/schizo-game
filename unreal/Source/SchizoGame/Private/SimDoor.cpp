@@ -2,6 +2,7 @@
 #include "SimDoor.h"
 
 #include "Components/StaticMeshComponent.h"
+#include "Materials/MaterialInterface.h"
 #include "UObject/ConstructorHelpers.h"
 
 ASimDoor::ASimDoor()
@@ -16,6 +17,12 @@ ASimDoor::ASimDoor()
 		LeafMesh->SetStaticMesh(Cube.Object);
 	}
 	LeafMesh->SetWorldScale3D(FVector(0.1f, 1.0f, 2.0f));
+	// D-023 flat colour (tools/art/ue_make_style_materials.py), not the engine checker.
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> StyleMat(TEXT("/Game/Art/Style/MI_Door.MI_Door"));
+	if (StyleMat.Succeeded())
+	{
+		LeafMesh->SetMaterial(0, StyleMat.Object);
+	}
 	LeafMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	LeafMesh->SetCollisionResponseToAllChannels(ECR_Block);
 	// The Use trace runs on Visibility: a closed door must block it.

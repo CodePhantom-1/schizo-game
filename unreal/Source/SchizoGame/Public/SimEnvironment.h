@@ -1,0 +1,96 @@
+// SimEnvironment.h — the City of the Moon around the Moon Gate Quarter, built
+// by code in the D-023 style (low-poly, flat-shaded, vertex-coloured; the
+// mood carried by light and fog — see SimDayNight).
+//
+// What stands here (world-bible §5 "City of the Moon": the richest city, on
+// the sea trade routes, home of the temple of sun and moon and the Great
+// Lighthouse; §2: the drought that is breaking the world):
+//   - terrain: the walled city on flat packed earth; west of the Moon Gate the
+//     irrigated barley fields and canals, withering in the drought; the river
+//     to the south with its reed banks; desert and dunes beyond; the sea east.
+//   - the city wall with towers, the monumental Moon Gate (the street's own
+//     gate place stands in its passage), a sea gate and the harbour quay.
+//   - the ziggurat of the temple of sun and moon in its walled precinct.
+//   - the Great Lighthouse on its mole, fire and turning beam at night.
+//   - the rest of the city as a dense field of flat-roofed mudbrick houses.
+//   - date palms, reeds, barley, rocks, boats, far mountains to the north.
+//   - fires, door lamps and lit windows that burn from dusk to dawn.
+//
+// Layout units are cm, +X east, +Y north; the Moon Gate is at the origin and
+// the quarter's street runs east from it (SimStreetBuilder). Everything is
+// deterministic: the same build every run.
+#pragma once
+
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
+#include "SimEnvironment.generated.h"
+
+class UProceduralMeshComponent;
+class UInstancedStaticMeshComponent;
+class UPointLightComponent;
+class USpotLightComponent;
+class UMaterialInterface;
+struct FSimMeshKit;
+
+UCLASS()
+class SCHIZOGAME_API ASimEnvironment : public AActor
+{
+	GENERATED_BODY()
+
+public:
+	ASimEnvironment();
+
+	/** Spawns the environment and builds everything that does not depend on
+	 *  the street. Call BEFORE the street builds (the terrain is its ground). */
+	static ASimEnvironment* BuildWorld(UWorld* World);
+
+	/** Door lamps along the street — call AFTER the street registered its door slots. */
+	void BuildStreetDressing();
+
+	/** Ground height of the terrain at (X, Y), cm. */
+	static float TerrainHeight(float X, float Y);
+
+	virtual void Tick(float DeltaSeconds) override;
+
+private:
+	UPROPERTY() TObjectPtr<UProceduralMeshComponent> Terrain;
+	UPROPERTY() TObjectPtr<UProceduralMeshComponent> Water;
+	UPROPERTY() TObjectPtr<UProceduralMeshComponent> Solid;
+	UPROPERTY() TObjectPtr<UProceduralMeshComponent> Foliage;
+	UPROPERTY() TObjectPtr<UProceduralMeshComponent> Far;
+	UPROPERTY() TObjectPtr<UProceduralMeshComponent> Fire;
+	UPROPERTY() TObjectPtr<UProceduralMeshComponent> NightGlow;
+	UPROPERTY() TObjectPtr<UInstancedStaticMeshComponent> Blocks;
+
+	UPROPERTY() TArray<TObjectPtr<UPointLightComponent>> NightLights;
+	TArray<float> NightLightBase;
+	UPROPERTY() TObjectPtr<USpotLightComponent> Beacon;
+
+	UPROPERTY() TObjectPtr<UMaterialInterface> FlatMat;
+	UPROPERTY() TObjectPtr<UMaterialInterface> WindMat;
+	UPROPERTY() TObjectPtr<UMaterialInterface> WaterMat;
+	UPROPERTY() TObjectPtr<UMaterialInterface> GlowMat;
+	UPROPERTY() TObjectPtr<UMaterialInterface> WindowGlowMat;
+	UPROPERTY() TObjectPtr<UMaterialInterface> MoonMat;
+
+	bool bNightShown = true;
+	float Clock = 0.f;
+
+	void LoadMaterials();
+	void Build();
+	void BuildTerrain();
+	void BuildWater();
+	void BuildWalls(FSimMeshKit& K, FSimMeshKit& Glow);
+	void BuildZiggurat(FSimMeshKit& K, FSimMeshKit& Glow);
+	void BuildLighthouse(FSimMeshKit& K, FSimMeshKit& Glow);
+	void BuildCity(FSimMeshKit& Plants, FSimMeshKit& Windows);
+	void BuildCountryside(FSimMeshKit& Solid, FSimMeshKit& Plants);
+	void BuildFar(FSimMeshKit& K);
+	void BuildBoats(FSimMeshKit& K, FSimMeshKit& Sails);
+
+	/** A brazier / torch: flame into Glow, and a night light (Radius cm, cd). */
+	void AddFire(FSimMeshKit& Glow, const FVector& At, float Size, float Candela, float Radius, bool bShadows);
+	UPointLightComponent* AddNightLight(const FVector& At, float Candela, float Radius, const FLinearColor& Color, bool bShadows);
+	/** One engine-cube block instance: bottom centre, full size, yaw, sRGB colour. */
+	void AddBlock(const FVector& BottomCenter, const FVector& Size, float YawDeg, const FLinearColor& Color);
+};

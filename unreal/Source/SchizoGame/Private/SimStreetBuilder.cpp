@@ -45,6 +45,7 @@ namespace
 		C->SetupAttachment(Root);
 		C->SetMobility(EComponentMobility::Static);
 		C->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		C->NumCustomDataFloats = 3;  // per-house tint (M_Flat's PerInstanceCustomData 0..2)
 		return C;
 	}
 
@@ -129,18 +130,22 @@ ASimStreetBuilder::ASimStreetBuilder()
 
 void ASimStreetBuilder::LoadKitMeshes()
 {
-	// Kit FBX slots now carry real imported materials (the CC0 ambientCG
-	// surface maps, ue_import_kit.py import_materials/import_textures). The
-	// flat runtime MIC colours below are the FALLBACK, painted only onto
-	// slots whose material interface is null (kit not imported yet, or the
-	// material failed to import).
+	// D-023: every kit slot is a flat colour on the style master M_Flat
+	// (tools/art/ue_make_style_materials.py) — the imported photo-texture
+	// materials (the archived A-1 path) read as yellow planks at this scale.
+	// Each house tints its pieces through per-instance custom data
+	// (CurrentTint, see AddPiece), so the street is not one uniform beige.
 	const TMap<FName, FColor> SlotColors = {
-		{TEXT("M_MudPlaster"), FColor(194, 158, 107)},
-		{TEXT("M_Mudbrick"),   FColor(140, 102,  69)},
-		{TEXT("M_Timber"),     FColor( 77,  48,  26)},
-		{TEXT("M_Reed"),       FColor(173, 148,  77)},
+		{TEXT("M_MudPlaster"), FColor(216, 200, 170)},
+		{TEXT("M_Mudbrick"),   FColor(158, 128, 100)},
+		{TEXT("M_Timber"),     FColor( 88,  58,  36)},
+		{TEXT("M_Reed"),       FColor(192, 162,  92)},
 	};
-	UMaterial* Base = LoadObject<UMaterial>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial"));
+	UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Art/Style/M_Flat.M_Flat"));
+	if (Base == nullptr)
+	{
+		Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial"));
+	}
 	auto LoadInto = [this, &SlotColors, Base](UInstancedStaticMeshComponent* ISM, const TCHAR* Id)
 	{
 		UStaticMesh* Mesh = LoadKitMesh(Id);
@@ -157,14 +162,10 @@ void ASimStreetBuilder::LoadKitMeshes()
 			const TArray<FStaticMaterial>& Slots = Mesh->GetStaticMaterials();
 			for (int32 Slot = 0; Slot < Slots.Num() && Base != nullptr; ++Slot)
 			{
-				if (Slots[Slot].MaterialInterface != nullptr)
-				{
-					continue;  // imported material (CC0 surface maps) wins
-				}
-				const FColor* const Color = SlotColors.Find(Slots[Slot].MaterialSlotName);
+				const FColor* Color = SlotColors.Find(Slots[Slot].MaterialSlotName);
 				if (Color == nullptr)
 				{
-					continue;  // engine-cube fallback slots stay grey
+					Color = SlotColors.Find(TEXT("M_MudPlaster"));  // engine-cube fallback: plaster
 				}
 				if (UMaterialInstanceDynamic* Mic = ISM->CreateDynamicMaterialInstance(Slot, Base))
 				{
@@ -248,7 +249,7 @@ FVector ASimStreetBuilder::BuildRoom(const FVector& Origin, int32 W, int32 D, co
 		const bool bIsDoor = (Side == DoorSide) && (Idx == (bRunsAlongX ? MidX : MidY));
 		const bool bIsWindow = !bIsDoor && (Side == WindowSide) && (Idx == (bRunsAlongX ? MidX : MidY));
 		UInstancedStaticMeshComponent* ISM = bIsDoor ? ISM_WallDoor : (bIsWindow ? ISM_WallWindow : ISM_WallPlain);
-		ISM->AddInstance(PieceTransform(TargetX, TargetY, Z0, RotDeg, GRID, WALL_THICK));
+		AddPiece(ISM, PieceTransform(TargetX, TargetY, Z0, RotDeg, GRID, WALL_THICK));
 		if (bIsDoor)
 		{
 			// The door piece's cut is centred on its own cell; the anchor
@@ -284,7 +285,7 @@ FVector ASimStreetBuilder::BuildRoom(const FVector& Origin, int32 W, int32 D, co
 			{
 				UInstancedStaticMeshComponent* RoofISM =
 					(bRoofAccess && i == AccessI && j == AccessJ) ? ISM_RoofAccess : ISM_RoofSlabFlat;
-				RoofISM->AddInstance(PieceTransform(X0 + i * GRID, Y0 + j * GRID, Z0 + WALL_HEIGHT, 0.f, GRID, GRID));
+				AddPiece(RoofISM, PieceTransform(X0 + i * GRID, Y0 + j * GRID, Z0 + WALL_HEIGHT, 0.f, GRID, GRID));
 			}
 		}
 		// One continuous parapet ring around the outer edge (the runtime
@@ -293,16 +294,16 @@ FVector ASimStreetBuilder::BuildRoom(const FVector& Origin, int32 W, int32 D, co
 		// piece — the stretch is invisible with flat-colour materials.
 		const float ZP = Z0 + WALL_HEIGHT + ROOF_THICK;
 		const float L = D * GRID - 2.f * PARAPET_T; // west/east run length
-		ISM_ParapetRun->AddInstance(PieceTransform(X0, Y0, ZP, 0.f, W * GRID, PARAPET_T, FVector(W, 1.f, 1.f)));
-		ISM_ParapetRun->AddInstance(PieceTransform(X0, Y0 + D * GRID - PARAPET_T, ZP, 0.f, W * GRID, PARAPET_T, FVector(W, 1.f, 1.f)));
-		ISM_ParapetRun->AddInstance(PieceTransform(X0, Y0 + PARAPET_T, ZP, 90.f, L, PARAPET_T, FVector(L / GRID, 1.f, 1.f)));
-		ISM_ParapetRun->AddInstance(PieceTransform(X0 + W * GRID - PARAPET_T, Y0 + PARAPET_T, ZP, 270.f, L, PARAPET_T, FVector(L / GRID, 1.f, 1.f)));
+		AddPiece(ISM_ParapetRun, PieceTransform(X0, Y0, ZP, 0.f, W * GRID, PARAPET_T, FVector(W, 1.f, 1.f)));
+		AddPiece(ISM_ParapetRun, PieceTransform(X0, Y0 + D * GRID - PARAPET_T, ZP, 0.f, W * GRID, PARAPET_T, FVector(W, 1.f, 1.f)));
+		AddPiece(ISM_ParapetRun, PieceTransform(X0, Y0 + PARAPET_T, ZP, 90.f, L, PARAPET_T, FVector(L / GRID, 1.f, 1.f)));
+		AddPiece(ISM_ParapetRun, PieceTransform(X0 + W * GRID - PARAPET_T, Y0 + PARAPET_T, ZP, 270.f, L, PARAPET_T, FVector(L / GRID, 1.f, 1.f)));
 	}
 
 	if (bRoofAccess)
 	{
 		// The external stair to the roof, against the south wall's west end.
-		ISM_Stair->AddInstance(PieceTransform(X0, Y0 - 2.f * GRID, Z0, 0.f, GRID, 2.f * GRID));
+		AddPiece(ISM_Stair, PieceTransform(X0, Y0 - 2.f * GRID, Z0, 0.f, GRID, 2.f * GRID));
 	}
 
 	return DoorPoint;
@@ -314,7 +315,7 @@ FVector ASimStreetBuilder::BuildPavedArea(const FVector& Origin, int32 W, int32 
 	{
 		for (int32 j = 0; j < D; ++j)
 		{
-			ISM_CourtyardTile->AddInstance(PieceTransform(Origin.X + i * GRID, Origin.Y + j * GRID, Origin.Z, 0.f, GRID, GRID));
+			AddPiece(ISM_CourtyardTile, PieceTransform(Origin.X + i * GRID, Origin.Y + j * GRID, Origin.Z, 0.f, GRID, GRID));
 		}
 	}
 	return Origin + FVector(W * GRID * 0.5f, D * GRID * 0.5f, 0.f);
@@ -322,8 +323,8 @@ FVector ASimStreetBuilder::BuildPavedArea(const FVector& Origin, int32 W, int32 
 
 FVector ASimStreetBuilder::BuildStall(const FVector& Origin)
 {
-	ISM_CourtyardTile->AddInstance(PieceTransform(Origin.X, Origin.Y, Origin.Z, 0.f, GRID, GRID));
-	ISM_Awning->AddInstance(PieceTransform(Origin.X, Origin.Y, Origin.Z, 0.f, GRID, GRID));
+	AddPiece(ISM_CourtyardTile, PieceTransform(Origin.X, Origin.Y, Origin.Z, 0.f, GRID, GRID));
+	AddPiece(ISM_Awning, PieceTransform(Origin.X, Origin.Y, Origin.Z, 0.f, GRID, GRID));
 	return Origin + FVector(GRID * 0.5f, GRID * 0.5f, 0.f);
 }
 
@@ -367,9 +368,14 @@ FVector ASimStreetBuilder::BuildGate(const FVector2D& Center)
 	// at door-head height above its origin, so z-scale 1.3 = 260/200 lifts
 	// it from 2.0 m to exactly the wall top). Audit P1-1: the previous
 	// orientation flanked along X and blocked the street centreline.
-	ISM_WallPlain->AddInstance(PieceTransform(Center.X - GRID * 0.5f, Center.Y + GRID, 0.f, 0.f, GRID, GRID));
-	ISM_WallPlain->AddInstance(PieceTransform(Center.X - GRID * 0.5f, Center.Y - 2.f * GRID, 0.f, 0.f, GRID, GRID));
-	ISM_Lintel->AddInstance(PieceTransform(Center.X - WALL_THICK * 0.5f, Center.Y - 110.f, 0.f, 0.f, WALL_THICK, 220.f, FVector(1.f, 1.f, 1.3f)));
+	// The monumental Moon Gate is SimEnvironment's (towers, lintel, lapis,
+	// crescent); the kit pillars stay only when no environment stands.
+	if (bLegacyGate)
+	{
+	AddPiece(ISM_WallPlain, PieceTransform(Center.X - GRID * 0.5f, Center.Y + GRID, 0.f, 0.f, GRID, GRID));
+	AddPiece(ISM_WallPlain, PieceTransform(Center.X - GRID * 0.5f, Center.Y - 2.f * GRID, 0.f, 0.f, GRID, GRID));
+	AddPiece(ISM_Lintel, PieceTransform(Center.X - WALL_THICK * 0.5f, Center.Y - 110.f, 0.f, 0.f, WALL_THICK, 220.f, FVector(1.f, 1.f, 1.3f)));
+	}
 	return FVector(Center.X, Center.Y, 0.f);
 }
 
@@ -388,7 +394,7 @@ void ASimStreetBuilder::BuildGroundAndLighting(const FVector2D& BoundsMin, const
 		return Actor != nullptr && Actor->Tags.Contains(Tag);
 	};
 	bool bHasGround = false;
-	for (TActorIterator<AStaticMeshActor> It(World); It; ++It)
+	for (TActorIterator<AActor> It(World); It; ++It)
 	{
 		if (HasTag(*It, FName(TEXT("SimGround")))) { bHasGround = true; break; }
 	}
@@ -435,46 +441,27 @@ void ASimStreetBuilder::BuildGroundAndLighting(const FVector2D& BoundsMin, const
 		}
 	}
 
-	// --- light and sky: the Entry map ships dark — without these the street
-	// is a black screen. The sun sits low, like a drought sky. Tagged SimSun
-	// so the time-of-day work (and this duplicate guard) can find it.
-	bool bHasSun = false;
-	for (TActorIterator<ADirectionalLight> It(World); It; ++It)
-	{
-		if (HasTag(*It, FName(TEXT("SimSun")))) { bHasSun = true; break; }
-	}
-	if (!bHasSun)
-	{
-		if (ADirectionalLight* Sun = World->SpawnActor<ADirectionalLight>(FVector(0, 0, 2000), FRotator(-35, 20, 0)))
-		{
-			Sun->Tags.Add(FName(TEXT("SimSun")));
-			if (UDirectionalLightComponent* Light = Cast<UDirectionalLightComponent>(Sun->GetLightComponent()))
-			{
-				Light->SetMobility(EComponentMobility::Movable);
-				Light->SetIntensity(8.f);
-				Light->SetLightColor(FLinearColor(1.f, 0.85f, 0.65f)); // dry, dusty daylight
-			}
-		}
-	}
-	bool bHasSky = false;
-	for (TActorIterator<ASkyLight> It(World); It; ++It)
-	{
-		if (HasTag(*It, FName(TEXT("SimSky")))) { bHasSky = true; break; }
-	}
-	if (!bHasSky)
-	{
-		// No SkyLight, deliberately: a captured-scene SkyLight issues a
-		// CubemapCapture whose GPU work never completes on this machine
-		// (RADV / RX 5700 XT), wedging the render thread and with it the
-		// game thread's next render fence. The directional sun carries the
-		// street; ambient fill returns with an authored sky (a cubemap
-		// specified offline, never captured at runtime).
-		UE_LOG(LogSimStreetBuilder, Log, TEXT("No sky light (GPU-capture hang on this machine); the sun lights the street."));
-	}
+	// Light and sky: SimDayNight owns them (sun, moon, sky light, fog, grade).
+}
+
+void ASimStreetBuilder::AddPiece(UInstancedStaticMeshComponent* ISM, const FTransform& T)
+{
+	const int32 I = ISM->AddInstance(T);
+	ISM->SetCustomDataValue(I, 0, CurrentTint.R, false);
+	ISM->SetCustomDataValue(I, 1, CurrentTint.G, false);
+	ISM->SetCustomDataValue(I, 2, CurrentTint.B, true);
 }
 
 FSimStreetBuildResult ASimStreetBuilder::Build()
 {
+	for (TActorIterator<AActor> It(GetWorld()); It; ++It)
+	{
+		if (It->Tags.Contains(FName(TEXT("SimGround"))))
+		{
+			bLegacyGate = false;  // the environment stands: its Moon Gate is the gate
+			break;
+		}
+	}
 	LoadKitMeshes();
 	TArray<FSimPlaceRow> Places = LoadPlaces();
 	PlaceLocations.Empty();
@@ -508,6 +495,14 @@ FSimStreetBuildResult ASimStreetBuilder::Build()
 			Cursor = 0.f;
 		}
 
+		// Each building's lime wash / mud tone (INVENTED dressing; content hash so the street is stable).
+		{
+			static const FLinearColor Tints[] = {
+				FLinearColor(1.06f, 1.05f, 1.02f), FLinearColor(1.f, 0.9f, 0.76f), FLinearColor(0.93f, 0.82f, 0.7f),
+				FLinearColor(1.04f, 0.88f, 0.8f), FLinearColor(0.86f, 0.76f, 0.64f), FLinearColor(1.08f, 1.0f, 0.86f) };
+			const uint32 H = FCrc::StrCrc32(*Row.Id.ToString());
+			CurrentTint = (Row.Kind == TEXT("temple")) ? FLinearColor(1.12f, 1.1f, 1.08f) : Tints[H % 6];
+		}
 		const bool bGate = (Row.Kind == TEXT("gate"));
 		const bool bPosSide = (PlotsLaid % 2 == 0);
 		FVector2D Center;
@@ -624,19 +619,19 @@ FSimStreetBuildResult ASimStreetBuilder::Build()
 					const float Off = (M + Side) * GRID + 35.f;
 					if (DoorSide == TEXT("south"))
 					{
-						ISM_Pilaster->AddInstance(PieceTransform(Origin.X + Off, Origin.Y - 15.f, 0.f, 0.f, 30.f, 15.f));
+						AddPiece(ISM_Pilaster, PieceTransform(Origin.X + Off, Origin.Y - 15.f, 0.f, 0.f, 30.f, 15.f));
 					}
 					else if (DoorSide == TEXT("north"))
 					{
-						ISM_Pilaster->AddInstance(PieceTransform(Origin.X + Off, Origin.Y + D * GRID, 0.f, 0.f, 30.f, 15.f));
+						AddPiece(ISM_Pilaster, PieceTransform(Origin.X + Off, Origin.Y + D * GRID, 0.f, 0.f, 30.f, 15.f));
 					}
 					else if (DoorSide == TEXT("west"))
 					{
-						ISM_Pilaster->AddInstance(PieceTransform(Origin.X - 15.f, Origin.Y + Off, 0.f, 90.f, 30.f, 15.f));
+						AddPiece(ISM_Pilaster, PieceTransform(Origin.X - 15.f, Origin.Y + Off, 0.f, 90.f, 30.f, 15.f));
 					}
 					else if (DoorSide == TEXT("east"))
 					{
-						ISM_Pilaster->AddInstance(PieceTransform(Origin.X + W * GRID, Origin.Y + Off, 0.f, 270.f, 30.f, 15.f));
+						AddPiece(ISM_Pilaster, PieceTransform(Origin.X + W * GRID, Origin.Y + Off, 0.f, 270.f, 30.f, 15.f));
 					}
 				}
 			}

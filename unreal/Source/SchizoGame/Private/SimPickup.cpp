@@ -8,6 +8,7 @@
 
 #include "Components/StaticMeshComponent.h"
 #include "Engine/Engine.h"
+#include "Materials/MaterialInterface.h"
 #include "UObject/ConstructorHelpers.h"
 
 ASimPickup::ASimPickup()
@@ -22,6 +23,12 @@ ASimPickup::ASimPickup()
 		PickupMesh->SetStaticMesh(Cube.Object);
 	}
 	PickupMesh->SetWorldScale3D(FVector(0.25f));
+	// D-023 flat colour (tools/art/ue_make_style_materials.py), not the engine checker.
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> StyleMat(TEXT("/Game/Art/Style/MI_Pickup.MI_Pickup"));
+	if (StyleMat.Succeeded())
+	{
+		PickupMesh->SetMaterial(0, StyleMat.Object);
+	}
 }
 
 FString ASimPickup::GetVerbLabel() const

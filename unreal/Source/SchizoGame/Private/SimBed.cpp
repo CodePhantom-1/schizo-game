@@ -12,6 +12,7 @@
 
 #include "Components/StaticMeshComponent.h"
 #include "Engine/Engine.h"
+#include "Materials/MaterialInterface.h"
 #include "UObject/ConstructorHelpers.h"
 
 ASimBed::ASimBed()
@@ -26,6 +27,12 @@ ASimBed::ASimBed()
 		MatMesh->SetStaticMesh(Cube.Object);
 	}
 	MatMesh->SetWorldScale3D(FVector(2.0f, 0.9f, 0.1f));
+	// D-023 flat colour (tools/art/ue_make_style_materials.py), not the engine checker.
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> StyleMat(TEXT("/Game/Art/Style/MI_Bed.MI_Bed"));
+	if (StyleMat.Succeeded())
+	{
+		MatMesh->SetMaterial(0, StyleMat.Object);
+	}
 }
 
 void ASimBed::Interact(APawn* /*Instigator*/)

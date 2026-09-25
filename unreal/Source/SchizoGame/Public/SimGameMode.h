@@ -28,4 +28,20 @@ protected:
 	/** The street's PlayerStart: the only start spot this game recognises. */
 	UPROPERTY()
 	class APlayerStart* StreetStart = nullptr;
+
+	/** The city around the quarter (terrain, walls, ziggurat, lighthouse...). */
+	UPROPERTY()
+	class ASimEnvironment* Environment = nullptr;
+
+	// --- development captures (-SimShots=<dir>, see TickShots) ---
+	void TickShots(float DeltaSeconds);
+	int32 ShotStage = 0;  // 0 = not parsed, -1 = off/finished, 1 = settling, 2 = shooting
+	int32 ShotIndex = 0;
+	float ShotTimer = 0.f;
+	bool bShotPrepared = false;
+	FString ShotDir;
+	TArray<float> ShotHours;
+	TArray<int32> ShotViews;
+	UPROPERTY()
+	class ACameraActor* ShotCamera = nullptr;
 };

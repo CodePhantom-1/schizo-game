@@ -17,7 +17,8 @@ public class SchizoGame : ModuleRules
 		{
 			"CoreUObject",
 			"Engine",
-			"SimRuntime"
+			"SimRuntime",
+			"ProceduralMeshComponent"
 		});
 	}
 }
