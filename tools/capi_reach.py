@@ -40,7 +40,7 @@ STAGE_BY_PATTERN = [
     (r"standing|faction_tier|oath|^war$|set_war|outlaw|infamy|band_politics|camp|raid|group|band|caravan|"
      r"escort|rob_|encounter|wild_|route_minutes|travel|player_place|search_site|scout|pay_off|herd_head|"
      r"npc_fate|player_wounds", "Q"),
-    (r"^(create|destroy|save|load|advance_days|day|date|month_name|moon_|set_need|drought|set_drought)", "A"),
+    (r"^(create|destroy|save|load|advance_days|day|date|month_name|moon_|set_need|needs_severity|drought|set_drought)", "A"),
 ]
 
 
