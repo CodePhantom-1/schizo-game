@@ -30,12 +30,14 @@ struct World {
     EventsState events{};
     PropertyState property{};
     QuestState quests{};
+    NeedsState needs{};
+    std::map<Id, Inventory> inventories{};
     WorldContext ctx;
 
     explicit World(std::uint64_t seed = 1, DayNumber day = 1)
         : rng(seed),
           ctx{db,   rng,      day,      cal,      facts,   economy, population, faction,
-              magic, justice, events, property, quests} {}
+              magic, justice, events, property, quests, needs, inventories} {}
 };
 
 // A canonical byte image of the state (npcs in vector order, knows in map

@@ -34,10 +34,13 @@ struct CtxParts {
     EventsState events;
     PropertyState property;
     QuestState quests;
+    NeedsState needs;
+    std::map<Id, Inventory> inventories;
 
     WorldContext ctx(DayNumber day) {
         return WorldContext{db,  rng,   day,     cal,      facts,    economy, population,
-                            faction, magic, justice, events, property, quests};
+                            faction, magic, justice, events, property, quests,
+                            needs, inventories};
     }
 };
 

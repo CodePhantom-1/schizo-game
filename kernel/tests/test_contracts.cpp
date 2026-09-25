@@ -21,8 +21,10 @@ static bool test_states_instantiate() {
     Rng rng{1};
     Calendar cal{};
     WorldFacts facts{};
+    NeedsState needs;
+    std::map<Id, Inventory> inventories;
     WorldContext ctx{db,  rng,      1,  cal,  facts, economy, population, faction,
-                     magic, justice, events, property, quests};
+                     magic, justice, events, property, quests, needs, inventories};
     SIM_CHECK_EQ(ctx.day, DayNumber{1});
     SIM_CHECK_EQ(ctx.facts.drought_stage, 0);
     return true;

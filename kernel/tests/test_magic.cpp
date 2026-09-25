@@ -54,13 +54,15 @@ struct World {
     EventsState events;
     PropertyState property;
     QuestState quests;
+    NeedsState needs;
+    std::map<Id, Inventory> inventories;
     WorldContext ctx;
 
     explicit World(std::uint64_t seed, DayNumber day, const std::string& canon_dir,
                    const CalendarConfig& cfg = {})
         : db(Db::load(canon_dir)), rng(seed), cal(cfg),
           ctx{db, rng, day, cal, facts, economy, population, faction,
-              magic, justice, events, property, quests} {}
+              magic, justice, events, property, quests, needs, inventories} {}
 };
 
 RiteInputs prepared(std::initializer_list<std::pair<const std::string, std::int64_t>> items) {
