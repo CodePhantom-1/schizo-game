@@ -6,6 +6,7 @@
 
 #include <cstdio>
 #include <cstring>
+#include <filesystem>
 #include <string>
 
 static bool test_lifecycle_and_clock() {
@@ -162,7 +163,9 @@ static bool test_save_load_continue_through_c() {
     sim_world_advance_needs(a, "player", 10, 0);
     sim_world_set_drought(a, 2);
 
-    const char* path = "/tmp/claude-1000/sim_capi_test_save.txt";
+    const std::string path_str =
+        (std::filesystem::temp_directory_path() / "sim_capi_test_save.txt").string();
+    const char* path = path_str.c_str();
     bool ok = sim_world_save(a, path) == 0;
 
     SimWorld* b = sim_world_load("../db/canon", path);
@@ -189,6 +192,8 @@ static bool test_save_load_continue_through_c() {
     sim_world_destroy(a);
     sim_world_destroy(b);
     sim_world_destroy(c);
+    std::error_code ec;
+    std::filesystem::remove(path_str, ec);
     return ok;
 }
 
