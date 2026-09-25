@@ -9,6 +9,7 @@
 // performed impure, a rumour crosses the city at walking speed.
 #include "sim/Context.hpp"
 #include "sim/RiteEffects.hpp"
+#include "sim/Character.hpp"  // W4-A
 
 namespace sim {
 
@@ -39,6 +40,15 @@ struct WorldState {
     // by the caller-side applier in sim/Rites.hpp — never by Magic, never by
     // the daily tick.
     RiteEffectsState rite_effects;
+
+    // W4-A: character progression (sim/Character.hpp, sim/Progression.hpp).
+    // The catalog is canon, rebuilt by init() (never saved); the player's
+    // sheet and the npcs' light sheets are saved (Snapshot's trailing
+    // CHAR_* sections). Written only by the caller-side verbs in
+    // sim/Progression.hpp — never by a module tick.
+    ProgressionCatalog progression;
+    CharacterState character;
+    std::map<Id, NpcSheet> npc_sheets;  // npc id -> light sheet
 
     // Loads canon from canon_dir, seeds markets and people, prepares the calendar.
     void init(const std::string& canon_dir, std::uint64_t world_seed);
