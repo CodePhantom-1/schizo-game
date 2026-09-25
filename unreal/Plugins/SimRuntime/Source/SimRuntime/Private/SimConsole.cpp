@@ -2,6 +2,7 @@
 // Each later stage adds the commands for its own system here (completion-plan A5).
 // Bad arguments print the usage line and change nothing.
 #include "SimWorldSubsystem.h"
+#include "SimQueryLibrary.h"
 #include "SimRuntimeModule.h"
 #include "sim/CApi.h"
 #include "sim/CApiVerbs.h"
@@ -119,5 +120,96 @@ namespace
 			UE_LOG(LogSimRuntime, Display, TEXT("sim: player hunger=%d thirst=%d fatigue=%d drought=%d war=%d npcs=%d"),
 				sim_world_hunger(H, "player"), sim_world_thirst(H, "player"), sim_world_fatigue(H, "player"),
 				sim_world_drought(H), sim_world_war(H), sim_world_npc_count(H));
+		}));
+
+	// --- quests, journal, dialogue, people, events (A7) ---------------------
+	FAutoConsoleCommandWithWorldAndArgs CmdQuests(TEXT("sim.Quests"), TEXT("sim.Quests [available|active|completed|failed] — list quests (default active)"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			SimWorld* H = Handle(World);
+			if (H == nullptr) return;
+			const FString Which = Args.Num() > 0 ? Args[0].ToLower() : TEXT("active");
+			ESimQuestList List = ESimQuestList::Active;
+			if (Which == TEXT("available")) List = ESimQuestList::Available;
+			else if (Which == TEXT("completed")) List = ESimQuestList::Completed;
+			else if (Which == TEXT("failed")) List = ESimQuestList::Failed;
+			else if (Which != TEXT("active"))
+			{
+				UE_LOG(LogSimRuntime, Warning, TEXT("usage: sim.Quests [available|active|completed|failed]"));
+				return;
+			}
+			const TArray<FSimQuestInfo> Quests = SimQuery::GetQuests(H, List);
+			UE_LOG(LogSimRuntime, Display, TEXT("sim.Quests %s: %d"), *Which, Quests.Num());
+			for (const FSimQuestInfo& Q : Quests)
+			{
+				UE_LOG(LogSimRuntime, Display, TEXT("  %s — %s (from %s)%s"), *Q.Id, *Q.Title, *Q.Giver,
+					Q.Stage.IsEmpty() ? TEXT("") : *FString::Printf(TEXT(" stage=%s deadline=%lld"), *Q.Stage, Q.Deadline));
+			}
+		}));
+
+	FAutoConsoleCommandWithWorldAndArgs CmdAccept(TEXT("sim.Accept"), TEXT("sim.Accept <quest> — accept a quest"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (!NeedArgs(Args, 1, TEXT("sim.Accept <quest>"))) return;
+			SimWorld* H = Handle(World);
+			if (H == nullptr) return;
+			const int32 Rc = SimQuery::AcceptQuest(H, Args[0]);
+			UE_LOG(LogSimRuntime, Display, TEXT("sim.Accept %s: %s"), *Args[0],
+				Rc == 0 ? TEXT("accepted") : Rc == -2 ? TEXT("no such quest") : TEXT("already active, completed or failed"));
+		}));
+
+	FAutoConsoleCommandWithWorldAndArgs CmdJournal(TEXT("sim.Journal"), TEXT("sim.Journal <quest> — the quest's journal"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (!NeedArgs(Args, 1, TEXT("sim.Journal <quest>"))) return;
+			SimWorld* H = Handle(World);
+			if (H == nullptr) return;
+			for (const FSimJournalEntry& E : SimQuery::GetJournal(H, Args[0]))
+			{
+				UE_LOG(LogSimRuntime, Display, TEXT("  day %lld [%s] %s"), E.Day, *E.Stage, *E.Text);
+			}
+		}));
+
+	FAutoConsoleCommandWithWorldAndArgs CmdTalk(TEXT("sim.Talk"), TEXT("sim.Talk <speaker…> — what this person may say now"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (!NeedArgs(Args, 1, TEXT("sim.Talk <speaker…>"))) return;
+			SimWorld* H = Handle(World);
+			if (H == nullptr) return;
+			const FString Speaker = FString::Join(Args, TEXT(" "));
+			const TArray<FSimDialogueLine> Lines = SimQuery::GetDialogue(H, Speaker);
+			UE_LOG(LogSimRuntime, Display, TEXT("sim.Talk '%s': %d line(s)"), *Speaker, Lines.Num());
+			for (const FSimDialogueLine& L : Lines)
+			{
+				UE_LOG(LogSimRuntime, Display, TEXT("  [%s] %s"), *L.Id, *L.Text);
+			}
+		}));
+
+	FAutoConsoleCommandWithWorldAndArgs CmdMemory(TEXT("sim.Memory"), TEXT("sim.Memory <npc> — what this person remembers"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (!NeedArgs(Args, 1, TEXT("sim.Memory <npc>"))) return;
+			SimWorld* H = Handle(World);
+			if (H == nullptr) return;
+			const TArray<FSimMemory> Memories = SimQuery::GetNpcMemories(H, Args[0]);
+			UE_LOG(LogSimRuntime, Display, TEXT("sim.Memory %s (%s): %d"), *Args[0], *SimQuery::GetNpcName(H, Args[0]), Memories.Num());
+			for (const FSimMemory& M : Memories)
+			{
+				UE_LOG(LogSimRuntime, Display, TEXT("  day %lld about %s: %s"), M.Day, *M.Subject, *M.Fact);
+			}
+		}));
+
+	FAutoConsoleCommandWithWorldAndArgs CmdEvents(TEXT("sim.Events"), TEXT("sim.Events [n=10] — the latest events, newest first"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			SimWorld* H = Handle(World);
+			if (H == nullptr) return;
+			const int32 N = Args.Num() > 0 ? FMath::Clamp(FCString::Atoi(*Args[0]), 1, 200) : 10;
+			const TArray<FSimEventInfo> Events = SimQuery::GetRecentEvents(H, N);
+			UE_LOG(LogSimRuntime, Display, TEXT("sim.Events: %d"), Events.Num());
+			for (const FSimEventInfo& E : Events)
+			{
+				UE_LOG(LogSimRuntime, Display, TEXT("  day %lld %s: %s"), E.Day, *E.Rule, *E.Summary);
+			}
 		}));
 }

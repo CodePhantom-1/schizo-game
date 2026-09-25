@@ -10,7 +10,8 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimConsoleBadArgsTest, "Sim.Console.BadArgs",
 bool FSimConsoleBadArgsTest::RunTest(const FString& Parameters)
 {
 	for (const TCHAR* Name : {TEXT("sim.AdvanceDays"), TEXT("sim.AdvanceHours"), TEXT("sim.Give"), TEXT("sim.SetNeed"),
-		TEXT("sim.Standing"), TEXT("sim.Favour"), TEXT("sim.Drought"), TEXT("sim.War"), TEXT("sim.Dump")})
+		TEXT("sim.Standing"), TEXT("sim.Favour"), TEXT("sim.Drought"), TEXT("sim.War"), TEXT("sim.Dump"),
+		TEXT("sim.Quests"), TEXT("sim.Accept"), TEXT("sim.Journal"), TEXT("sim.Talk"), TEXT("sim.Memory"), TEXT("sim.Events")})
 	{
 		TestNotNull(Name, IConsoleManager::Get().FindConsoleObject(Name));
 	}
