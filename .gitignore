@@ -22,3 +22,10 @@ unreal/SchizoGame/Content/Sim/canon/
 # tools/art/README.md; only art/review/ (contact sheet) and art/assets.csv
 # are tracked.
 art/generated/
+
+# generated per machine — never tracked
+kernel/build*/
+kernel/Testing/
+unreal/Plugins/*/Binaries/
+unreal/Plugins/*/Intermediate/
+.claude/
