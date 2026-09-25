@@ -33,6 +33,11 @@ public:
         return Rng(state_ ^ (salt * 0xD1B54A32D192ED03ull));
     }
 
+    // Save/load only (sim::Snapshot): the raw generator state, so a save can
+    // restore the exact sequence rather than reseed it.
+    std::uint64_t state() const { return state_; }
+    void set_state(std::uint64_t s) { state_ = s; }
+
 private:
     std::uint64_t state_;
 };
