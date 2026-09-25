@@ -29,6 +29,10 @@ struct Needs {
 
 struct NeedsState {
     std::map<Id, Needs> by_actor;
+    // The player's needs-severity setting (A11, rpg-systems §12), percent of the
+    // designed rate: every waking climb is scaled by it. A setting, not world
+    // state: never saved — the engine re-applies it after every new world/load.
+    int severity_pct = 100;
 };
 
 // Returns the actor's Needs, creating a fresh (0/0/0) entry the first time

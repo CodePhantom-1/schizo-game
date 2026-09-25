@@ -1,5 +1,6 @@
 // SimCharacter.cpp — see SimCharacter.h.
 #include "SimCharacter.h"
+#include "SimGameUserSettings.h"
 
 #include "Animation/AnimationAsset.h"
 #include "Camera/CameraComponent.h"
@@ -212,14 +213,27 @@ void ASimCharacter::UpdateBodyAnimation(const bool bMoving)
 	}
 }
 
+void ASimCharacter::OnTurn(float Value)
+{
+	const USimGameUserSettings* Settings = USimGameUserSettings::Get();
+	AddControllerYawInput(Value * (Settings ? Settings->MouseSensitivity : 1.f));
+}
+
+void ASimCharacter::OnLookUp(float Value)
+{
+	const USimGameUserSettings* Settings = USimGameUserSettings::Get();
+	const float Sign = (Settings && Settings->bInvertY) ? -1.f : 1.f;
+	AddControllerPitchInput(Value * Sign * (Settings ? Settings->MouseSensitivity : 1.f));
+}
+
 void ASimCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
 	PlayerInputComponent->BindAxis(TEXT("MoveForward"), this, &ASimCharacter::OnMoveForward);
 	PlayerInputComponent->BindAxis(TEXT("MoveRight"), this, &ASimCharacter::OnMoveRight);
-	PlayerInputComponent->BindAxis(TEXT("Turn"), this, &APawn::AddControllerYawInput);
-	PlayerInputComponent->BindAxis(TEXT("LookUp"), this, &APawn::AddControllerPitchInput);
+	PlayerInputComponent->BindAxis(TEXT("Turn"), this, &ASimCharacter::OnTurn);
+	PlayerInputComponent->BindAxis(TEXT("LookUp"), this, &ASimCharacter::OnLookUp);
 	PlayerInputComponent->BindAction(TEXT("Jump"), IE_Pressed, this, &ACharacter::Jump);
 	PlayerInputComponent->BindAction(TEXT("Jump"), IE_Released, this, &ACharacter::StopJumping);
 	PlayerInputComponent->BindAction(TEXT("Sprint"), IE_Pressed, this, &ASimCharacter::OnSprintStart);

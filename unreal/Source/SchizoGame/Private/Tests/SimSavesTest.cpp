@@ -6,7 +6,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimSavesSlotIndex, "Sim.Saves.SlotIndex",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FSimSavesSlotIndex::RunTest(const FString&)
 {
 	USimSaveGame* Old = NewObject<USimSaveGame>();

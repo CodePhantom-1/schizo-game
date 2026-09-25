@@ -8,7 +8,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimSaveRoundTrip, "Sim.Save.StringRoundTrip",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FSimSaveRoundTrip::RunTest(const FString&)
 {
 	UGameInstance* GI = NewObject<UGameInstance>(GetTransientPackage());  // subsystems live within a game instance
@@ -28,7 +28,7 @@ bool FSimSaveRoundTrip::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimSaveBadData, "Sim.Save.BadDataKeepsWorld",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FSimSaveBadData::RunTest(const FString&)
 {
 	UGameInstance* GI = NewObject<UGameInstance>(GetTransientPackage());  // subsystems live within a game instance

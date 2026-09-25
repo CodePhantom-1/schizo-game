@@ -6,7 +6,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimCalendarTest, "Sim.Calendar.MoonAndMonth",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 
 bool FSimCalendarTest::RunTest(const FString& Parameters)
 {

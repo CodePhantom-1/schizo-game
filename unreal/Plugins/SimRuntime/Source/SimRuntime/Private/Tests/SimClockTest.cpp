@@ -5,7 +5,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimClockDefaultTest, "Sim.Clock.DefaultDayIs48Minutes",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 
 bool FSimClockDefaultTest::RunTest(const FString& Parameters)
 {

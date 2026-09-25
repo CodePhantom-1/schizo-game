@@ -110,3 +110,15 @@ int sim_world_set_need(SimWorld* world, const char* actor, const char* need, int
         return 0;
     });
 }
+
+void sim_world_set_needs_severity(SimWorld* world, int percent) {
+    guard([&] {
+        if (world == nullptr) return -1;
+        world->world.needs.severity_pct = percent < 25 ? 25 : (percent > 300 ? 300 : percent);
+        return 0;
+    });
+}
+
+int sim_world_needs_severity(const SimWorld* world) {
+    return guard([&] { return world == nullptr ? -1 : world->world.needs.severity_pct; });
+}

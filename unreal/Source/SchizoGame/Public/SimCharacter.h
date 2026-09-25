@@ -33,6 +33,9 @@ protected:
 
 	/** W/S relative to the camera's facing — the street's long axis. */
 	void OnMoveForward(float AxisValue);
+	/** Look input scaled by the player's sensitivity and Y-invert settings (A11). */
+	void OnTurn(float Value);
+	void OnLookUp(float Value);
 	/** A/D strafing. */
 	void OnMoveRight(float AxisValue);
 	/** LeftShift held: the walk becomes a run (an INVENTED convenience; the

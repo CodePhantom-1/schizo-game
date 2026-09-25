@@ -135,7 +135,28 @@ static bool test_set_need_for_debugging() {
     return true;
 }
 
-SIM_MAIN(test_set_need_for_debugging, test_inventory_empty_then_filled,
+static bool test_needs_severity() {
+    SimWorld* normal = sim_world_create("../db/canon", 42);
+    SimWorld* harsh = sim_world_create("../db/canon", 42);
+    SIM_CHECK_EQ(sim_world_needs_severity(normal), 100);  // the designed rate
+    sim_world_set_needs_severity(harsh, 200);
+    SIM_CHECK_EQ(sim_world_needs_severity(harsh), 200);
+    sim_world_advance_needs(normal, "player", 10, 0);
+    sim_world_advance_needs(harsh, "player", 10, 0);
+    SIM_CHECK(sim_world_hunger(normal, "player") > 0);
+    SIM_CHECK_EQ(sim_world_hunger(harsh, "player"), 2 * sim_world_hunger(normal, "player"));
+    sim_world_set_needs_severity(harsh, 900);
+    SIM_CHECK_EQ(sim_world_needs_severity(harsh), 300);  // clamped
+    sim_world_set_needs_severity(harsh, 0);
+    SIM_CHECK_EQ(sim_world_needs_severity(harsh), 25);
+    SIM_CHECK_EQ(sim_world_needs_severity(nullptr), -1);
+    sim_world_set_needs_severity(nullptr, 50);  // must not crash
+    sim_world_destroy(normal);
+    sim_world_destroy(harsh);
+    return true;
+}
+
+SIM_MAIN(test_needs_severity, test_set_need_for_debugging, test_inventory_empty_then_filled,
          test_best_food_prefers_the_most_restorative,
          test_best_drink_is_beer_not_water,
          test_null_arguments_refuse,

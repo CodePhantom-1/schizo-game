@@ -43,6 +43,12 @@ int sim_world_best_drink(const SimWorld* world, const char* actor, char* out, in
 // argument or an unknown need.
 int sim_world_set_need(SimWorld* world, const char* actor, const char* need, int value);
 
+// Settings (A11): the needs-severity percent (100 = the designed rate),
+// clamped 25..300. It scales every waking hunger/thirst/fatigue climb. Not
+// saved: the engine re-applies the player's setting after a new world/load.
+void sim_world_set_needs_severity(SimWorld* world, int percent);
+int sim_world_needs_severity(const SimWorld* world);  // -1 on a null world
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

@@ -85,6 +85,7 @@ Needs& needs_of(NeedsState& s, const Id& actor) { return s.by_actor[actor]; }
 void advance_needs(NeedsState& s, const Id& actor, int hours, bool sleeping, double severity) {
     if (hours <= 0) return;
     Needs& n = needs_of(s, actor);
+    severity *= s.severity_pct / 100.0;  // the player's setting on top of the caller's
 
     const int hunger_climb = climb(hours, kHungerPerHour, severity);
     const int thirst_climb = climb(hours, kThirstPerHour, severity);
