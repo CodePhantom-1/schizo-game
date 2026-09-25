@@ -114,33 +114,20 @@ def import_fbx(fbx_rel_path, mesh_id):
     return unreal.load_asset(dest_asset)
 
 
-def assign_materials(static_mesh, materials):
-    if static_mesh is None:
-        return
-    for i, slot in enumerate(static_mesh.get_editor_property("static_materials")):
-        slot_name = str(slot.material_slot_name)
-        mat = materials.get(slot_name)
-        if mat is not None:
-            unreal.EditorStaticMeshLibrary.set_material(static_mesh, i, mat)
-
-
 def main():
-    unreal.log("ue_import_kit: importing mudbrick house kit")
+    unreal.log("ue_import_kit: importing mudbrick house kit (meshes only — the street "
+               "builder colours the FBX slots at runtime, see SimStreetBuilder::LoadKitMeshes)")
     pieces = kit_pieces()
     if not pieces:
         unreal.log_error("no mesh_kit_piece rows in the manifest — nothing to import")
         sys.exit(1)
 
     unreal.EditorAssetLibrary.make_directory(DEST_MESH_PATH)
-    unreal.EditorAssetLibrary.make_directory(DEST_MAT_PATH)
-
-    materials = {name: make_flat_material(name, rgb) for name, rgb in MAT_COLORS.items()}
 
     imported = 0
     for row in pieces:
         mesh = import_fbx(row["file"], row["id"])
         if mesh is not None:
-            assign_materials(mesh, materials)
             unreal.EditorAssetLibrary.save_loaded_asset(mesh)
             imported += 1
 

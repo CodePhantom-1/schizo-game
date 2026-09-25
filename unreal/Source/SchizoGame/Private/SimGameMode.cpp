@@ -1,5 +1,6 @@
-// SimGameMode.cpp — the grey-box street, built in code (PLACEHOLDER: content
-// kits and authored maps replace this at the slice's content pass).
+// SimGameMode.cpp — wires the slice together: the street (W6-B), the
+// residents and the sun (W6-C), the verbs and HUD (W6-A, via the player
+// controller), and the sim clock on screen.
 #include "SimGameMode.h"
 #include "SimWorldSubsystem.h"
 
@@ -7,67 +8,63 @@
 #include "SimDayNight.h"  // W6-C: the sun and sky on the sim clock
 #include "SimNpcDirector.h"  // W6-C: the residents, spawned from kernel schedules
 #include "SimPlayerController.h"
+#include "SimStreetBuilder.h"  // W6-B: the Moon Gate Quarter from the kit
 #include "SimTablet.h"
 #include "sim/CApi.h"
 
-#include "Engine/StaticMeshActor.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerStart.h"
 #include "UObject/UObjectGlobals.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogSimGameMode, Log, All);
 
+namespace
+{
+	// The street is the street's own map: every kernel place id the director
+	// asks about resolves through the builder's registry (CSV row order, so
+	// the same canon always lays out the same quarter).
+	struct FStreetPlaceResolver final : public ISimPlaceResolver
+	{
+		bool ResolvePlaceLocation(const FString& PlaceId, FVector& OutLocation) const override
+		{
+			return ASimStreetBuilder::GetPlaceLocation(FName(*PlaceId), OutLocation);
+		}
+	};
+
+	// Static storage: the director holds a raw pointer, so the resolver must
+	// outlive it for the whole process.
+	FStreetPlaceResolver GStreetPlaceResolver;
+}
+
 ASimGameMode::ASimGameMode()
 {
-	// The slice's player controller arrives with its own work; the engine's
-	// default pawn is enough for the grey-box smoke.
+	// The slice's player controller arrives with its verbs and HUD; the
+	// engine's default pawn is enough to walk the street.
 	PlayerControllerClass = ASimPlayerController::StaticClass();
 	// The clock on screen needs the game mode to tick (actors don't by default).
 	PrimaryActorTick.bCanEverTick = true;
-}
-
-void ASimGameMode::SpawnBox(const FVector& Location, const FVector& Scale, const FLinearColor& Color)
-{
-	UWorld* World = GetWorld();
-	if (World == nullptr)
-	{
-		return;
-	}
-	AStaticMeshActor* Box = World->SpawnActor<AStaticMeshActor>(Location, FRotator::ZeroRotator);
-	if (Box == nullptr)
-	{
-		return;
-	}
-	Box->SetMobility(EComponentMobility::Movable);
-	if (UStaticMeshComponent* Mesh = Box->GetStaticMeshComponent())
-	{
-		// Runtime load (ConstructorHelpers only works inside constructors).
-		if (UStaticMesh* Cube = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube")))
-		{
-			Mesh->SetStaticMesh(Cube);
-		}
-		Mesh->SetWorldScale3D(Scale);
-		Mesh->SetMobility(EComponentMobility::Movable);
-	}
-#if WITH_EDITOR
-	// Actor labels are editor-only: the Game target has no SetActorLabel.
-	Box->SetActorLabel(FString::Printf(TEXT("GreyBox_%s"), *Color.ToString()));
-#endif
 }
 
 void ASimGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// W6-C: the street lives. Exactly one director and one sun per world,
-	// spawned here (never in a map, so no authored level is required). Both
-	// poll the kernel — it is created lazily on the first world-subsystem
-	// tick after begin play — so spawn order needs no care.
+	// Exactly one director and one day/night actor per world, spawned here
+	// (never in a map, so no authored level is required). Both poll the
+	// kernel — it is created lazily on the first world-subsystem tick after
+	// begin play — so spawn order needs no care. The director resolves
+	// places through the street's registry; the hash fallback is for the
+	// pre-street world only.
 	if (UWorld* World = GetWorld())
 	{
 		FActorSpawnParameters Params;
 		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-		if (World->SpawnActor<ASimNpcDirector>(FVector::ZeroVector, FRotator::ZeroRotator, Params) == nullptr)
+		if (ASimNpcDirector* Director = World->SpawnActor<ASimNpcDirector>(FVector::ZeroVector, FRotator::ZeroRotator, Params))
+		{
+			Director->SetPlaceResolver(&GStreetPlaceResolver);
+			Director->SetHashPlaceFallbackEnabled(false);
+		}
+		else
 		{
 			UE_LOG(LogSimGameMode, Warning, TEXT("Npc director spawn failed — the street stays empty."));
 		}
@@ -86,37 +83,36 @@ void ASimGameMode::StartPlay()
 		return;
 	}
 
-	// --- PLACEHOLDER GREY-BOX STREET (W6-A/W6-B own its replacement) --------
-	// The whole grey-box build below (walls, floors, tablet) is swapped for
-	// W6-B's SimStreetBuilder street at the wiring pass; keep the pawn
-	// placement at the end of StartPlay as is. Nothing here feeds the npc
-	// director — it reads the kernel and (until wired) hashes place ids onto
-	// this street's extent.
-	// The street is built BEFORE Super::StartPlay(): the pawn spawns there,
-	// and it must find the PlayerStart, not the engine's fallback.
-	// The street: a floor, the moon-gate walls, a lintel. Grey-box stone.
-	SpawnBox(FVector(0, 0, -50), FVector(40, 12, 1), FLinearColor::Gray);      // the street floor
-	SpawnBox(FVector(0, -600, 150), FVector(2, 1, 12), FLinearColor::White);   // gate wall, west
-	SpawnBox(FVector(0, 600, 150), FVector(2, 1, 12), FLinearColor::White);    // gate wall, east
-	SpawnBox(FVector(0, 0, 500), FVector(4, 14, 1), FLinearColor::White);      // the lintel over the gate
-	SpawnBox(FVector(2500, 0, -50), FVector(40, 12, 1), FLinearColor::Gray);   // the street continues
+	// --- the street (W6-B) ---------------------------------------------------
+	// Built BEFORE Super::StartPlay(): the pawn must find our PlayerStart,
+	// not the engine's fallback. The builder owns the ground, the kit meshes
+	// and the tagged sun/sky (SimDayNight finds those instead of spawning
+	// its own — the street is lit once).
+	const FSimStreetBuildResult Street = ASimStreetBuilder::BuildQuarter(World);
+	if (!Street.bOk)
+	{
+		UE_LOG(LogSimGameMode, Warning, TEXT("The street failed to build — the quarter is missing."));
+	}
+	else
+	{
+		UE_LOG(LogSimGameMode, Log,
+			TEXT("The quarter stands: %d places, %d door slots (kit meshes: %s)."),
+			Street.NumPlacesBuilt, Street.NumDoorSlots, Street.bKitMeshesFound ? TEXT("yes") : TEXT("no — engine cubes"));
+	}
 
-	// The first readable thing: a clay tablet by the street's start (notes L198).
-	if (World->SpawnActor<ASimTablet>(FVector(1300, 0, 140), FRotator(0, 90, 0)) == nullptr)
+	// The first readable thing: a clay tablet by the gate (notes L198).
+	if (World->SpawnActor<ASimTablet>(Street.GateLocation + FVector(300, 0, 140), FRotator(0, 90, 0)) == nullptr)
 	{
 		UE_LOG(LogSimGameMode, Warning, TEXT("tablet spawn failed"));
 	}
 
-	// A PlayerStart so the pawn has somewhere to be: facing the gate — and the
-	// tablet, which sits ahead of the spawn.
-	StreetStart = World->SpawnActor<APlayerStart>(FVector(1500, 0, 100), FRotator(0, 180, 0));
+	// A PlayerStart so the pawn has somewhere to be: facing through the gate.
+	StreetStart = World->SpawnActor<APlayerStart>(Street.GateLocation + FVector(500, 0, 50), FRotator(0, 180, 0));
 	if (StreetStart == nullptr)
 	{
 		UE_LOG(LogSimGameMode, Warning, TEXT("PlayerStart spawn failed — the pawn will start at the default."));
 	}
-
-	UE_LOG(LogSimGameMode, Log, TEXT("The grey-box street stands (v2)."));
-	// --- end PLACEHOLDER GREY-BOX STREET ------------------------------------
+	// --- end the street ------------------------------------------------------
 
 	// The pawn spawned during Login, before any PlayerStart stood — restart
 	// it so FindPlayerStart places it at ours, facing the gate.
@@ -152,8 +148,8 @@ void ASimGameMode::StartPlay()
 
 AActor* ASimGameMode::FindPlayerStart_Implementation(AController* Player, const FString& IncomingName)
 {
-	// The default OpenWorld map ships its own PlayerStarts; this street has
-	// exactly one, and the pawn starts there — facing the gate.
+	// The street has exactly one start spot, and the pawn starts there —
+	// facing through the moon gate.
 	if (StreetStart != nullptr)
 	{
 		return StreetStart;

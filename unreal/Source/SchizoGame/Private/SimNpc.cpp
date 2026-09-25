@@ -80,7 +80,18 @@ void ASimNpc::InitSimIdentity(const FString& InNpcId)
 		if (UMaterialInstanceDynamic* Dyn = BodyMesh->CreateAndSetMaterialInstanceDynamic(0))
 		{
 			const float Hue = static_cast<float>(FCrc::StrCrc32(*NpcId.ToLower()) % 360u);
-			Dyn->SetVectorParameterValue(TEXT("Color"), FLinearColor::MakeFromHSV(Hue, 0.45f, 0.85f));
+			// HSV by hand (the engine's helpers are uint8-based or blueprint-side).
+			const float C = 0.85f * 0.45f;
+			const float Hp = Hue / 60.f;
+			const float X = C * (1.f - FMath::Abs(FMath::Fmod(Hp, 2.f) - 1.f));
+			FLinearColor Rgb = Hp < 1.f ? FLinearColor(C, X, 0.f, 1.f)
+				: Hp < 2.f ? FLinearColor(X, C, 0.f, 1.f)
+				: Hp < 3.f ? FLinearColor(0.f, C, X, 1.f)
+				: Hp < 4.f ? FLinearColor(0.f, X, C, 1.f)
+				: Hp < 5.f ? FLinearColor(X, 0.f, C, 1.f)
+				: FLinearColor(C, 0.f, X, 1.f);
+			Rgb += FLinearColor(0.85f - C, 0.85f - C, 0.85f - C, 0.f);
+			Dyn->SetVectorParameterValue(TEXT("Color"), Rgb);
 		}
 	}
 }

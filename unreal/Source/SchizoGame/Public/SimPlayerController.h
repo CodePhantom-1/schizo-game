@@ -30,6 +30,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Sim")
 	bool IsInventoryShown() const { return bInventoryHeld; }
 
+	/** The kernel already charged these hours (sleep charged them asleep):
+	 * the clock jump must not charge them again as awake time. */
+	void NotifySimHoursPreCharged(double Hours) { LastAbsoluteHour += Hours; }
+
 protected:
 	/** The Use verb: trace from the camera; interact with what the street offers. */
 	void OnUse();

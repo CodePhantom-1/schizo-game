@@ -180,6 +180,11 @@ void USimWorldSubsystem::AdvanceSimDays(int32 Days)
 	AdvanceSimDaysFor(PlayWorld(), Days);
 }
 
+void USimWorldSubsystem::SkipSimHours(float Hours)
+{
+	SkipSimHoursFor(PlayWorld(), Hours);
+}
+
 // --- world-context getters ----------------------------------------------------
 
 SimWorld* USimWorldSubsystem::GetSimHandleFor(const UObject* WorldContextObject)
@@ -253,4 +258,32 @@ void USimWorldSubsystem::AdvanceSimDaysFor(const UObject* WorldContextObject, in
 		sim_world_advance_days(Handle, Days);
 		UE_LOG(LogSimRuntime, Log, TEXT("Debug advance: %d days — now day %lld."), Days, sim_world_day(Handle));
 	}
+}
+
+void USimWorldSubsystem::SkipSimHoursFor(const UObject* WorldContextObject, float Hours)
+{
+	if (Hours <= 0.f)
+	{
+		return;
+	}
+	const UWorld* World = WorldOf(WorldContextObject);
+	USimWorldSubsystem* Sim = GetSim(World);
+	USimGameInstanceSubsystem* SimOwner = FindSimOwner(World);
+	if (Sim == nullptr || SimOwner == nullptr || SimOwner->GetHandle() == nullptr)
+	{
+		return;
+	}
+	// The same wrap the tick runs: midnights crossed while skipping advance
+	// the kernel day through the front door, one day at a time.
+	SimOwner->SecondsSinceLastDay += static_cast<double>(Hours) * Sim->SecondsPerDay() / 24.0;
+	const float DaySeconds = Sim->SecondsPerDay();
+	while (SimOwner->SecondsSinceLastDay >= DaySeconds)
+	{
+		sim_world_advance_days(SimOwner->GetHandle(), 1);
+		SimOwner->SecondsSinceLastDay -= DaySeconds;
+		UE_LOG(LogSimRuntime, Log, TEXT("Sim day %lld."), sim_world_day(SimOwner->GetHandle()));
+	}
+	UE_LOG(LogSimRuntime, Log, TEXT("Skipped %.2f sim hours — day %lld, hour %.2f."),
+		Hours, sim_world_day(SimOwner->GetHandle()),
+		24.0 * SimOwner->GetSecondsSinceLastDay() / DaySeconds);
 }

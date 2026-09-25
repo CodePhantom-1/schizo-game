@@ -129,7 +129,17 @@ ASimStreetBuilder::ASimStreetBuilder()
 
 void ASimStreetBuilder::LoadKitMeshes()
 {
-	auto LoadInto = [this](UInstancedStaticMeshComponent* ISM, const TCHAR* Id)
+	// D-023 flat colours by FBX slot name (the kit's own material palette,
+	// tools/art/kit_common.py MAT_DEFS): the engine's parameter material
+	// carries them per slot until a content pass authors real materials.
+	const TMap<FName, FColor> SlotColors = {
+		{TEXT("M_MudPlaster"), FColor(194, 158, 107)},
+		{TEXT("M_Mudbrick"),   FColor(140, 102,  69)},
+		{TEXT("M_Timber"),     FColor( 77,  48,  26)},
+		{TEXT("M_Reed"),       FColor(173, 148,  77)},
+	};
+	UMaterial* Base = LoadObject<UMaterial>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial"));
+	auto LoadInto = [this, &SlotColors, Base](UInstancedStaticMeshComponent* ISM, const TCHAR* Id)
 	{
 		UStaticMesh* Mesh = LoadKitMesh(Id);
 		if (Mesh == nullptr)
@@ -142,6 +152,19 @@ void ASimStreetBuilder::LoadKitMeshes()
 		if (ISM != nullptr && Mesh != nullptr)
 		{
 			ISM->SetStaticMesh(Mesh);
+			const TArray<FStaticMaterial>& Slots = Mesh->GetStaticMaterials();
+			for (int32 Slot = 0; Slot < Slots.Num() && Base != nullptr; ++Slot)
+			{
+				const FColor* const Color = SlotColors.Find(Slots[Slot].MaterialSlotName);
+				if (Color == nullptr)
+				{
+					continue;  // engine-cube fallback slots stay grey
+				}
+				if (UMaterialInstanceDynamic* Mic = ISM->CreateDynamicMaterialInstance(Slot, Base))
+				{
+					Mic->SetVectorParameterValue(TEXT("Color"), FLinearColor::FromSRGBColor(*Color));
+				}
+			}
 		}
 	};
 	LoadInto(ISM_WallPlain, TEXT("SM_WallPlain"));
@@ -416,16 +439,13 @@ void ASimStreetBuilder::BuildGroundAndLighting(const FVector2D& BoundsMin, const
 	}
 	if (!bHasSky)
 	{
-		if (ASkyLight* Sky = World->SpawnActor<ASkyLight>(FVector(0, 0, 1500), FRotator::ZeroRotator))
-		{
-			Sky->Tags.Add(FName(TEXT("SimSky")));
-			if (USkyLightComponent* Light = Cast<USkyLightComponent>(Sky->GetLightComponent()))
-			{
-				Light->SetMobility(EComponentMobility::Movable);
-				Light->SetIntensity(2.f);
-				Light->RecaptureSky();
-			}
-		}
+		// No SkyLight, deliberately: a captured-scene SkyLight issues a
+		// CubemapCapture whose GPU work never completes on this machine
+		// (RADV / RX 5700 XT), wedging the render thread and with it the
+		// game thread's next render fence. The directional sun carries the
+		// street; ambient fill returns with an authored sky (a cubemap
+		// specified offline, never captured at runtime).
+		UE_LOG(LogSimStreetBuilder, Log, TEXT("No sky light (GPU-capture hang on this machine); the sun lights the street."));
 	}
 }
 
@@ -628,7 +648,8 @@ FSimStreetBuildResult ASimStreetBuilder::BuildQuarter(UWorld* World)
 		UE_LOG(LogSimStreetBuilder, Warning, TEXT("BuildQuarter: null world."));
 		return Fail;
 	}
-	for (TActorIterator<ASimStreetBuilder> It(World); It; ++It)
+	TActorIterator<ASimStreetBuilder> Existing(World);
+	if (Existing)
 	{
 		UE_LOG(LogSimStreetBuilder, Log, TEXT("BuildQuarter: a street already stands in this world — returning its result."));
 		return LastResult;

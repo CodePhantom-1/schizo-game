@@ -1,7 +1,8 @@
-// SimGameMode.h — the grey-box street (Phase 4 slice, first step).
-// Builds the City of the Moon's gate street in code — no assets yet: the
-// floor, the moon gate's walls, and the sim clock on screen. Everything here
-// is placeholder grey-box; the architecture kits replace it at content waves.
+// SimGameMode.h — the playable slice's game mode.
+// The street is W6-B's SimStreetBuilder (the Moon Gate Quarter from places.csv
+// and the house kit); the residents and the sun are W6-C's director and
+// day/night actors; the verbs and HUD live in the player controller. This
+// class wires them together and keeps the sim clock on screen.
 #pragma once
 
 #include "CoreMinimal.h"
@@ -21,9 +22,6 @@ public:
 	virtual AActor* FindPlayerStart_Implementation(AController* Player, const FString& IncomingName = TEXT("")) override;
 
 protected:
-	/** Spawns one scaled engine cube (grey-box stone). */
-	void SpawnBox(const FVector& Location, const FVector& Scale, const FLinearColor& Color);
-
 	/** The sim day the clock shows (to avoid re-reading the C API every line). */
 	int64 LastShownDay = -1;
 

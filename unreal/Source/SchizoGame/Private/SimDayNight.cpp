@@ -75,8 +75,11 @@ void ASimDayNight::FindOrSpawnLights()
 		}
 	}
 
-	// A sky light so "real darkness" is not a pure void under cover; its
-	// intensity still swings hard between day and night below.
+	// A sky light (only one an authored map already placed): so "real
+	// darkness" is not a pure void under cover; its intensity still swings
+	// hard between day and night below. We never SPAWN one: a captured-scene
+	// SkyLight issues a CubemapCapture whose GPU work wedges the render
+	// thread on this machine (RADV / RX 5700 XT) — see SimStreetBuilder.
 	TArray<AActor*> SkyTagged;
 	UGameplayStatics::GetAllActorsWithTag(this, FName("SimSkyLight"), SkyTagged);
 	for (AActor* Actor : SkyTagged)
@@ -85,16 +88,6 @@ void ASimDayNight::FindOrSpawnLights()
 		{
 			Fill = Found;
 			break;
-		}
-	}
-	if (Fill == nullptr)
-	{
-		FActorSpawnParameters Params;
-		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-		Fill = World->SpawnActor<ASkyLight>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
-		if (Fill != nullptr)
-		{
-			Fill->Tags.Add(FName("SimSkyLight"));
 		}
 	}
 }

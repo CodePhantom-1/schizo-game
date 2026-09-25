@@ -70,10 +70,7 @@ void ASimNpcDirector::SetPlaceResolver(ISimPlaceResolver* Resolver)
 	RefreshAll();  // the street's truth just changed: re-read every npc now
 }
 
-FSimResolvePlace& ASimNpcDirector::GetPlaceResolverDelegate()
-{
-	return PlaceResolverDelegate;  // bind on the returned reference, then call RefreshAll()
-}
+// GetPlaceResolverDelegate lives inline in the header (it only returns the member).
 
 void ASimNpcDirector::RefreshAll()
 {
@@ -241,8 +238,8 @@ void ASimNpcDirector::RefreshFromKernel()
 	int32 Spawned = 0;
 	for (const FStreetNpc& Npc : Wanted)
 	{
-		ASimNpc** Found = NpcActorsById.Find(Npc.NpcId);
-		ASimNpc* Actor = Found ? Found->Get() : nullptr;
+		auto* Found = NpcActorsById.Find(Npc.NpcId);
+		ASimNpc* Actor = (Found != nullptr && *Found) ? Found->Get() : nullptr;
 		if (Actor == nullptr)
 		{
 			FActorSpawnParameters Params;

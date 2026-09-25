@@ -99,6 +99,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Sim")
 	static void AdvanceSimDays(int32 Days);
 
+	/**
+	 * Sleep/time-skip: move the sub-day clock forward by game-hours (unlike
+	 * AdvanceSimDays the hour moves, through the same day-wrap the tick uses).
+	 * Kernel needs are NOT advanced here — the caller owns that (sim_world_rest
+	 * already charged them asleep); use GetSimHourFor after to read the new time.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Sim")
+	static void SkipSimHours(float Hours);
+
 	// --- world-context variants (multi-PIE safe; audit U9) --------------------
 	// Same contracts as the functions above, but they read the sim of the
 	// world that WorldContextObject lives in instead of the current play world.
@@ -123,6 +132,10 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Sim", meta = (WorldContext = "WorldContextObject"))
 	static void AdvanceSimDaysFor(const UObject* WorldContextObject, int32 Days);
+
+	/** SkipSimHours() for the caller's own world. */
+	UFUNCTION(BlueprintCallable, Category = "Sim", meta = (WorldContext = "WorldContextObject"))
+	static void SkipSimHoursFor(const UObject* WorldContextObject, float Hours);
 
 	/** GetSimHandle() for the caller's own world. Same rules: never destroy, never cache. */
 	static struct SimWorld* GetSimHandleFor(const UObject* WorldContextObject);

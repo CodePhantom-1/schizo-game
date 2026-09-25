@@ -31,6 +31,34 @@ Session A's K-2 and A-1 (realistic PBR textures) were dropped. K-2 is done in B,
   1. **Divine wrath** — the kernel module and its C API block were built but never committed.
   2. **Faction politics deciding raids** — `kernel/src/Faction.cpp` exists (wave 2, bug-reviewed) but nothing consults it; the wild-lands raid formula does not use factions, and Faction is not exposed in the C API.
 
+## Wave 5 (2026-09-25 evening) — done, reviewed, pushed
+Both lost pieces rebuilt and merged; 40/40 kernel tests. Divine wrath (`sim/Divine.hpp`, `CApiDivine.h`: wrath per offender×deity from broken oaths/impure rites/convictions, tiers → omens/favour/curse, atonement; ledger `invented-ledger-divine.md`). Faction raid politics (treaties in `wild_groups`/`treaties.csv`, `CApiFaction.h`: war/grudge/treaty/outlawry modulate the raid formula, treaty blocks raids outright; ledger `invented-ledger-faction-raids.md`). Bug review applied: treaty blocks player-led raids too, unaligned-band grudges restored, C API contract nits fixed.
+
+## Wave 6 (2026-09-25 evening) — merged; the playable slice
+- **Player verbs + HUD** (W6-A): E use (doors/well/bed/pickups/tablet), F eat / G quaff (kernel ranks), Tab inventory; HUD draws needs/health/conditions/purse from the C API; new kernel reads `sim_world_inventory/best_food/best_drink` (`CApiVerbs.h`).
+- **The street** (W6-B): `SimStreetBuilder` builds the Moon Gate Quarter from `places.csv` (25 places, 16 door slots) with the mudbrick kit (13 pieces, `unreal/Content/Art/Kit/` — committed, so a pull plays with real meshes); layout is a pure function of CSV row order. `tools/art/ue_import_kit.py` re-imports after kit changes.
+- **Townspeople + day/night** (W6-C): `SimNpcDirector` spawns residents from kernel schedules (place resolver wired to the street's registry), `SimDayNight` sweeps the sun 15°/h on the sim clock.
+- **Coordinator wiring**: street → gate PlayerStart/tablet; sleep skips the clock (`USimWorldSubsystem::SkipSimHours`) without double-charging needs.
+- **Launching — READ THIS FIRST (AMD GPU + UE 5.8 Linux driver bug):**
+  UE 5.8 + the stock RADV (Mesa) driver hangs the GPU: `VK_ERROR_DEVICE_LOST` on queue submit (known issue: forums.unrealengine.com/t/5-8-freezing-on-ui-interaction/2729467). Before the first launch on this machine, build the patched RADV once:
+  ```
+  # deps into ~/.local (no root): pip3 install --user --break-system-packages meson ninja;
+  # build glslang 16.1 into ~/.local/glslang (cmake), extract the libxcb *-dev + xshmfence-dev
+  # debs into ~/.local/xcb-deb (see git history of this file / session log for the list)
+  git clone --depth 1 -b stacked-fix https://gitlab.freedesktop.org/bertonha/mesa.git ~/mesa-stacked-fix
+  cd ~/mesa-stacked-fix && meson setup build . -Dgallium-drivers= -Dvulkan-drivers=amd \
+    -Dllvm=disabled -Dplatforms=x11,wayland -Dbuildtype=debugoptimized -Dbuild-tests=true \
+    -Dprefix="$HOME/.local/mesa-radv-test" && ninja -C build && ninja -C build install
+  ```
+  Then launch windowed with the patched driver:
+  ```
+  export VK_DRIVER_FILES="$HOME/.local/mesa-radv-test/share/vulkan/icd.d/radeon_icd.x86_64.json"
+  SDL_VIDEODRIVER=x11 ~/UnrealEngine/Engine/Binaries/Linux/UnrealEditor \
+    "$PWD/unreal/SchizoGame.uproject" -game -windowed -ResX=1280 -ResY=720
+  ```
+  The renderer is already configured conservatively for this (`DefaultEngine.ini` [/SystemSettings]: no Lumen/RT/reflections/virtual shadows, no split barriers). **Never launch with `-opengl4`** on this hybrid-GPU box — it hard-crashed the whole machine once (2026-09-25). The first window can sit black a couple of minutes while modules load — that is loading, not a hang.
+- Known-unfinished in the slice: placeholder demo props for well/bed/pickups (`sim.VerbDemoProps 0` hides them), no sky ambient light (runtime sky capture is the GPU-hang path; return with an offline cubemap), NPC names show kernel ids, wave-6 review findings to be triaged next session.
+
 ## How to proceed
 1. **One coordinator only.** Continue in Session B (or a fresh session that reads this file). Don't run two coordinators on this repo.
 2. **Keep `main` current.** Whoever works merges finished work into `main` and pushes, so the collaborator always has it.
