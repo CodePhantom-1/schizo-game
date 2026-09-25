@@ -10,6 +10,10 @@
 
 #include "Engine/StaticMeshActor.h"
 #include "Engine/World.h"
+#include "Components/DirectionalLightComponent.h"
+#include "Engine/DirectionalLight.h"
+#include "Components/SkyLightComponent.h"
+#include "Engine/SkyLight.h"
 #include "GameFramework/PlayerStart.h"
 #include "UObject/UObjectGlobals.h"
 
@@ -71,6 +75,27 @@ void ASimGameMode::StartPlay()
 	if (World->SpawnActor<ASimTablet>(FVector(1300, 0, 140), FRotator(0, 90, 0)) == nullptr)
 	{
 		UE_LOG(LogSimGameMode, Warning, TEXT("tablet spawn failed"));
+	}
+
+	// Light and sky: the Entry map ships dark — without these the street is
+	// a black screen. The sun sits low, like a drought sky.
+	if (ADirectionalLight* Sun = World->SpawnActor<ADirectionalLight>(FVector(0, 0, 2000), FRotator(-35, 20, 0)))
+	{
+		if (UDirectionalLightComponent* Light = Cast<UDirectionalLightComponent>(Sun->GetLightComponent()))
+		{
+			Light->SetMobility(EComponentMobility::Movable);
+			Light->SetIntensity(8.f);
+			Light->SetLightColor(FLinearColor(1.f, 0.85f, 0.65f));  // dry, dusty daylight
+		}
+	}
+	if (ASkyLight* Sky = World->SpawnActor<ASkyLight>(FVector(0, 0, 1500), FRotator::ZeroRotator))
+	{
+		if (USkyLightComponent* Light = Cast<USkyLightComponent>(Sky->GetLightComponent()))
+		{
+			Light->SetMobility(EComponentMobility::Movable);
+			Light->SetIntensity(2.f);
+			Light->RecaptureSky();
+		}
 	}
 
 	// A PlayerStart so the pawn has somewhere to be: facing the gate — and the
