@@ -47,7 +47,10 @@ void ASimGameMode::SpawnBox(const FVector& Location, const FVector& Scale, const
 		Mesh->SetWorldScale3D(Scale);
 		Mesh->SetMobility(EComponentMobility::Movable);
 	}
+#if WITH_EDITOR
+	// Actor labels are editor-only: the Game target has no SetActorLabel.
 	Box->SetActorLabel(FString::Printf(TEXT("GreyBox_%s"), *Color.ToString()));
+#endif
 }
 
 void ASimGameMode::StartPlay()
@@ -86,7 +89,9 @@ void ASimGameMode::StartPlay()
 	// The pawn spawned during Login, before any PlayerStart stood — restart
 	// it so FindPlayerStart places it at ours, facing the gate.
 	Super::StartPlay();
-	if (APlayerController* PC = World->GetFirstPlayerController())
+	// No street start (its spawn failed, logged above): keep the engine's pawn.
+	APlayerController* PC = World->GetFirstPlayerController();
+	if (PC != nullptr && StreetStart != nullptr)
 	{
 		// Direct placement (RestartPlayer's own spawn was not landing at the
 		// street start): destroy the fallback pawn, spawn ours at the PlayerStart.
