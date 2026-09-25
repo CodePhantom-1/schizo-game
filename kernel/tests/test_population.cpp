@@ -6,6 +6,7 @@
 
 #include "sim/Test.hpp"
 
+#include <algorithm>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -48,7 +49,8 @@ std::string state_bytes(const PopulationState& s) {
     for (const Npc& n : s.npcs) {
         out += "npc " + n.id + " name=" + n.name + " city=" + n.home_city +
                " house=" + n.household + " faction=" + n.faction_id +
-               " deity=" + n.patron_deity + " loyalty=" + std::to_string(n.loyalty);
+               " deity=" + n.patron_deity + " role=" + n.role +
+               " loyalty=" + std::to_string(n.loyalty);
         for (const MemoryEntry& m : n.memory)
             out += " mem[" + std::to_string(m.day) + "](" + m.subject + ": " + m.fact + ")";
         out += "\n";
@@ -77,6 +79,47 @@ void wire_triangle(PopulationState& state) {
 
 const char* kTithe = "the tithe doubles";
 
+// A throwaway street-residents fixture: people.csv rows with schedule-matching
+// roles (the shape the coordinator says another agent is authoring against —
+// id,name,role,city,faction,tag,source_ref) plus a matching schedules.csv, in
+// the system temp dir, never committed as canon (test_justice.cpp's pattern).
+// Wave 1 shipped 3 named leaders; the street-data wave adds light residents
+// on top. Rather than hardcode a row count that content authoring keeps
+// moving, every real-canon test computes its expectation from the canon
+// itself, the same way seed_people()/canon_lint judge "shippable" (non-OPEN).
+std::size_t shippable_people_count(const Db& db) {
+    std::size_t n = 0;
+    for (const Row& r : db.rows("people"))
+        if (r.get("tag") != "OPEN" && !r.get("id").empty()) ++n;
+    return n;
+}
+
+Db load_fixture_db() {
+    const std::filesystem::path dir =
+        std::filesystem::temp_directory_path() / "schizo_game_test_population_fixture";
+    std::filesystem::remove_all(dir);
+    std::filesystem::create_directories(dir);
+    {
+        std::ofstream out(dir / "people.csv", std::ios::trunc);
+        out << "id,name,role,city,faction,tag,source_ref\n"
+            << "res_baker_1,Nanna the baker,baker,city_of_the_moon,,INVENTED,test fixture\n"
+            << "res_baker_2,Ur-Nanshe the baker,baker,city_of_the_moon,,INVENTED,test fixture\n"
+            << "res_watch_1,Lugal the watchman,watchman,city_of_the_moon,,INVENTED,test fixture\n"
+            << "res_far_baker,Puabi the baker,baker,city_of_jewels,,INVENTED,test fixture\n"
+            << "res_open,Unwritten Resident,baker,city_of_the_moon,,OPEN,test fixture\n"
+            << "res_no_role_match,A carter,cart driver,city_of_the_moon,,INVENTED,test fixture\n"
+            << "named_leader,The Named Leader,founder of somewhere;implied,city_of_the_moon,,"
+               "CANON,test fixture\n";
+    }
+    {
+        std::ofstream out(dir / "schedules.csv", std::ios::trunc);
+        out << "id,role,hour,task,season,tag,source_ref\n"
+            << "baker_row,baker,3,bakes bread,,INVENTED,test fixture\n"
+            << "watch_row,watchman,21,walks the wall,,INVENTED,test fixture\n";
+    }
+    return Db::load(dir.string());
+}
+
 }  // namespace
 
 static bool test_seed_reads_the_named_people() {
@@ -84,11 +127,12 @@ static bool test_seed_reads_the_named_people() {
     w.db = Db::load("../db/canon");
     seed_people(w.ctx, w.population);
 
-    // The header names exactly these three at Wave 1.
+    // Every non-OPEN people.csv row seeds — the named Wave 1 leaders plus
+    // whatever the street-data wave has added since.
     SIM_CHECK(find_npc(w.population, "law_giver") != nullptr);
     SIM_CHECK(find_npc(w.population, "the_prophet") != nullptr);
     SIM_CHECK(find_npc(w.population, "the_warchief") != nullptr);
-    SIM_CHECK_EQ(w.population.npcs.size(), std::size_t{3});
+    SIM_CHECK_EQ(w.population.npcs.size(), shippable_people_count(w.db));
 
     for (const char* id : {"law_giver", "the_prophet", "the_warchief"}) {
         const Npc* npc = find_npc(w.population, id);
@@ -100,9 +144,11 @@ static bool test_seed_reads_the_named_people() {
         SIM_CHECK_EQ(npc->faction_id, row->at("faction"));
         SIM_CHECK(npc->memory.empty());
         SIM_CHECK_EQ(npc->loyalty, 50);
+        // A named leader's narrative title never names a schedule role, so
+        // the link-wiring pass never touches it — true at Wave 1 and stays
+        // true however many street residents the canon gains.
+        SIM_CHECK(w.population.knows.find(Id(id)) == w.population.knows.end());
     }
-    // No canon social links exist at Wave 1; the graph starts empty.
-    SIM_CHECK(w.population.knows.empty());
     return true;
 }
 
@@ -112,7 +158,7 @@ static bool test_seed_is_idempotent() {
     seed_people(w.ctx, w.population);
     const std::string first = state_bytes(w.population);
     seed_people(w.ctx, w.population);
-    SIM_CHECK_EQ(w.population.npcs.size(), std::size_t{3});
+    SIM_CHECK_EQ(w.population.npcs.size(), shippable_people_count(w.db));
     SIM_CHECK_EQ(state_bytes(w.population), first);
 
     // Re-seeding must not clobber live state, either.
@@ -121,7 +167,7 @@ static bool test_seed_is_idempotent() {
     giver->loyalty = 7;
     witness(w.population, "law_giver", "the_prophet", kTithe, DayNumber{12});
     seed_people(w.ctx, w.population);
-    SIM_CHECK_EQ(w.population.npcs.size(), std::size_t{3});
+    SIM_CHECK_EQ(w.population.npcs.size(), shippable_people_count(w.db));
     SIM_CHECK_EQ(giver->loyalty, 7);
     SIM_CHECK_EQ(giver->memory.size(), std::size_t{1});
     return true;
@@ -191,7 +237,7 @@ static bool test_witness_records_memory_ordered_by_day() {
 
     // An unknown witness is a graceful no-op: nothing crashes, nothing changes.
     witness(w.population, "no_such_npc", "the_prophet", "a ghost fact", DayNumber{8});
-    SIM_CHECK_EQ(w.population.npcs.size(), std::size_t{3});
+    SIM_CHECK_EQ(w.population.npcs.size(), shippable_people_count(w.db));
     for (const Npc& n : w.population.npcs)
         if (n.id != "law_giver") SIM_CHECK(n.memory.empty());
     return true;
@@ -264,12 +310,17 @@ static bool test_rumour_does_not_duplicate_or_bounce() {
         w.ctx.day = day;
         tick_population(w.ctx, w.population);
     }
-    // Everyone holds the fact exactly once.
+    // Everyone in the wired triangle holds the fact exactly once. Other
+    // npcs (street residents, once the canon has them, with their own
+    // separate knows-components from wire_resident_links) are untouched —
+    // this scenario only wires the three named leaders together.
     std::size_t total = 0;
-    for (const Npc& n : w.population.npcs) {
-        SIM_CHECK_EQ(n.memory.size(), std::size_t{1});
-        SIM_CHECK(holds(n, "the_empire", kTithe) != nullptr);
-        total += n.memory.size();
+    for (const char* id : {"law_giver", "the_prophet", "the_warchief"}) {
+        const Npc* n = find_npc(w.population, id);
+        SIM_CHECK(n != nullptr);
+        SIM_CHECK_EQ(n->memory.size(), std::size_t{1});
+        SIM_CHECK(holds(*n, "the_empire", kTithe) != nullptr);
+        total += n->memory.size();
     }
     SIM_CHECK_EQ(total, std::size_t{3});
 
@@ -341,7 +392,7 @@ static bool test_dangling_knows_edges_are_graceful() {
     SIM_CHECK(prophet != nullptr);
     SIM_CHECK(holds(*prophet, "the_empire", kTithe) != nullptr);
     // No NPC is invented for the ghosts, and nothing crashes.
-    SIM_CHECK_EQ(w.population.npcs.size(), std::size_t{3});
+    SIM_CHECK_EQ(w.population.npcs.size(), shippable_people_count(w.db));
     return true;
 }
 
@@ -367,6 +418,118 @@ static bool test_same_operations_same_state_bytes_any_seed() {
     return true;
 }
 
+// --- light residents: role seeding, knows-wiring, npc_task_at (D-011) ------
+
+static bool test_seed_sets_role_only_for_schedule_matching_rows() {
+    World w;
+    w.db = load_fixture_db();
+    seed_people(w.ctx, w.population);
+
+    SIM_CHECK_EQ(find_npc(w.population, "res_baker_1")->role, std::string("baker"));
+    SIM_CHECK_EQ(find_npc(w.population, "res_watch_1")->role, std::string("watchman"));
+    // "cart driver" names no schedules.csv role in this fixture: stays empty.
+    SIM_CHECK(find_npc(w.population, "res_no_role_match")->role.empty());
+    // A named leader's narrative title never matches a schedule role either.
+    SIM_CHECK(find_npc(w.population, "named_leader")->role.empty());
+    // OPEN rows never seed at all.
+    SIM_CHECK(find_npc(w.population, "res_open") == nullptr);
+    return true;
+}
+
+static bool test_seed_wires_same_role_same_city_and_neighbour_links() {
+    World w;
+    w.db = load_fixture_db();
+    seed_people(w.ctx, w.population);
+
+    // Same role, same city: the two City-of-the-Moon bakers know each other.
+    const auto& b1 = w.population.knows["res_baker_1"];
+    SIM_CHECK(std::find(b1.begin(), b1.end(), Id("res_baker_2")) != b1.end());
+
+    // A baker in a different city is never linked by the same-role rule.
+    const auto& far = w.population.knows["res_far_baker"];
+    SIM_CHECK(std::find(far.begin(), far.end(), Id("res_baker_1")) == far.end());
+
+    // Neighbours: role-bearing residents (the ones the street link-wiring
+    // pass operates on) of the same city are chained by sorted id —
+    // res_baker_1 and res_watch_1 are consecutive in that order despite
+    // differing roles, since the chain sorts by id, not role.
+    std::vector<Id> moon_residents = {"res_baker_1", "res_baker_2", "res_watch_1"};
+    std::sort(moon_residents.begin(), moon_residents.end());
+    for (std::size_t i = 1; i < moon_residents.size(); ++i) {
+        const auto& edges = w.population.knows[moon_residents[i - 1]];
+        SIM_CHECK(std::find(edges.begin(), edges.end(), moon_residents[i]) != edges.end());
+    }
+
+    // A narrative leader and a resident whose role names no schedule get no
+    // links at all: the link-wiring pass only ever touches role-bearing
+    // (schedule-matching) residents.
+    SIM_CHECK(w.population.knows.find("named_leader") == w.population.knows.end());
+    SIM_CHECK(w.population.knows.find("res_no_role_match") == w.population.knows.end());
+
+    // No self-loop, no dangling edge to res_open (it was never seeded).
+    for (const auto& [id, edges] : w.population.knows) {
+        SIM_CHECK(std::find(edges.begin(), edges.end(), id) == edges.end());
+        SIM_CHECK(std::find(edges.begin(), edges.end(), Id("res_open")) == edges.end());
+    }
+    return true;
+}
+
+static bool test_seed_link_wiring_is_idempotent() {
+    World w;
+    w.db = load_fixture_db();
+    seed_people(w.ctx, w.population);
+    const std::string first = state_bytes(w.population);
+    seed_people(w.ctx, w.population);  // re-seed: no duplicate edges, no changed bytes
+    SIM_CHECK_EQ(state_bytes(w.population), first);
+    return true;
+}
+
+static bool test_named_leaders_never_get_knows_edges_from_real_canon() {
+    // Guards the "keep named NPC behaviour intact" requirement against the
+    // real canon: whatever street residents the canon has gained, the three
+    // Wave 1 leaders' narrative titles never name a schedule role, so the
+    // link-wiring pass must never touch them.
+    World w;
+    w.db = Db::load("../db/canon");
+    seed_people(w.ctx, w.population);
+    for (const char* id : {"law_giver", "the_prophet", "the_warchief"})
+        SIM_CHECK(w.population.knows.find(Id(id)) == w.population.knows.end());
+    return true;
+}
+
+static bool test_npc_task_at_uses_the_npcs_own_role() {
+    World w;
+    w.db = load_fixture_db();
+    seed_people(w.ctx, w.population);
+    const Calendar cal{};
+
+    const auto t = npc_task_at(w.db, cal, w.population, "res_baker_1", DayNumber{1}, 10);
+    SIM_CHECK(t.has_value());
+    SIM_CHECK_EQ(t->schedule_id, Id("baker_row"));
+
+    // No role matched: nullopt, not a crash.
+    SIM_CHECK(!npc_task_at(w.db, cal, w.population, "res_no_role_match", DayNumber{1}, 10)
+                   .has_value());
+    // Unknown npc: nullopt.
+    SIM_CHECK(!npc_task_at(w.db, cal, w.population, "no_such_npc", DayNumber{1}, 10).has_value());
+    return true;
+}
+
+static bool test_npc_task_at_against_real_canon_is_deterministic() {
+    World w;
+    w.db = Db::load("../db/canon");
+    seed_people(w.ctx, w.population);
+    const Calendar cal{};
+    // No canon person currently carries a schedule-matching role, so every
+    // named leader resolves to nullopt today — proven stable across calls.
+    for (const char* id : {"law_giver", "the_prophet", "the_warchief"}) {
+        const auto a = npc_task_at(w.db, cal, w.population, id, DayNumber{50}, 12);
+        const auto b = npc_task_at(w.db, cal, w.population, id, DayNumber{50}, 12);
+        SIM_CHECK_EQ(a.has_value(), b.has_value());
+    }
+    return true;
+}
+
 SIM_MAIN(test_seed_reads_the_named_people,
          test_seed_is_idempotent,
          test_seed_without_canon_is_a_noop,
@@ -378,4 +541,10 @@ SIM_MAIN(test_seed_reads_the_named_people,
          test_facts_stay_put_without_knows_edges,
          test_multi_day_tick_matches_daily_ticks,
          test_dangling_knows_edges_are_graceful,
-         test_same_operations_same_state_bytes_any_seed)
+         test_same_operations_same_state_bytes_any_seed,
+         test_seed_sets_role_only_for_schedule_matching_rows,
+         test_seed_wires_same_role_same_city_and_neighbour_links,
+         test_seed_link_wiring_is_idempotent,
+         test_named_leaders_never_get_knows_edges_from_real_canon,
+         test_npc_task_at_uses_the_npcs_own_role,
+         test_npc_task_at_against_real_canon_is_deterministic)

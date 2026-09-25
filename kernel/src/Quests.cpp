@@ -78,6 +78,11 @@ const QuestDef* find_def(const QuestState& state, const Id& def_id) {
     return nullptr;
 }
 
+void log_journal(QuestState& state, const Id& def_id, DayNumber day, const std::string& stage,
+                  const std::string& text) {
+    state.journal[def_id].push_back(JournalEntry{day, stage, text});
+}
+
 }  // namespace
 
 void load_defs(const WorldContext& ctx, QuestState& state) {
@@ -113,10 +118,12 @@ void tick_quests(const WorldContext& ctx, QuestState& state, int days) {
         std::vector<Quest> still_active;
         still_active.reserve(state.active.size());
         for (Quest& quest : state.active) {
-            if (quest.deadline > 0 && day > quest.deadline)
+            if (quest.deadline > 0 && day > quest.deadline) {
+                log_journal(state, quest.def_id, day, "failed", "");
                 state.failed_list.push_back(quest.def_id);
-            else
+            } else {
                 still_active.push_back(std::move(quest));
+            }
         }
         state.active = std::move(still_active);
     }
@@ -134,16 +141,44 @@ Quest& accept(QuestState& state, const Id& def_id, DayNumber day) {
         quest.deadline = day + def->deadline_days;
     quest.stage = "accepted";
     state.active.push_back(std::move(quest));
+    log_journal(state, def_id, day, "accepted", "");
     return state.active.back();
 }
 
 void complete(QuestState& state, const Id& def_id, DayNumber day) {
-    (void)day;  // the frozen Quest record has no completed-day field to keep it in
     const auto it = std::find_if(state.active.begin(), state.active.end(),
                                  [&](const Quest& q) { return q.def_id == def_id; });
     if (it == state.active.end()) return;  // nothing active under this def: nothing to complete
     state.completed.push_back(it->def_id);  // recorded in completion order
     state.active.erase(it);
+    log_journal(state, def_id, day, "completed", "");
+}
+
+Quest* find_active(QuestState& state, const Id& def_id) {
+    for (Quest& q : state.active)
+        if (q.def_id == def_id) return &q;
+    return nullptr;
+}
+
+const Quest* find_active(const QuestState& state, const Id& def_id) {
+    for (const Quest& q : state.active)
+        if (q.def_id == def_id) return &q;
+    return nullptr;
+}
+
+bool advance_stage(QuestState& state, const Id& def_id, DayNumber day, const std::string& stage,
+                    const std::string& text) {
+    Quest* quest = find_active(state, def_id);
+    if (quest == nullptr || quest->stage == stage) return false;
+    quest->stage = stage;
+    log_journal(state, def_id, day, stage, text);
+    return true;
+}
+
+const std::vector<JournalEntry>& journal(const QuestState& state, const Id& def_id) {
+    static const std::vector<JournalEntry> kEmpty;
+    const auto it = state.journal.find(def_id);
+    return it == state.journal.end() ? kEmpty : it->second;
 }
 
 void fail(QuestState& state, const Id& def_id) {

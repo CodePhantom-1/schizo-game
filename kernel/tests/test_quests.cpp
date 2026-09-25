@@ -336,6 +336,89 @@ static bool test_determinism_same_seed_same_state_bytes() {
     return true;
 }
 
+// --- journal / find_active / advance_stage (scenario_quest.md's requested
+// journal surface, and the dangling-reference fix) ---------------------------
+
+static bool test_accept_logs_a_journal_entry() {
+    World w = world_with_test_defs();
+    accept(w.quests, Id{"qtest_arc"}, DayNumber{5});
+    const auto& log = journal(w.quests, "qtest_arc");
+    SIM_CHECK_EQ(log.size(), std::size_t{1});
+    SIM_CHECK_EQ(log[0].day, DayNumber{5});
+    SIM_CHECK_EQ(log[0].stage, std::string("accepted"));
+    // An id with no history yet: empty, not an error.
+    SIM_CHECK(journal(w.quests, "qtest_never_accepted").empty());
+    return true;
+}
+
+static bool test_find_active_survives_a_tick_unlike_accepts_reference() {
+    World w = world_with_test_defs();
+    accept(w.quests, Id{"qtest_nodeadline"}, DayNumber{1});  // no deadline: never times out
+    accept(w.quests, Id{"qtest_side"}, DayNumber{1});        // deadline day 4: will fail
+
+    tick_quests(w.ctx(5), w.quests, 1);  // qtest_side fails; qtest_nodeadline's slot in
+                                           // `active` may move (vector reassigned)
+    Quest* q = find_active(w.quests, "qtest_nodeadline");
+    SIM_CHECK(q != nullptr);
+    SIM_CHECK_EQ(q->def_id, std::string("qtest_nodeadline"));
+    SIM_CHECK(find_active(w.quests, "qtest_side") == nullptr);  // failed: no longer active
+
+    const QuestState& frozen = w.quests;
+    const Quest* cq = find_active(frozen, "qtest_nodeadline");
+    SIM_CHECK(cq != nullptr);
+    return true;
+}
+
+static bool test_advance_stage_logs_only_on_real_change() {
+    World w = world_with_test_defs();
+    accept(w.quests, Id{"qtest_arc"}, DayNumber{1});  // journal: [accepted@1]
+
+    SIM_CHECK(advance_stage(w.quests, "qtest_arc", DayNumber{2}, "confronted_the_debtor",
+                             "found the ledger"));
+    SIM_CHECK_EQ(find_active(w.quests, "qtest_arc")->stage,
+                 std::string("confronted_the_debtor"));
+    SIM_CHECK_EQ(journal(w.quests, "qtest_arc").size(), std::size_t{2});
+    SIM_CHECK_EQ(journal(w.quests, "qtest_arc")[1].text, std::string("found the ledger"));
+
+    // Same stage again: a no-op, no duplicate entry.
+    SIM_CHECK(!advance_stage(w.quests, "qtest_arc", DayNumber{3}, "confronted_the_debtor"));
+    SIM_CHECK_EQ(journal(w.quests, "qtest_arc").size(), std::size_t{2});
+
+    // A def with nothing active: no-op, no crash.
+    SIM_CHECK(!advance_stage(w.quests, "qtest_no_such_def", DayNumber{4}, "anything"));
+    return true;
+}
+
+static bool test_complete_and_fail_append_journal_entries() {
+    World w = world_with_test_defs();
+    accept(w.quests, Id{"qtest_arc"}, DayNumber{1});
+    complete(w.quests, Id{"qtest_arc"}, DayNumber{6});
+    const auto& arc_log = journal(w.quests, "qtest_arc");
+    SIM_CHECK_EQ(arc_log.size(), std::size_t{2});
+    SIM_CHECK_EQ(arc_log[1].stage, std::string("completed"));
+    SIM_CHECK_EQ(arc_log[1].day, DayNumber{6});
+
+    accept(w.quests, Id{"qtest_side"}, DayNumber{1});  // deadline day 4
+    tick_quests(w.ctx(5), w.quests, 1);
+    const auto& side_log = journal(w.quests, "qtest_side");
+    SIM_CHECK_EQ(side_log.size(), std::size_t{2});
+    SIM_CHECK_EQ(side_log[1].stage, std::string("failed"));
+    SIM_CHECK_EQ(side_log[1].day, DayNumber{5});
+    return true;
+}
+
+static bool test_journal_survives_across_re_accept_and_is_append_only() {
+    // The journal is keyed by def_id, independent of `active`/`completed`, so
+    // history is never lost when a quest is re-offered.
+    World w = world_with_test_defs();
+    accept(w.quests, Id{"qtest_arc"}, DayNumber{1});
+    complete(w.quests, Id{"qtest_arc"}, DayNumber{2});
+    accept(w.quests, Id{"qtest_arc"}, DayNumber{10});  // re-accepted later
+    SIM_CHECK_EQ(journal(w.quests, "qtest_arc").size(), std::size_t{3});
+    SIM_CHECK_EQ(journal(w.quests, "qtest_arc")[2].day, DayNumber{10});
+    return true;
+}
+
 SIM_MAIN(test_real_canon_defs_load_and_machine_still_runs,
          test_load_defs_parses_rows_skips_open_and_reloads_clean,
          test_accept_uses_def_deadline_and_returns_live_reference,
@@ -345,4 +428,9 @@ SIM_MAIN(test_real_canon_defs_load_and_machine_still_runs,
          test_tick_with_nonpositive_days_advances_nothing,
          test_complete_records_completion_order_and_ignores_unknown,
          test_completing_on_the_deadline_day_beats_the_tick,
-         test_determinism_same_seed_same_state_bytes)
+         test_determinism_same_seed_same_state_bytes,
+         test_accept_logs_a_journal_entry,
+         test_find_active_survives_a_tick_unlike_accepts_reference,
+         test_advance_stage_logs_only_on_real_change,
+         test_complete_and_fail_append_journal_entries,
+         test_journal_survives_across_re_accept_and_is_append_only)
