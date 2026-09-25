@@ -23,9 +23,9 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fi
 
 def _wall_box(name, cut_fn=None):
     bm = kc.new_bmesh()
-    kc.add_box(bm, (0, 0, 0), (kc.GRID, kc.WALL_THICK, kc.PLINTH_HEIGHT), mat_index=1)
+    kc.add_box(bm, (0, 0, 0), (kc.GRID, kc.WALL_THICK, kc.PLINTH_HEIGHT), mat_index=2)
     kc.add_box(bm, (0, 0, kc.PLINTH_HEIGHT), (kc.GRID, kc.WALL_THICK, kc.WALL_HEIGHT), mat_index=0)
-    obj = kc.finalize_object(bm, name, ["M_MudPlaster", "M_Mudbrick"])
+    obj = kc.finalize_object(bm, name, ["M_MudPlaster", "M_Mudbrick", "M_Plinth"])
     if cut_fn:
         cut_fn(obj)
     return obj
@@ -65,13 +65,13 @@ def build_corner():
     bm = kc.new_bmesh()
     t = kc.WALL_THICK
     # leg A: runs along +X at the near (y=0) edge
-    kc.add_box(bm, (0, 0, 0), (kc.GRID, t, kc.PLINTH_HEIGHT), mat_index=1)
+    kc.add_box(bm, (0, 0, 0), (kc.GRID, t, kc.PLINTH_HEIGHT), mat_index=2)
     kc.add_box(bm, (0, 0, kc.PLINTH_HEIGHT), (kc.GRID, t, kc.WALL_HEIGHT), mat_index=0)
     # leg B: runs along +Y at the near (x=0) edge, starting past leg A's thickness
     # to avoid overlapping geometry with leg A.
-    kc.add_box(bm, (0, t, 0), (t, kc.GRID, kc.PLINTH_HEIGHT), mat_index=1)
+    kc.add_box(bm, (0, t, 0), (t, kc.GRID, kc.PLINTH_HEIGHT), mat_index=2)
     kc.add_box(bm, (0, t, kc.PLINTH_HEIGHT), (t, kc.GRID, kc.WALL_HEIGHT), mat_index=0)
-    return kc.finalize_object(bm, "SM_Corner", ["M_MudPlaster", "M_Mudbrick"])
+    return kc.finalize_object(bm, "SM_Corner", ["M_MudPlaster", "M_Mudbrick", "M_Plinth"])
 
 
 def build_roof_slab(with_parapet=True, name="SM_RoofSlab"):
@@ -109,9 +109,9 @@ def build_roof_access():
 def build_pilaster():
     bm = kc.new_bmesh()
     w, d = 0.3, 0.15
-    kc.add_box(bm, (0, 0, 0), (w, d, kc.PLINTH_HEIGHT), mat_index=1)
+    kc.add_box(bm, (0, 0, 0), (w, d, kc.PLINTH_HEIGHT), mat_index=2)
     kc.add_box(bm, (0, 0, kc.PLINTH_HEIGHT), (w, d, kc.WALL_HEIGHT), mat_index=0)
-    return kc.finalize_object(bm, "SM_Pilaster", ["M_MudPlaster", "M_Mudbrick"])
+    return kc.finalize_object(bm, "SM_Pilaster", ["M_MudPlaster", "M_Mudbrick", "M_Plinth"])
 
 
 def build_stair():
@@ -149,7 +149,7 @@ def build_lintel():
 def build_courtyard_tile():
     bm = kc.new_bmesh()
     kc.add_box(bm, (0, 0, 0), (kc.GRID, kc.GRID, kc.TILE_THICK), mat_index=0)
-    return kc.finalize_object(bm, "SM_CourtyardTile", ["M_Mudbrick"])
+    return kc.finalize_object(bm, "SM_CourtyardTile", ["M_Ground"])
 
 
 def build_awning():

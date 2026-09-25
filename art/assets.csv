@@ -13,3 +13,41 @@ SM_Awning,art/generated/meshes/SM_Awning.fbx,mesh_kit_piece,"original (procedura
 House_SmallSingleRoom,art/generated/meshes/House_SmallSingleRoom.fbx,mesh_house_example,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
 House_TwoRoomCourtyard,art/generated/meshes/House_TwoRoomCourtyard.fbx,mesh_house_example,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
 House_RoofAccess,art/generated/meshes/House_RoofAccess.fbx,mesh_house_example,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+M_Mudbrick_Color,art/source/Bricks100/Bricks100_2K-JPG_Color.jpg,texture_map,CC0,https://ambientcg.com/a/Bricks100,A
+M_Mudbrick_NormalGL,art/source/Bricks100/Bricks100_2K-JPG_NormalGL.jpg,texture_map,CC0,https://ambientcg.com/a/Bricks100,A
+M_Mudbrick_Roughness,art/source/Bricks100/Bricks100_2K-JPG_Roughness.jpg,texture_map,CC0,https://ambientcg.com/a/Bricks100,A
+M_Mudbrick_AmbientOcclusion,art/source/Bricks100/Bricks100_2K-JPG_AmbientOcclusion.jpg,texture_map,CC0,https://ambientcg.com/a/Bricks100,A
+M_MudPlaster_Color,art/source/Clay001/Clay001_2K-JPG_Color.jpg,texture_map,CC0,https://ambientcg.com/a/Clay001,A
+M_MudPlaster_NormalGL,art/source/Clay001/Clay001_2K-JPG_NormalGL.jpg,texture_map,CC0,https://ambientcg.com/a/Clay001,A
+M_MudPlaster_Roughness,art/source/Clay001/Clay001_2K-JPG_Roughness.jpg,texture_map,CC0,https://ambientcg.com/a/Clay001,A
+M_MudPlaster_AmbientOcclusion,art/source/Clay001/Clay001_2K-JPG_AmbientOcclusion.jpg,texture_map,CC0,https://ambientcg.com/a/Clay001,A
+M_Timber_Color,art/source/Bark012/Bark012_2K-JPG_Color.jpg,texture_map,CC0,https://ambientcg.com/a/Bark012,A
+M_Timber_NormalGL,art/source/Bark012/Bark012_2K-JPG_NormalGL.jpg,texture_map,CC0,https://ambientcg.com/a/Bark012,A
+M_Timber_Roughness,art/source/Bark012/Bark012_2K-JPG_Roughness.jpg,texture_map,CC0,https://ambientcg.com/a/Bark012,A
+M_Timber_AmbientOcclusion,art/source/Bark012/Bark012_2K-JPG_AmbientOcclusion.jpg,texture_map,CC0,https://ambientcg.com/a/Bark012,A
+M_Reed_Color,art/source/Wicker010A/Wicker010A_2K-JPG_Color.jpg,texture_map,CC0,https://ambientcg.com/a/Wicker010A,A
+M_Reed_NormalGL,art/source/Wicker010A/Wicker010A_2K-JPG_NormalGL.jpg,texture_map,CC0,https://ambientcg.com/a/Wicker010A,A
+M_Reed_Roughness,art/source/Wicker010A/Wicker010A_2K-JPG_Roughness.jpg,texture_map,CC0,https://ambientcg.com/a/Wicker010A,A
+M_Reed_AmbientOcclusion,art/source/Wicker010A/Wicker010A_2K-JPG_AmbientOcclusion.jpg,texture_map,CC0,https://ambientcg.com/a/Wicker010A,A
+M_Ground_Color,art/source/Ground109/Ground109_2K-JPG_Color.jpg,texture_map,CC0,https://ambientcg.com/a/Ground109,A
+M_Ground_NormalGL,art/source/Ground109/Ground109_2K-JPG_NormalGL.jpg,texture_map,CC0,https://ambientcg.com/a/Ground109,A
+M_Ground_Roughness,art/source/Ground109/Ground109_2K-JPG_Roughness.jpg,texture_map,CC0,https://ambientcg.com/a/Ground109,A
+M_Ground_AmbientOcclusion,art/source/Ground109/Ground109_2K-JPG_AmbientOcclusion.jpg,texture_map,CC0,https://ambientcg.com/a/Ground109,A
+M_Plinth_Color,art/source/Asphalt033/Asphalt033_2K-JPG_Color.jpg,texture_map,CC0,https://ambientcg.com/a/Asphalt033,A
+M_Plinth_NormalGL,art/source/Asphalt033/Asphalt033_2K-JPG_NormalGL.jpg,texture_map,CC0,https://ambientcg.com/a/Asphalt033,A
+M_Plinth_Roughness,art/source/Asphalt033/Asphalt033_2K-JPG_Roughness.jpg,texture_map,CC0,https://ambientcg.com/a/Asphalt033,A
+M_Plinth_AmbientOcclusion,art/source/Asphalt033/Asphalt033_2K-JPG_AmbientOcclusion.jpg,texture_map,CC0,https://ambientcg.com/a/Asphalt033,A
+SM_WallPlain,art/generated/meshes/SM_WallPlain.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_WallDoor,art/generated/meshes/SM_WallDoor.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_WallWindow,art/generated/meshes/SM_WallWindow.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_Corner,art/generated/meshes/SM_Corner.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_RoofSlab,art/generated/meshes/SM_RoofSlab.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_RoofAccess,art/generated/meshes/SM_RoofAccess.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_Pilaster,art/generated/meshes/SM_Pilaster.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_Stair,art/generated/meshes/SM_Stair.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_Lintel,art/generated/meshes/SM_Lintel.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_CourtyardTile,art/generated/meshes/SM_CourtyardTile.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_Awning,art/generated/meshes/SM_Awning.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+House_SmallSingleRoom,art/generated/meshes/House_SmallSingleRoom.fbx,mesh_house_example,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+House_TwoRoomCourtyard,art/generated/meshes/House_TwoRoomCourtyard.fbx,mesh_house_example,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+House_RoofAccess,art/generated/meshes/House_RoofAccess.fbx,mesh_house_example,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A

@@ -1,10 +1,19 @@
-"""Render fixed-angle Workbench thumbnails of every kit piece and example
-house, plus one contact sheet PNG.
+"""Render fixed-angle thumbnails of every kit piece and example house, plus
+one contact sheet PNG.
 
 Run (after house_kit.py and assemble_house.py have populated <out>/meshes/):
     ~/opt/blender/blender -b --factory-startup -P tools/art/thumbs.py -- --out art/generated
+    # fast Workbench-only pass (flat colours, no textures, seconds not minutes):
+    ~/opt/blender/blender -b --factory-startup -P tools/art/thumbs.py -- --out art/generated --fast
 
-Uses CPU Workbench rendering (no GPU renderer, per the hard rule) at 512px.
+Default is Cycles, CPU device, low sample count + denoising, so the PBR
+textures wired in kit_common.py are actually visible in the thumbnails (the
+whole point of this pass -- Workbench's MATERIAL shading only reads flat
+viewport-display colours, never the node tree). Still CPU-only per the hard
+rule (no GPU renderer) -- kept modest (32 samples, 512px) to stay under a
+few minutes total at nice 19. --fast switches back to the original
+Workbench flat-colour path for quick iteration.
+
 Rebuilds each piece/house from the same builder functions used by
 house_kit.py / assemble_house.py (avoids re-importing FBX, keeps the render
 in the same process) and frames it with a fixed 3/4 camera angle.
@@ -22,19 +31,38 @@ import assemble_house as ah  # noqa: E402
 
 REPO_ROOT = hk.REPO_ROOT
 SIZE = 512
+CYCLES_SAMPLES = 32
 
 
-def setup_render_scene():
+def setup_render_scene(fast=False):
     scene = bpy.context.scene
-    scene.render.engine = "BLENDER_WORKBENCH"
     scene.render.resolution_x = SIZE
     scene.render.resolution_y = SIZE
     scene.render.film_transparent = False
     scene.render.image_settings.file_format = "PNG"
-    scene.display.shading.light = "STUDIO"
-    scene.display.shading.color_type = "MATERIAL"
     scene.world = scene.world or bpy.data.worlds.new("World")
-    scene.world.color = (0.82, 0.82, 0.85)
+
+    if fast:
+        scene.render.engine = "BLENDER_WORKBENCH"
+        scene.display.shading.light = "STUDIO"
+        scene.display.shading.color_type = "MATERIAL"
+        scene.world.color = (0.82, 0.82, 0.85)
+    else:
+        scene.render.engine = "CYCLES"
+        scene.cycles.device = "CPU"
+        scene.cycles.samples = CYCLES_SAMPLES
+        scene.cycles.use_denoising = True
+        scene.world.use_nodes = True
+        bg = scene.world.node_tree.nodes.get("Background")
+        if bg:
+            bg.inputs["Color"].default_value = (0.55, 0.55, 0.58, 1.0)
+            bg.inputs["Strength"].default_value = 1.2
+        sun_data = bpy.data.lights.new("ThumbSun", type="SUN")
+        sun_data.energy = 3.0
+        sun_data.angle = math.radians(3.0)
+        sun = bpy.data.objects.new("ThumbSun", sun_data)
+        sun.rotation_euler = (math.radians(55), 0, math.radians(-35))
+        bpy.context.collection.objects.link(sun)
 
     cam_data = bpy.data.cameras.new("ThumbCam")
     cam_data.type = "ORTHO"
@@ -135,8 +163,10 @@ def main():
     thumbs_dir = os.path.join(out_dir, "thumbs")
     os.makedirs(thumbs_dir, exist_ok=True)
 
+    fast = bool(args.get("fast"))
+
     kc.clear_scene()
-    cam = setup_render_scene()
+    cam = setup_render_scene(fast)
 
     rendered = []
     for _, build_fn in hk.PIECES:
@@ -155,7 +185,7 @@ def main():
         rendered.append(out_path)
         print(f"rendered {obj.name}")
         kc.clear_scene()
-        cam = setup_render_scene()
+        cam = setup_render_scene(fast)
 
     contact_path_generated = os.path.join(thumbs_dir, "contact_sheet.png")
     build_contact_sheet(rendered, contact_path_generated, cols=4)

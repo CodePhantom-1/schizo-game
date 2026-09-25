@@ -23,6 +23,10 @@ unreal/SchizoGame/Content/Sim/canon/
 # are tracked.
 art/generated/
 
+# downloaded CC0 source textures (tools/art/fetch_textures.py) — ~100 MB,
+# over the repo's commit budget; re-fetch any time, idempotent.
+art/source/
+
 # generated per machine — never tracked
 kernel/build*/
 kernel/Testing/

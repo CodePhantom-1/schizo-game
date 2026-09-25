@@ -15,6 +15,10 @@ import bpy
 import bmesh
 import math
 import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import fetch_textures as ft  # noqa: E402 -- plain python, no bpy, safe to import here
 
 # ---- Grid + real-world dimensions (source: real Mesopotamian mudbrick
 # residential architecture, tag [A] — general practice attested at Ur III /
@@ -54,12 +58,141 @@ TRI_BUDGET = {
     "awning": 450,
 }
 
+# Flat-colour Workbench-friendly fallback for every material (always set,
+# even when the PBR texture node tree below is also built) -- keeps the
+# fast Workbench thumbnail path and any Workbench viewport work even if
+# art/source/ hasn't been fetched yet (tools/art/fetch_textures.py).
 MAT_DEFS = {
     "M_MudPlaster": ((0.76, 0.62, 0.42), 0.95),
     "M_Mudbrick": ((0.55, 0.40, 0.27), 0.92),
     "M_Timber": ((0.30, 0.19, 0.10), 0.55),
     "M_Reed": ((0.68, 0.58, 0.30), 0.85),
+    "M_Ground": ((0.58, 0.46, 0.32), 0.90),
+    "M_Plinth": ((0.18, 0.15, 0.13), 0.60),
 }
+
+TEX_DEFS = ft.TEX_DEFS  # material name -> {asset_id, tile_m, use}
+
+
+def _textures_present(name):
+    spec = TEX_DEFS.get(name)
+    return bool(spec) and ft.already_fetched(spec["asset_id"])
+
+
+def _triplanar_pbr(mat, asset_id, tile_m):
+    """Wire a real-world-scaled triplanar PBR node tree (Color * AO ->
+    Base Color, Roughness, NormalGL -> Normal) sourced from art/source/<asset_id>/.
+
+    Triplanar (object-space, 3-axis blend by |normal|) instead of a UV-based
+    lookup because the kit's UV0 is a smart_project unwrap (kit_common.
+    unwrap_uv0_uv1) with no guaranteed real-world scale per island -- using
+    it would give inconsistent texel density piece to piece. Triplanar reads
+    directly off each piece's own object-space coordinates (already in
+    metres), so texel density is exactly tile_m across every piece
+    regardless of its UV layout.
+    """
+    nt = mat.node_tree
+    nodes, links = nt.nodes, nt.links
+    bsdf = nodes.get("Principled BSDF")
+
+    tex_coord = nodes.new("ShaderNodeTexCoord")
+    mapping = nodes.new("ShaderNodeMapping")
+    mapping.inputs["Scale"].default_value = (1.0 / tile_m,) * 3
+    links.new(tex_coord.outputs["Object"], mapping.inputs["Vector"])
+
+    sep = nodes.new("ShaderNodeSeparateXYZ")
+    links.new(mapping.outputs["Vector"], sep.inputs[0])
+
+    def combine(a, b):
+        c = nodes.new("ShaderNodeCombineXYZ")
+        links.new(a, c.inputs[0])
+        links.new(b, c.inputs[1])
+        return c.outputs["Vector"]
+
+    proj = {
+        "x": combine(sep.outputs["Y"], sep.outputs["Z"]),
+        "y": combine(sep.outputs["X"], sep.outputs["Z"]),
+        "z": combine(sep.outputs["X"], sep.outputs["Y"]),
+    }
+
+    # blend weights from |object-space normal| (each piece is authored
+    # unrotated; assemble_house.py's placement rotation carries the whole
+    # node tree's world-space result along with it, so this stays correct
+    # after 90-degree placement rotation).
+    geo = nodes.new("ShaderNodeNewGeometry")
+    nsep = nodes.new("ShaderNodeSeparateXYZ")
+    links.new(geo.outputs["Normal"], nsep.inputs[0])
+
+    def math1(op, a):
+        m = nodes.new("ShaderNodeMath")
+        m.operation = op
+        links.new(a, m.inputs[0])
+        return m.outputs["Value"]
+
+    def math2(op, a, b):
+        m = nodes.new("ShaderNodeMath")
+        m.operation = op
+        links.new(a, m.inputs[0])
+        links.new(b, m.inputs[1])
+        return m.outputs["Value"]
+
+    ax = math1("ABSOLUTE", nsep.outputs["X"])
+    ay = math1("ABSOLUTE", nsep.outputs["Y"])
+    az = math1("ABSOLUTE", nsep.outputs["Z"])
+    total = math2("ADD", math2("ADD", ax, ay), az)
+    wx, wy, wz = math2("DIVIDE", ax, total), math2("DIVIDE", ay, total), math2("DIVIDE", az, total)
+
+    def weight_vec(w):
+        c = nodes.new("ShaderNodeCombineXYZ")
+        for i in range(3):
+            links.new(w, c.inputs[i])
+        return c.outputs["Vector"]
+
+    wvx, wvy, wvz = weight_vec(wx), weight_vec(wy), weight_vec(wz)
+
+    def vecmath(op, a, b):
+        m = nodes.new("ShaderNodeVectorMath")
+        m.operation = op
+        links.new(a, m.inputs[0])
+        links.new(b, m.inputs[1])
+        return m.outputs["Vector"]
+
+    def blend3(out_x, out_y, out_z):
+        px = vecmath("MULTIPLY", out_x, wvx)
+        py = vecmath("MULTIPLY", out_y, wvy)
+        pz = vecmath("MULTIPLY", out_z, wvz)
+        return vecmath("ADD", vecmath("ADD", px, py), pz)
+
+    def load_triplanar(map_type, non_color):
+        outs = {}
+        for axis in ("x", "y", "z"):
+            img_node = nodes.new("ShaderNodeTexImage")
+            img = bpy.data.images.load(ft.map_path(asset_id, map_type), check_existing=True)
+            if non_color:
+                img.colorspace_settings.name = "Non-Color"
+            img_node.image = img
+            links.new(proj[axis], img_node.inputs["Vector"])
+            outs[axis] = img_node.outputs["Color"]
+        return blend3(outs["x"], outs["y"], outs["z"])
+
+    color = load_triplanar("Color", non_color=False)
+    rough = load_triplanar("Roughness", non_color=True)
+    ao = load_triplanar("AmbientOcclusion", non_color=True)
+    # ponytail: the 3 NormalGL samples are blended raw (weighted-summed)
+    # rather than re-oriented per projection axis, which a fully correct
+    # triplanar normal blend requires (swap/flip components per axis before
+    # blending) -- good enough at this kit's box-dominated scale where each
+    # face sits on one clean axis; upgrade if seams show up on curved
+    # geometry (there is none in this kit yet).
+    normal_raw = load_triplanar("NormalGL", non_color=True)
+
+    base_color = vecmath("MULTIPLY", color, ao)
+    normal_map = nodes.new("ShaderNodeNormalMap")
+    links.new(normal_raw, normal_map.inputs["Color"])
+
+    links.new(base_color, bsdf.inputs["Base Color"])
+    links.new(rough, bsdf.inputs["Roughness"])
+    links.new(normal_map.outputs["Normal"], bsdf.inputs["Normal"])
 
 
 def get_material(name):
@@ -72,9 +205,18 @@ def get_material(name):
     bsdf.inputs["Base Color"].default_value = (*color, 1.0)
     bsdf.inputs["Roughness"].default_value = rough
     # Workbench solid/material-preview shading reads viewport-display
-    # diffuse_color, not the node tree, so set it explicitly too.
+    # diffuse_color, not the node tree, so set it explicitly too -- this
+    # stays the fallback even once the PBR tree below is wired in.
     mat.diffuse_color = (*color, 1.0)
     mat.roughness = rough
+
+    if _textures_present(name):
+        spec = TEX_DEFS[name]
+        try:
+            _triplanar_pbr(mat, spec["asset_id"], spec["tile_m"])
+        except Exception as e:  # keep the flat fallback usable either way
+            print(f"WARNING: {name} PBR node build failed ({e}); using flat fallback")
+
     return mat
 
 
