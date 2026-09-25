@@ -9,10 +9,12 @@ static Db load_canon() { return Db::load("../db/canon"); }
 
 static bool test_loads_every_table() {
     const Db db = load_canon();
-    SIM_CHECK_EQ(db.rows("deities").size(), std::size_t{16});
-    SIM_CHECK_EQ(db.rows("cities").size(), std::size_t{9});
-    SIM_CHECK_EQ(db.rows("factions").size(), std::size_t{10});
-    SIM_CHECK_EQ(db.rows("planetary_powers").size(), std::size_t{6});
+    // Canon only grows (CANON rows are never deleted, D-018 appends): check
+    // floors, not exact counts — exact counts went stale with every content wave.
+    SIM_CHECK(db.rows("deities").size() >= std::size_t{16});
+    SIM_CHECK(db.rows("cities").size() >= std::size_t{9});
+    SIM_CHECK(db.rows("factions").size() >= std::size_t{10});
+    SIM_CHECK(db.rows("planetary_powers").size() >= std::size_t{6});
     return true;
 }
 
@@ -37,10 +39,10 @@ static bool test_quoted_fields_parse() {
 
 static bool test_open_rows_are_readable() {
     const Db db = load_canon();
-    // The missing lists stay visible as OPEN rows until the designer fills them.
+    // Formerly OPEN, filled under D-018: the row stays readable with its new tag.
     const auto med = db.find("pantheons", "eight_deities_of_medicine");
     SIM_CHECK(med.has_value());
-    SIM_CHECK_EQ(med->at("tag"), std::string("OPEN"));
+    SIM_CHECK(!med->at("tag").empty());
     return true;
 }
 

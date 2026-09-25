@@ -9,7 +9,7 @@ using namespace sim;
 static bool test_init_seeds_the_world() {
     WorldState w;
     w.init("../db/canon", 42);
-    SIM_CHECK_EQ(w.db.rows("deities").size(), std::size_t{16});
+    SIM_CHECK(w.db.rows("deities").size() >= std::size_t{16});  // canon only grows
     // every canon city has a market with the grain base on the shelf
     SIM_CHECK(price_of(w.economy, "city_of_the_moon", "grain") > 0);
     SIM_CHECK(price_of(w.economy, "city_of_jewels", "grain") > 0);

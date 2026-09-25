@@ -137,7 +137,7 @@ static bool test_unwitnessed_crimes_stay_open_through_ticks() {
 static bool test_hearing_reads_the_real_theft_law() {
     const Db db = Db::load("../db/canon");
     // Guard against a wrong working directory masquerading as "laws is empty".
-    SIM_CHECK_EQ(db.rows("deities").size(), std::size_t{16});
+    SIM_CHECK(db.rows("deities").size() >= std::size_t{16});  // canon only grows
     // The storm authored real law rows: the hearing reads the theft row now.
     SIM_CHECK(db.has("laws", "theft"));
     const Row theft = *db.find("laws", "theft");
