@@ -107,22 +107,30 @@ def fetch_one(name, spec):
 
 
 def _update_assets_csv(rows):
+    """Append new texture_map rows, and overwrite any existing row with the
+    same id in place (so swapping an asset choice -- e.g. M_MudPlaster from
+    Clay001 to Ground087 -- updates the recorded file/source_ref rather than
+    leaving a stale row behind)."""
     path = os.path.join(REPO_ROOT, "art", "assets.csv")
-    existing_ids = set()
+    by_id = {}
+    header = ["id", "file", "kind", "license", "source_ref", "tag"]
+    order = []
     if os.path.exists(path):
         with open(path, newline="") as f:
-            for r in csv.DictReader(f):
-                existing_ids.add(r["id"])
-    new_rows = [r for r in rows if r[0] not in existing_ids]
-    if not new_rows:
-        return
-    is_new = not os.path.exists(path)
-    with open(path, "a", newline="") as f:
+            reader = csv.reader(f)
+            header = next(reader)
+            for r in reader:
+                by_id[r[0]] = r
+                order.append(r[0])
+    for r in rows:
+        if r[0] not in by_id:
+            order.append(r[0])
+        by_id[r[0]] = r
+    with open(path, "w", newline="") as f:
         w = csv.writer(f)
-        if is_new:
-            w.writerow(["id", "file", "kind", "license", "source_ref", "tag"])
-        for r in new_rows:
-            w.writerow(r)
+        w.writerow(header)
+        for rid in order:
+            w.writerow(by_id[rid])
 
 
 def main():

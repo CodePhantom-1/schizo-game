@@ -222,6 +222,7 @@ def main():
             ]
         )
     write_manifest_rows(manifest_rows)
+    kc.copy_textures_for_export(out_dir)
     print(f"House kit: {len(PIECES)} pieces exported to {out_dir}")
 
 

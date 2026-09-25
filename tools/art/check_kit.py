@@ -11,6 +11,10 @@ Re-imports each exported piece (both FBX and GLB must exist) and checks:
   4. UV0 (texturing) and UV1 (lightmap) are both present
   5. material slots are named (all M_* slots, matching kit_common.MAT_DEFS)
 
+  6. every material referenced by kit_common.TEX_DEFS has its 4 PBR maps
+     (Color, NormalGL, Roughness, AmbientOcclusion) present on disk under
+     art/source/ (tools/art/fetch_textures.py)
+
 Then, for each of the 3 example houses, rebuilds it pre-join (via
 assemble_house.HOUSE_OBJS_BUILDERS) and checks the assembly itself:
   6. no floaters — every placed piece's bounding box must touch another
@@ -113,6 +117,23 @@ def check_piece(name, budget_key, out_dir, failures):
           f"uvs={len(mesh.uv_layers)}, mats={[m.name for m in mesh.materials]}")
 
 
+def check_material_textures(failures):
+    """Every material in kit_common.TEX_DEFS must have all 4 PBR maps on
+    disk (tools/art/fetch_textures.py) -- checks kc.ft.map_path(...) exists
+    for each map type, for every material slot name, not just that the
+    asset directory exists."""
+    for name, spec in kc.TEX_DEFS.items():
+        asset_id = spec["asset_id"]
+        for m in kc.ft.MAP_TYPES:
+            p = kc.ft.map_path(asset_id, m)
+            if not os.path.exists(p) or os.path.getsize(p) == 0:
+                failures.append(
+                    f"material {name} ({asset_id}): missing map file {p} "
+                    f"-- run tools/art/fetch_textures.py"
+                )
+    print(f"checked textures for {len(kc.TEX_DEFS)} materials")
+
+
 def world_bbox(obj):
     corners = [obj.matrix_world @ Vector(c) for c in obj.bound_box]
     xs = [c.x for c in corners]
@@ -204,6 +225,8 @@ def main():
 
     for name, budget_key in name_to_budget.items():
         check_piece(name, budget_key, out_dir, failures)
+
+    check_material_textures(failures)
 
     for house_name, build_objs_fn in ah.HOUSE_OBJS_BUILDERS:
         kc.clear_scene()

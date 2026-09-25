@@ -382,12 +382,44 @@ def export_piece(obj, out_dir):
         axis_up="Y",
         object_types={"MESH"},
         use_mesh_modifiers=True,
+        path_mode="COPY",
+        embed_textures=True,
     )
     glb_path = os.path.join(mesh_dir, f"{obj.name}.glb")
     bpy.ops.export_scene.gltf(
         filepath=glb_path, use_selection=True, export_format="GLB"
     )
     return fbx_path, glb_path
+
+
+def copy_textures_for_export(out_dir):
+    """Copy every fetched PBR map into <out_dir>/meshes/textures/<asset_id>/
+    so an FBX/GLB import has the source maps sitting right next to the mesh.
+
+    ponytail: the triplanar node graph in _triplanar_pbr is a Cycles/EEVEE
+    shader-node technique with no FBX or glTF equivalent -- both exporters
+    only understand a single Image Texture wired straight into a PBR slot,
+    so FBX's own embed_textures finds nothing to embed (the graph is too
+    indirect for its heuristic) and a reimport elsewhere gets the flat
+    MAT_DEFS fallback colour, not the photo texture. Copying the raw maps
+    here means the maps are still right there to hand-wire in whatever
+    imports the mesh. Proper fix, if an engine needs the real look
+    on import: bake each piece's triplanar result down to its own UV0 map
+    (Cycles bake to image) and export *that* single texture instead.
+    """
+    import shutil
+    tex_dir = os.path.join(out_dir, "meshes", "textures")
+    for name, spec in TEX_DEFS.items():
+        asset_id = spec["asset_id"]
+        if not ft.already_fetched(asset_id):
+            continue
+        dest = os.path.join(tex_dir, asset_id)
+        os.makedirs(dest, exist_ok=True)
+        for m in ft.MAP_TYPES:
+            src = ft.map_path(asset_id, m)
+            dst = os.path.join(dest, os.path.basename(src))
+            if not os.path.exists(dst) or os.path.getsize(dst) != os.path.getsize(src):
+                shutil.copy2(src, dst)
 
 
 def clear_scene():
