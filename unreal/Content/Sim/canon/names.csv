@@ -50,3 +50,8 @@ marduka,Marduka,kaldunai,male,INVENTED,D-018; world_lore.csv:homeland_kaldun
 seluhi,Seluhi,kaldunai,female,INVENTED,D-018; world_lore.csv:homeland_kaldun
 tabitu,Tabitu,kaldunai,female,INVENTED,D-018; world_lore.csv:homeland_kaldun
 narisha,Narisha,kaldunai,female,INVENTED,D-018; world_lore.csv:homeland_kaldun
+ur_dumuzida,Ur-Dumuzida,sumerian,male,A,attested Ur III onomasticon
+lu_enlilla,Lu-Enlilla,sumerian,male,A,attested Ur III onomasticon
+nur_shamash,Nur-Shamash,akkadian,male,A,attested Old Babylonian onomasticon
+ibni_shamash,Ibni-Shamash,akkadian,male,A,attested Old Babylonian onomasticon (Sippar archive records)
+taribum,Taribum,akkadian,male,A,attested Old Babylonian onomasticon

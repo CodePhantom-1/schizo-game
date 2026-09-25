@@ -4,10 +4,12 @@
 // spread along `knows`.
 #include "sim/Context.hpp"  // the seam: tick/seed take a WorldContext
 
+#include "sim/Schedule.hpp"  // schedule_roles(): the D-020 no-orphan-role check
 #include "sim/Test.hpp"
 
 #include <algorithm>
 #include <cstdint>
+#include <cstdio>
 #include <filesystem>
 #include <fstream>
 #include <string>
@@ -530,6 +532,37 @@ static bool test_npc_task_at_against_real_canon_is_deterministic() {
     return true;
 }
 
+// D-020: every role that schedules.csv names (non-OPEN rows) has at least one
+// seeded resident holding it, so no schedule row is dead data. Matching is the
+// kernel's own: schedule_roles() collapses roles case-insensitively/trimmed,
+// and seed_people() stores the matching schedule role in Npc::role. Each such
+// resident's home_place/work_place, when set, is a real places.csv id.
+static bool test_every_schedule_role_has_a_resident_in_real_canon() {
+    World w;
+    w.db = Db::load("../db/canon");
+    seed_people(w.ctx, w.population);
+
+    const std::vector<std::string> roles = schedule_roles(w.db);
+    SIM_CHECK(!roles.empty());
+    for (const std::string& role : roles) {
+        const bool held = std::any_of(w.population.npcs.begin(), w.population.npcs.end(),
+                                      [&](const Npc& n) { return n.role == role; });
+        if (!held) std::fprintf(stderr, "  schedule role with no resident: '%s'\n", role.c_str());
+        SIM_CHECK(held);
+    }
+
+    for (const Npc& n : w.population.npcs) {
+        if (n.role.empty()) continue;
+        const auto row = w.db.find("people", n.id);
+        SIM_CHECK(row.has_value());
+        for (const char* col : {"home_place", "work_place"}) {
+            const std::string place = row->get(col);
+            SIM_CHECK(place.empty() || w.db.has("places", place));
+        }
+    }
+    return true;
+}
+
 SIM_MAIN(test_seed_reads_the_named_people,
          test_seed_is_idempotent,
          test_seed_without_canon_is_a_noop,
@@ -547,4 +580,5 @@ SIM_MAIN(test_seed_reads_the_named_people,
          test_seed_link_wiring_is_idempotent,
          test_named_leaders_never_get_knows_edges_from_real_canon,
          test_npc_task_at_uses_the_npcs_own_role,
-         test_npc_task_at_against_real_canon_is_deterministic)
+         test_npc_task_at_against_real_canon_is_deterministic,
+         test_every_schedule_role_has_a_resident_in_real_canon)

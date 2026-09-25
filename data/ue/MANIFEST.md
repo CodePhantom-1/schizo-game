@@ -9,10 +9,10 @@ Run `python3 tools/export_datatables.py` to regenerate from db/canon.
 - factions: 11 rows
 - items: 38 rows
 - laws: 10 rows
-- names: 51 rows
+- names: 56 rows
 - pantheons: 6 rows
 - planetary_powers: 6 rows
-- places: 23 rows
+- places: 27 rows
 - ranks: 7 rows
 - regions: 4 rows
 - rite_teachings: 4 rows
