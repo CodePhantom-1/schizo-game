@@ -38,6 +38,11 @@ int sim_world_best_food(const SimWorld* world, const char* actor, char* out, int
 // sim_world_drink directly. Buffer convention; -1 on a null argument.
 int sim_world_best_drink(const SimWorld* world, const char* actor, char* out, int cap);
 
+// Debug/console (A5): sets one need of one actor to `value`, clamped 0..100.
+// `need` is "hunger" | "thirst" | "fatigue". 0 on success; -1 on a null
+// argument or an unknown need.
+int sim_world_set_need(SimWorld* world, const char* actor, const char* need, int value);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

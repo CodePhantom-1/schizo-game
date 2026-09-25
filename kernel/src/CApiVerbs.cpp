@@ -96,3 +96,17 @@ int sim_world_best_drink(const SimWorld* world, const char* actor, char* out, in
 }
 
 }  // extern "C"
+
+int sim_world_set_need(SimWorld* world, const char* actor, const char* need, int value) {
+    return guard([&] {
+        if (world == nullptr || actor == nullptr || need == nullptr) return -1;
+        const std::string which = need;
+        if (which != "hunger" && which != "thirst" && which != "fatigue") return -1;
+        Needs& n = needs_of(world->world.needs, Id(actor));
+        const int v = value < 0 ? 0 : (value > 100 ? 100 : value);
+        if (which == "hunger") n.hunger = v;
+        else if (which == "thirst") n.thirst = v;
+        else n.fatigue = v;
+        return 0;
+    });
+}

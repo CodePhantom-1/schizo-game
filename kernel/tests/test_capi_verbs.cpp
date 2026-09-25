@@ -1,6 +1,7 @@
 // test_capi_verbs.cpp — W6-A: the C ABI the player's engine verbs read
 // (inventory enumeration, best carried food/drink) over db/canon's own items.
 #include "sim/CApi.h"
+#include "sim/CApiVerbs.h"
 
 #include "sim/Test.hpp"
 #include <cstring>
@@ -119,7 +120,22 @@ static bool test_buffer_convention_truncates_but_reports() {
     return true;
 }
 
-SIM_MAIN(test_inventory_empty_then_filled,
+static bool test_set_need_for_debugging() {
+    SimWorld* w = sim_world_create("../db/canon", 42);
+    SIM_CHECK_EQ(sim_world_set_need(w, "player", "hunger", 80), 0);
+    SIM_CHECK_EQ(sim_world_hunger(w, "player"), 80);
+    SIM_CHECK_EQ(sim_world_set_need(w, "player", "thirst", 250), 0);  // clamped
+    SIM_CHECK_EQ(sim_world_thirst(w, "player"), 100);
+    SIM_CHECK_EQ(sim_world_set_need(w, "player", "fatigue", -5), 0);
+    SIM_CHECK_EQ(sim_world_fatigue(w, "player"), 0);
+    SIM_CHECK_EQ(sim_world_set_need(w, "player", "joy", 5), -1);
+    SIM_CHECK_EQ(sim_world_set_need(nullptr, "player", "hunger", 5), -1);
+    SIM_CHECK_EQ(sim_world_set_need(w, nullptr, "hunger", 5), -1);
+    sim_world_destroy(w);
+    return true;
+}
+
+SIM_MAIN(test_set_need_for_debugging, test_inventory_empty_then_filled,
          test_best_food_prefers_the_most_restorative,
          test_best_drink_is_beer_not_water,
          test_null_arguments_refuse,
