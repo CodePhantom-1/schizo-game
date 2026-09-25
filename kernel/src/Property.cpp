@@ -177,7 +177,6 @@ const Loan* find_loan(const PropertyState& state, const Id& loan_id) {
     return it == state.loans.end() ? nullptr : &*it;
 }
 
-}  // namespace sim
 
 // Purse access (D-017): clamped at zero; credit never negative.
 Silver purse(const PropertyState& state, const Id& owner) {
@@ -196,3 +195,4 @@ bool take_from_purse(PropertyState& state, const Id& owner, Silver amount) {
     state.purse_by_owner[owner] = current - amount;
     return true;
 }
+}  // namespace sim
