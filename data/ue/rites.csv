@@ -1,0 +1,5 @@
+Name,name,tradition,deity,materials,place,time_window,purity_required,effect_family,effect_tag,tag,source_ref
+sacrifice_fish_sea_gems,Sacrifice of fish and sea gems,the two-waters worship,the_two_waters,fish; sea gems,the first great temple (origin myth),,,offering (favour),INVENTED: EFFECT,CANON,wb §3; notes L57
+hymns_deity_names,Hymns (vibrating the names of deities),hymns,any,vocal performance; the deity's true name,temples and shrines,,,favour raising,INVENTED: EFFECT,CANON,wb §8.1; notes L194
+zisurru_warding,Zisurru (protecting people and places),exorcisms,any,different types of flour,households; places,,,protection,INVENTED: EFFECT,CANON,wb §8.1; notes L198
+barutu_haruspicy,Barutu (haruspicy),divination,any,a burned goat's liver,diviner's house,,,divination (omens with probabilities),INVENTED: EFFECT,CANON,wb §8.1-8.2; notes L192;L202
