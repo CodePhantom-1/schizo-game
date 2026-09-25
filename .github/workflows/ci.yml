@@ -1,0 +1,25 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  kernel-and-canon:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false   # binaries are not needed for the kernel or the canon
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: canon lint
+        run: python3 tools/canon_lint.py
+      - name: coverage
+        run: python3 tools/coverage_check.py
+      - name: staged canon matches db/canon
+        run: python3 tools/stage_canon_for_ue.py --check
+      - name: build kernel
+        run: cmake -S kernel -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j
+      - name: kernel tests
+        run: ctest --test-dir build --output-on-failure
