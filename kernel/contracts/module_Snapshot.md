@@ -91,3 +91,7 @@ byte-for-byte untouched (see `test_load_world_is_atomic_on_failure`).
 ## W4-C update (the wild lands)
 
 One more trailing, optional section: `WILD\t<n>`, then n rows produced by `wild_save_rows` (sim/Wild.hpp; row kinds S/G/C/V/R/E/F/T) and restored by `wild_load_rows`. `Reader::peek_tag()` reads the next tag without consuming it, so the section is found in any order among the trailing sections. It is absent in older saves, where the fresh `init_wild` state stands. Static wild tables are canon and are never saved.
+
+## W4-B update (combat)
+
+The combat sections follow the K-1, W4-A (CHAR_*) and W4-C (WILD) sections: `COMBAT_ACTORS` with its armour, wound, lasting-effect and durability sub-rows, then `COMBAT_HOSTILITY`, `COMBAT_DUELS`, `COMBAT_PRISONERS`, `COMBAT_DEATHS` and `COMBAT_SEQ`. They are optional on load. `Reader::peek_tag()` recognises them by tag, so they load correctly whatever other optional sections precede them. A save without them loads with an empty `CombatState`. See `tests/test_scenario_duel.cpp` `test_saves_before_and_after_combat`.

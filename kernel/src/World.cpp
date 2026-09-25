@@ -6,6 +6,7 @@
 #include "sim/Actions.hpp"
 #include "sim/Progression.hpp"  // W4-A
 #include "sim/WildActions.hpp"  // W4-C
+#include "sim/CombatActions.hpp"  // W4-B
 
 #include <cstdlib>
 
@@ -52,6 +53,7 @@ void WorldState::init(const std::string& canon_dir, std::uint64_t world_seed) {
     inventories.clear();
     inventories["player"] = Inventory{};  // the prisoner start (D-009): empty-handed
     rite_effects = RiteEffectsState{};    // K-1: no ward laid, no omen read
+    combat = CombatState{};               // W4-B: nobody hurt yet
 
     WorldContext ctx = context();
     for (const Row& city : db.rows("cities"))
@@ -70,6 +72,8 @@ void WorldState::init(const std::string& canon_dir, std::uint64_t world_seed) {
     // --- W4-C: the wild lands (static tables + day-1 camps, herds, sites).
     init_wild(db, wild);
     // --- end W4-C
+    // W4-B: real combat behind every fight in the wild (the W4-C seam).
+    wild.skirmish = &combat_skirmish_adapter;
 }
 
 void WorldState::advance_days(int days) {
@@ -90,6 +94,9 @@ void WorldState::advance_days(int days) {
         // --- W4-C: the wild's day (weather, caravans, camps, the raid formula).
         tick_wild(*this);
         // --- end W4-C
+        // W4-B: wounds heal (or bleed out) once a day; deaths reach
+        // Population and Events through the caller layer.
+        tick_combat_world(*this);
         ++day;
     }
 }

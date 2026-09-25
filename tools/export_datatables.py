@@ -27,6 +27,7 @@ TABLES = [
     "wild_places", "wild_links", "wild_groups", "wild_encounters", "caravans",
     "transport_modes", "weather",
     # --- end W4-C
+    "arms", "combat_styles",  # W4-B: combat
 ]
 
 

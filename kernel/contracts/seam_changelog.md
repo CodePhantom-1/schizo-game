@@ -277,3 +277,63 @@ Additive throughout; every edit to a shared file sits in a labelled `W4-C` block
 - **CApi.h:** `#include "sim/CApiWild.h"` (43 new functions, add-only; implemented in `src/CApiWild.cpp`, every entry point guarded by try/catch like CApi.cpp).
 - **tools/export_datatables.py:** the seven tables export to `data/ue/`.
 - **tests/test_scenario_crime.cpp:** `test_unwitnessed_theft_stays_open` now asserts that no memory concerns the criminal, instead of that no memory exists at all: the city now carries rumours of bandit camps from day 1.
+
+# SEAM CHANGELOG — W4-B (combat)
+
+Additive only. Every shared-file change sits in a block labelled `W4-B` at the end of its section.
+
+## World.hpp / World.cpp
+
+- `WorldState` gains `CombatState combat;` (and `World.hpp` includes `sim/Combat.hpp`). `init` resets it.
+- `advance_days` calls `tick_combat_world(*this)` after `hold_due_hearings`. Wounds heal, or bleed out, once a day, and deaths reach Population and Events through the caller layer.
+
+## New files
+
+- `sim/Combat.hpp` + `src/Combat.cpp` (the module) and `sim/CombatActions.hpp` + `src/CombatActions.cpp` (the caller layer). The contract is in `kernel/contracts/module_Combat.md`.
+
+## Db.cpp
+
+- The table list gains `arms` and `combat_styles`.
+
+## Snapshot.cpp
+
+- `Reader::peek_tag()` reads the next line's first field without consuming it.
+- Trailing optional sections come after K-1's and are recognised by tag: `COMBAT_ACTORS`, `COMBAT_HOSTILITY`, `COMBAT_DUELS`, `COMBAT_PRISONERS`, `COMBAT_DEATHS`, `COMBAT_SEQ`. A save without them loads with nobody hurt.
+
+## CApi.h / CApi.cpp
+
+Functions were added only, each wrapped in `try/catch`:
+
+- **Equipment:** `sim_world_equip`, `_unequip`, `_equipped`.
+- **Attacks:** `sim_world_attack(world, attacker, defender, zone_hint, out, cap)` returns 0..6 as the outcome code, or -2 when refused. It writes a `key=value;...` text.
+- **Body queries:** `sim_world_health`, `_stamina`, `_morale`, `_wound(zone)`, `_bleeding`, `_is_dead`, `_combat_status`, `_wounds`.
+- **Rest and treatment:** `sim_world_rest`, `_combat_advance`, `_catch_breath`, `_treat_wounds`.
+- **Stance and style:** `sim_world_stance`, `_apply_combat_style`, `_combat_style_of`.
+- **Surrender and prisoners:** `sim_world_surrender`, `_take_prisoner`, `_release_prisoner`, `_ransom`, `_loot`.
+- **Law:** `sim_world_agree_duel`, `_set_outlaw`, `_combat_crime`.
+- **Smith:** `sim_world_repair`, `_recast`.
+- **Group fights:** `sim_world_skirmish`, `_death_count`.
+
+## Data (db/canon)
+
+- **New tables:** `arms.csv` (20 rows) and `combat_styles.csv` (11 rows).
+- **Rows added:**
+  - `items.csv`: +24 (the arms, ammunition, herbs and bandages)
+  - `laws.csv`: +3 (`self_defence`, `slaying_a_robber`, `duel_killing`)
+  - `people.csv`: +2 (the asû, the smith)
+  - `names.csv`: +2
+  - `places.csv`: +2
+  - `schedules.csv`: +4 (role `physician`)
+- **Tags:** the object rows are `A` wherever an attestation exists, and everything else is `INVENTED`. All of it is listed in `docs/proposals/invented-ledger-combat.md`.
+- `tools/export_datatables.py` exports `arms` and `combat_styles`. The canon is restaged.
+
+## Tests
+
+- New: `tests/test_combat.cpp`, `tests/test_scenario_duel.cpp` and `tests/test_capi_combat.cpp`.
+
+### W4-B after merging W4-A and W4-C
+
+- `combat_inputs_for` reads W4-A's `actor_attribute` / `actor_effective_skill` (which wrap `attribute()` / `effective_skill()` over `w.character` and `w.npc_sheets`). Blows grow skills by use.
+- `WorldState::init` wires `wild.skirmish = &combat_skirmish_adapter` (sim/CombatActions.hpp).
+- The Ransom constant was renamed `kCaptiveRansomSilver`. W4-C's `Wild.hpp` already owns `kRansomSilver`.
+- `test_capi.cpp`'s save buffer grew from 64 KiB to 256 KiB. The arms on every market shelf push the save past 64 KiB.

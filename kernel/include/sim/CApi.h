@@ -336,6 +336,121 @@ int sim_world_character_summary(const SimWorld* world, char* out, int cap);
 // "teacher_surpassed". Buffer convention; -1 on null.
 int sim_world_progression_refusal(const SimWorld* world, char* out, int cap);
 
+// Combat (W4-B; sim/Combat.hpp + sim/CombatActions.hpp) ------------------------
+// Actors are "player" or npc ids (any other id is a stranger the engine
+// spawned — e.g. a W4-C bandit — and works the same). Zones: 0 head,
+// 1 torso, 2 arms, 3 legs. Buffer convention as above (writes at most cap-1
+// bytes plus NUL, returns the untruncated length, -1 on a null argument).
+// An npc is armed with his combat style's kit the first time he fights.
+
+// Equips an arms item (db/canon/arms.csv) the actor holds in inventory.
+//   0 ok; -1 null; -2 unknown or OPEN arms item; -3 not in inventory; -4 actor dead
+int sim_world_equip(SimWorld* world, const char* actor, const char* item);
+// 0 unequipped; 1 was not equipped; -1 null.
+int sim_world_unequip(SimWorld* world, const char* actor, const char* item);
+// Equipped ids, semicolon-joined: weapon, shield, then armour (sorted).
+int sim_world_equipped(const SimWorld* world, const char* actor, char* out, int cap);
+
+// One blow. zone_hint 0..3 aims (lands there on a good enough margin); any
+// other value strikes wherever it falls. `out` (may be null) receives
+// "outcome=...;attacker=...;defender=...;weapon=...;chance_bp=...;roll_bp=...;
+//  zone=...;aimed=0|1;type=cut|pierce|blunt;damage=N;severity=...;bleed=N;
+//  gap=0|1;shield_broke=0|1;weapon_broke=0|1;armour_broke=0|1;winded=0|1"
+// (a refusal writes "outcome=invalid;refusal=<why>").
+// Returns 0 dodged, 1 blocked, 2 parried, 3 deflected (armour held),
+// 4 wounded, 5 knocked out, 6 killed; -1 null; -2 refused (attacker
+// incapacitated, defender already dead, same actor, no ammunition).
+int sim_world_attack(SimWorld* world, const char* attacker, const char* defender, int zone_hint,
+                     char* out, int cap);
+
+// The body. Each returns -1 on a null argument (an actor never hurt reads as
+// health 100, stamina 100, morale 50, no wounds).
+int sim_world_health(const SimWorld* world, const char* actor);
+int sim_world_stamina(const SimWorld* world, const char* actor);
+int sim_world_morale(const SimWorld* world, const char* actor);
+// Open (unhealed) wound damage on `zone` (0..3); -1 on null or a bad zone.
+int sim_world_wound(const SimWorld* world, const char* actor, int zone);
+// Health lost per hour to bleeding right now.
+int sim_world_bleeding(const SimWorld* world, const char* actor);
+// 1 dead, 0 alive, -1 null.
+int sim_world_is_dead(const SimWorld* world, const char* actor);
+// Conditions, sorted and semicolon-joined: bleeding, concussed, dead,
+// knocked_out, limp, outlaw, prisoner, surrendered, useless_arm, weak_arm,
+// winded, scar:<zone>.
+int sim_world_combat_status(const SimWorld* world, const char* actor, char* out, int cap);
+// Open wounds, "|"-joined, each "zone:type:severity:remaining:bleed:treatment"
+// (treatment none|bound|herbs|healer).
+int sim_world_wounds(const SimWorld* world, const char* actor, char* out, int cap);
+
+// Time on the body. rest: `hours` of sleep — Needs advance as sleeping,
+// wounds rest (stamina back fast; 8+ rest hours speed the day's healing).
+// combat_advance: `hours` awake — bleeding, stamina, knockout, and the
+// Needs wounds and hot armour cost (the base needs climb stays with
+// sim_world_advance_needs). Both return 1 if the actor died (bled out),
+// 0 otherwise, -1 on null. Days heal on their own (sim_world_advance_days).
+int sim_world_rest(SimWorld* world, const char* actor, int hours);
+int sim_world_combat_advance(SimWorld* world, const char* actor, int hours);
+// A breather mid-fight: +5 stamina per round. Returns the new stamina, -1 null.
+int sim_world_catch_breath(SimWorld* world, const char* actor, int rounds);
+
+// Treatment. method: "bind" (uses a linen_bandage if held), "herbs" (spends
+// one healing_herbs), "healer" (`healer` = a physician npc; 5 silver from the
+// actor's purse). Returns wounds improved (>= 0); -1 null; -2 unknown method;
+// -3 no herbs held; -4 not a healer; -5 cannot pay; -6 actor dead.
+int sim_world_treat_wounds(SimWorld* world, const char* actor, const char* method,
+                           const char* healer);
+
+// What an npc does now given `allies` and `enemies` still standing: writes
+// "fight"/"flee"/"surrender"/"none"; returns 0/1/2/3 respectively, -1 null.
+int sim_world_stance(const SimWorld* world, const char* actor, int allies, int enemies, char* out,
+                     int cap);
+// Applies a combat_styles.csv style (gives the kit, equips it, sets morale).
+// 0 ok; -1 null; -2 unknown style or dead actor.
+int sim_world_apply_combat_style(SimWorld* world, const char* actor, const char* style);
+// The style an npc fights in ("" for an unknown npc).
+int sim_world_combat_style_of(const SimWorld* world, const char* npc, char* out, int cap);
+
+// Yielding and prisoners. surrender / take_prisoner / release: 0 ok, -1 null,
+// -2 not possible (dead, already a prisoner, not yielded to this captor...).
+int sim_world_surrender(SimWorld* world, const char* who, const char* to);
+int sim_world_take_prisoner(SimWorld* world, const char* captor, const char* captive);
+int sim_world_release_prisoner(SimWorld* world, const char* captive);
+// The captive pays his ransom (30 silver) to the captor, the shortfall as a
+// loan; he goes free. Returns silver paid now; -1 null or not a prisoner.
+// `loan_out` (may be null) receives the loan id ("" when paid in full).
+int64_t sim_world_ransom(SimWorld* world, const char* captive, char* loan_out, int cap);
+// Strips a dead body (or the looter's own prisoner). Items moved; -1 null;
+// -2 the body cannot be looted.
+int sim_world_loot(SimWorld* world, const char* looter, const char* body);
+
+// Law. agree_duel: both men agree to fight today (0; -1 null). set_outlaw:
+// marks an actor an outlaw/robber (flag 0/1) whom it is lawful to slay (0; -1).
+int sim_world_agree_duel(SimWorld* world, const char* a, const char* b);
+int sim_world_set_outlaw(SimWorld* world, const char* actor, int flag);
+// Files the attacker's deeds against the victim with Justice (assault,
+// murder, self_defence, slaying_a_robber, duel_killing — see
+// CombatActions.hpp). `witnesses` is a semicolon list of npc ids (may be
+// null/empty: unwitnessed, the crime stays open). `out` receives
+// "<law_row>;<crime_id>". Returns 1 filed, 0 nothing to file, -1 null.
+int sim_world_combat_crime(SimWorld* world, const char* attacker, const char* victim,
+                           const char* place_city, const char* witnesses, char* out, int cap);
+
+// The smith. repair: 0 ok; -1 null; -2 unknown arms item; -3 not held;
+// -4 not a smith; -5 cannot pay; -6 nothing to repair; -7 broken metal must
+// be recast. recast (melt `from`, cast `into`): 0 ok; -1..-5 as repair;
+// -7 not castable metal.
+int sim_world_repair(SimWorld* world, const char* actor, const char* item, const char* smith);
+int sim_world_recast(SimWorld* world, const char* actor, const char* from, const char* into,
+                     const char* smith);
+
+// A group fight: semicolon lists of actor ids. Returns 0 if side A holds the
+// field, 1 side B, 2 undecided; -1 null. `out` receives
+// "rounds=N;blows=N;fled=a,b;surrendered=...;fallen=...".
+int sim_world_skirmish(SimWorld* world, const char* side_a, const char* side_b, int max_rounds,
+                       char* out, int cap);
+// Deaths recorded so far (any cause); -1 null.
+int sim_world_death_count(const SimWorld* world);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

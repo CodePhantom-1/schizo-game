@@ -12,6 +12,8 @@
 #include "sim/Character.hpp"  // W4-A
 // W4-C: the wild lands (regions, travel, bandits, raider camps, the raid formula).
 #include "sim/Wild.hpp"
+// W4-B: combat
+#include "sim/Combat.hpp"
 
 namespace sim {
 
@@ -57,6 +59,11 @@ struct WorldState {
     // through their public APIs. Saved as the trailing WILD snapshot section.
     WildState wild;
     // --- end W4-C
+
+    // W4-B: combat — health, stamina, zonal wounds, arms and armour worn,
+    // prisoners, duels, deaths. Written by sim/Combat.hpp and its caller layer
+    // sim/CombatActions.hpp; healed once a day by advance_days.
+    CombatState combat;
 
     // Loads canon from canon_dir, seeds markets and people, prepares the calendar.
     void init(const std::string& canon_dir, std::uint64_t world_seed);
