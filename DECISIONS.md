@@ -34,3 +34,4 @@ One entry per decision. The build stops and asks before anything here gets contr
 
 
 **Standing rules:** every row tagged + sourced (`canon_lint.py`); `OPEN` rows cannot ship; every notes element keeps a blueprint home (`coverage_check.py`); no decision in this log may be silently changed — append a superseding entry instead.
+- **No runtime SkyLight capture on this machine** (2026-09-25, W6): ASkyLight scene capture issues a CubemapCapture whose GPU work wedges the render thread (amdgpu ring reset storm on the RX 5700 XT, kernel 6.17) and takes the game thread with it. Ambient fill must come from an offline-authored cubemap or a second dim directional — never RecaptureSky()/scene capture at runtime. Same reason the tiny engine Entry map stays the default map. See HANDOFF.md's launch section for the driver saga.

@@ -193,8 +193,11 @@ void ASimPlayerController::OnUse()
 		else
 		{
 			// GetName, not GetActorLabel: labels are editor-only (Game target).
-			GEngine->AddOnScreenDebugMessage(2, 3.f, FColor::Silver,
-				*Hit.GetActor()->GetName());
+			if (GEngine != nullptr)
+			{
+				GEngine->AddOnScreenDebugMessage(2, 3.f, FColor::Silver,
+					*Hit.GetActor()->GetName());
+			}
 		}
 	}
 	else

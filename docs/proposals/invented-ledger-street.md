@@ -18,3 +18,11 @@ Per D-018: every invented choice below fits theme and canon, contradicts no CANO
 ## Follow-up (bug review 2026-09-25)
 
 - **`midday_rest` split per role.** The row's role was the compound string "workshops and households", which no resident holds (roles match `schedules.csv` exactly), so the midday rest never applied to anyone. It is now two rows with the same task text: `midday_rest` (role `craftsman`) and `midday_rest_households` (role `household`). Both stay `INVENTED` (D-012 glue); see docs/audits/bug-review-unreal-tools-2026-09-25.md.
+
+## W6-B street builder (2026-09-25, wave 6)
+Presentation-layer inventions for building the quarter in UE (all INVENTED, vetoable; data stays canon):
+- Layout: 8 m plot centres alternating ±5 m about the street axis, turning north after 14 plots; the gate special-cased onto the axis. Same CSV row order → same street, every time.
+- Per-kind footprints (m): gate 2 m opening; market 6×6 paved; stalls 1×1 tile+awning; bakery 3×3; brewery 4×3; temple 4×4 + flanking pilasters; well/shrine 1×1 paved; granary 2×2 windowless; smithy 3×3 walled open yard; default 2×2; house 4×4 for mudbrick_house_courtyard else 3×3, roof-access variant when StrCrc32(place_id)%3==2.
+- The door slot is an APPROACH point (1 m outside the wall, ground z, yaw facing the street); doors hang on the wall face (see SimVerbSpawner), the gate's leaf quarter-turned and doubled to fill the opening.
+- Runtime colour palette by FBX slot name (M_MudPlaster/M_Mudbrick/M_Timber/M_Reed from kit_common.py MAT_DEFS) on the engine's parameter material — no authored materials until the content pass.
+- Kit import: cut pieces (SM_WallDoor/SM_WallWindow/SM_RoofAccess/SM_Awning) carry NO auto collision (a convex hull of a cut piece is the solid slab — doorways would be unenterable); solid pieces keep theirs.

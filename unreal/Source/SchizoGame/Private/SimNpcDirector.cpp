@@ -244,7 +244,9 @@ void ASimNpcDirector::RefreshFromKernel()
 		{
 			FActorSpawnParameters Params;
 			Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-			Actor = World->SpawnActor<ASimNpc>(Npc.Target, FRotator::ZeroRotator, Params);
+			// The registry's ground z is 0; the capsule (176 cm) starts half
+			// inside the 20 cm ground cube without the lift.
+			Actor = World->SpawnActor<ASimNpc>(Npc.Target + FVector(0.f, 0.f, 90.f), FRotator::ZeroRotator, Params);
 			if (Actor == nullptr)
 			{
 				UE_LOG(LogSimNpcDirector, Warning, TEXT("Spawn failed for npc %s."), *Npc.NpcId);

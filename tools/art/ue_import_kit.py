@@ -33,16 +33,11 @@ except NameError:  # UE's pythonscript runner does not always set __file__
 REPO_ROOT = os.path.abspath(os.path.join(_HERE, "..", ".."))
 ASSETS_CSV = os.path.join(REPO_ROOT, "art", "assets.csv")
 DEST_MESH_PATH = "/Game/Art/Kit/Meshes"
-DEST_MAT_PATH = "/Game/Art/Kit/Materials"
 
-# Flat placeholder colours (linear RGB) — matches kit_common.py's MAT_DEFS
-# base colours so the in-engine look matches the Blender review render.
-MAT_COLORS = {
-    "M_MudPlaster": (0.76, 0.62, 0.42),
-    "M_Mudbrick": (0.55, 0.40, 0.27),
-    "M_Timber": (0.30, 0.19, 0.10),
-    "M_Reed": (0.68, 0.58, 0.30),
-}
+# Pieces with interior cuts (doorways, windows, the roof-access hatch, the
+# awning over the stalls): a convex hull of these is the solid slab, so they
+# must NOT carry auto collision — see import_fbx.
+NO_COLLISION_PIECES = {"SM_WallDoor", "SM_WallWindow", "SM_RoofAccess", "SM_Awning"}
 
 
 def kit_pieces():
@@ -56,29 +51,6 @@ def kit_pieces():
                 rows.append(row)
     return rows
 
-
-def make_flat_material(name, rgb):
-    """Creates (or reuses) a simple unlit-base-colour material asset."""
-    asset_path = f"{DEST_MAT_PATH}/{name}"
-    if unreal.EditorAssetLibrary.does_asset_exist(asset_path):
-        return unreal.load_asset(asset_path)
-
-    factory = unreal.MaterialFactoryNew()
-    tools = unreal.AssetToolsHelpers.get_asset_tools()
-    mat = tools.create_asset(name, DEST_MAT_PATH, unreal.Material, factory)
-
-    const_expr = unreal.MaterialEditingLibrary.create_material_expression(
-        mat, unreal.MaterialExpressionConstant3Vector, -300, 0
-    )
-    const_expr.set_editor_property(
-        "constant", unreal.LinearColor(rgb[0], rgb[1], rgb[2], 1.0)
-    )
-    unreal.MaterialEditingLibrary.connect_material_property(
-        const_expr, "", unreal.MaterialProperty.MP_BASE_COLOR
-    )
-    unreal.MaterialEditingLibrary.recompile_material(mat)
-    unreal.EditorAssetLibrary.save_loaded_asset(mat)
-    return mat
 
 
 def import_fbx(fbx_rel_path, mesh_id):
@@ -102,9 +74,15 @@ def import_fbx(fbx_rel_path, mesh_id):
     fbx_options = unreal.FbxImportUI()
     fbx_options.import_mesh = True
     fbx_options.import_as_skeletal = False
-    fbx_options.import_materials = False  # we assign our own flat materials by slot name
+    fbx_options.import_materials = False  # slots are coloured at runtime (SimStreetBuilder)
     fbx_options.import_textures = False
     fbx_options.static_mesh_import_data.combine_meshes = True
+    # Auto convex collision would fill every cut solid: an 18-DOP hull of a
+    # wall-with-doorway is just the wall, so buildings would be unenterable
+    # and awnings would wedge over the stalls. Cut pieces import collision-
+    # free; passage is the door leaf's job. Solid pieces keep their hulls.
+    if mesh_id in NO_COLLISION_PIECES:
+        fbx_options.static_mesh_import_data.auto_generate_collision = False
     task.options = fbx_options
 
     unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])

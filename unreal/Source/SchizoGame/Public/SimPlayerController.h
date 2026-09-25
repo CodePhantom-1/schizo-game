@@ -31,8 +31,17 @@ public:
 	bool IsInventoryShown() const { return bInventoryHeld; }
 
 	/** The kernel already charged these hours (sleep charged them asleep):
-	 * the clock jump must not charge them again as awake time. */
-	void NotifySimHoursPreCharged(double Hours) { LastAbsoluteHour += Hours; }
+	 * the clock jump must not charge them again as awake time. No-op before
+	 * the first baseline read (the first read anchors to the post-skip hour
+	 * instead of charging from the pre-sleep one). */
+	void NotifySimHoursPreCharged(double Hours)
+	{
+		if (LastAbsoluteHour < 0.0)
+		{
+			return;
+		}
+		LastAbsoluteHour += Hours;
+	}
 
 protected:
 	/** The Use verb: trace from the camera; interact with what the street offers. */

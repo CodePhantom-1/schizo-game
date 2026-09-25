@@ -8,6 +8,7 @@
 #include "SimBed.h"
 #include "SimDoor.h"
 #include "SimPickup.h"
+#include "SimStreetBuilder.h"
 #include "SimWell.h"
 
 #include "Components/SceneComponent.h"
@@ -52,48 +53,93 @@ void USimVerbSpawner::SpawnDoorsAtSlots()
 	{
 		return;
 	}
-	int32 Count = 0;
-	for (TActorIterator<AActor> It(World); It; ++It)
-	{
-		AActor* Slot = *It;
-		if (Slot == nullptr || Slot->IsA<ASimDoor>())
-		{
-			continue;
-		}
+	// The slot anchor is an APPROACH point: 1 m outside the wall, on the
+	// ground (SimStreetBuilder's contract). The door leaf belongs ON the wall
+	// face — and the engine cube is pivot-centred, so +100 in z lifts the
+	// 2 m leaf off the ground instead of half-burying it.
+	constexpr float kApproachOffset = 80.f;  // GRID 100 - WALL_THICK/2 20
+	constexpr float kLeafHalfHeight = 100.f;
+	const bool bGateOpensAlongX = true;  // the gate's opening spans X (street runs Y through it)
 
-		bool bIsSlot = Slot->ActorHasTag(SimDoorSlotTag);
-		FTransform SpawnTransform = Slot->GetActorTransform();
-		if (!bIsSlot)
+	int32 Count = 0;
+	TArray<FSimDoorSlotInfo> Slots;
+	ASimStreetBuilder::GetAllDoorSlots(Slots);
+	if (Slots.Num() > 0)
+	{
+		for (const FSimDoorSlotInfo& Slot : Slots)
 		{
-			// Also check components — a doorway slot may be a component of a
-			// larger street actor ("actor or component tagged SimDoorSlot").
-			TInlineComponentArray<USceneComponent*> Components;
-			Slot->GetComponents(Components);
-			for (USceneComponent* Comp : Components)
+			const FRotator SlotRot(0.f, Slot.OutwardYawDeg, 0.f);
+			const FVector Outward = SlotRot.Vector();
+			FVector Location = Slot.Location - Outward * kApproachOffset;
+			Location.Z += kLeafHalfHeight;
+			FRotator LeafRot = SlotRot;
+			float LeafWidthScale = 1.f;
+			if (Slot.PlaceId == TEXT("moon_gate_place"))
 			{
-				if (Comp && Comp->ComponentHasTag(SimDoorSlotTag))
+				// The gate straddles the street axis: the opening spans X, so
+				// the leaf swings across it — quarter-turn the yaw and double
+				// the width to fill the 2 m gap.
+				LeafRot.Yaw += bGateOpensAlongX ? 90.f : -90.f;
+				LeafWidthScale = 2.f;
+			}
+			FActorSpawnParameters Params;
+			Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			ASimDoor* Door = World->SpawnActor<ASimDoor>(Location, LeafRot, Params);
+			if (Door != nullptr)
+			{
+				if (LeafWidthScale != 1.f)
 				{
-					bIsSlot = true;
-					SpawnTransform = Comp->GetComponentTransform();
-					break;
+					Door->SetActorScale3D(FVector(0.1f, LeafWidthScale, 2.f));
 				}
+				++Count;
 			}
 		}
-		if (!bIsSlot)
+	}
+	else
+	{
+		// No registry (pre-street world): fall back to the tagged anchors,
+		// same wall-face math from the anchor's own transform.
+		for (TActorIterator<AActor> It(World); It; ++It)
 		{
-			continue;
-		}
-
-		FActorSpawnParameters Params;
-		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-		if (World->SpawnActor<ASimDoor>(SpawnTransform.GetLocation(), SpawnTransform.Rotator(), Params) != nullptr)
-		{
-			++Count;
+			AActor* Slot = *It;
+			if (Slot == nullptr || Slot->IsA<ASimDoor>())
+			{
+				continue;
+			}
+			bool bIsSlot = Slot->ActorHasTag(SimDoorSlotTag);
+			FTransform SpawnTransform = Slot->GetActorTransform();
+			if (!bIsSlot)
+			{
+				TInlineComponentArray<USceneComponent*> Components;
+				Slot->GetComponents(Components);
+				for (USceneComponent* Comp : Components)
+				{
+					if (Comp && Comp->ComponentHasTag(SimDoorSlotTag))
+					{
+						bIsSlot = true;
+						SpawnTransform = Comp->GetComponentTransform();
+						break;
+					}
+				}
+			}
+			if (!bIsSlot)
+			{
+				continue;
+			}
+			const FRotator SlotRot = SpawnTransform.Rotator();
+			FVector Location = SpawnTransform.GetLocation() - SlotRot.Vector() * kApproachOffset;
+			Location.Z += kLeafHalfHeight;
+			FActorSpawnParameters Params;
+			Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			if (World->SpawnActor<ASimDoor>(Location, SlotRot, Params) != nullptr)
+			{
+				++Count;
+			}
 		}
 	}
 	if (Count > 0)
 	{
-		UE_LOG(LogSchizoGame, Log, TEXT("Verb spawner: %d door(s) at SimDoorSlot tags."), Count);
+		UE_LOG(LogSchizoGame, Log, TEXT("Verb spawner: %d door(s) hung on their doorways."), Count);
 	}
 }
 
@@ -115,7 +161,15 @@ void USimVerbSpawner::SpawnDemoProps()
 		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 		// The grey-box street's floor tops out at z=0 (SimGameMode's boxes);
 		// the engine cylinder is 100 tall scaled 0.8, so its centre sits at 40.
-		if (ASimWell* Well = World->SpawnActor<ASimWell>(FVector(700, -350, 40), FRotator::ZeroRotator, Params))
+		// Prefer the street's own well place (where the water-carriers walk);
+		// the gate-side spot is only the pre-street fallback.
+		FVector WellLocation(700.f, -350.f, 40.f);
+		FVector StreetWell;
+		if (ASimStreetBuilder::GetPlaceLocation(TEXT("street_well_place"), StreetWell))
+		{
+			WellLocation = StreetWell + FVector(0.f, 0.f, 40.f);
+		}
+		if (ASimWell* Well = World->SpawnActor<ASimWell>(WellLocation, FRotator::ZeroRotator, Params))
 		{
 #if WITH_EDITOR
 			Well->SetActorLabel(TEXT("GreyBox_Well"));

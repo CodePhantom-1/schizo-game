@@ -101,7 +101,9 @@ void ASimGameMode::StartPlay()
 	}
 
 	// The first readable thing: a clay tablet by the gate (notes L198).
-	if (World->SpawnActor<ASimTablet>(Street.GateLocation + FVector(300, 0, 140), FRotator(0, 90, 0)) == nullptr)
+	// (GateLocation already sits at ground z=100 for the pivot-centred cube;
+	// +40 more floats it at reading height without burying the bottom half.)
+	if (World->SpawnActor<ASimTablet>(Street.GateLocation + FVector(300, 0, 40), FRotator(0, 90, 0)) == nullptr)
 	{
 		UE_LOG(LogSimGameMode, Warning, TEXT("tablet spawn failed"));
 	}
