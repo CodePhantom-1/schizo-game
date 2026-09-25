@@ -226,8 +226,39 @@ static bool test_every_module_changes_the_save_bytes() {
     return true;
 }
 
+
+// Bug-review 2026-09-25: an NPC row's memory count came from the file and
+// went straight into vector::reserve — a corrupt/hostile save (e.g. through
+// sim_world_load_from_buffer) asked for petabytes. Under ASan that aborts the
+// process instead of the documented std::runtime_error.
+static bool test_huge_section_count_throws_cleanly() {
+    WorldState w;
+    w.init("../db/canon", 42);
+    std::string data = save_world(w);
+    // Rewrite the first NPC row's memory count (field 8 of 9) to 1e15.
+    const std::size_t npcs = data.find("POP_NPCS\t");
+    SIM_CHECK(npcs != std::string::npos);
+    const std::size_t row = data.find('\n', npcs) + 1;
+    const std::size_t eol = data.find('\n', row);
+    std::size_t tab = row;
+    for (int i = 0; i < 7; ++i) tab = data.find('\t', tab) + 1;
+    const std::size_t end = data.find('\t', tab);
+    SIM_CHECK(end < eol);
+    data.replace(tab, end - tab, "1000000000000000");
+    bool threw = false;
+    try {
+        WorldState out;
+        load_world(out, "../db/canon", data);
+    } catch (const std::runtime_error&) {
+        threw = true;
+    }
+    SIM_CHECK(threw);
+    return true;
+}
+
 SIM_MAIN(test_wave2_fields_round_trip, test_save_load_round_trips,
          test_restored_world_advances_identically,
          test_malformed_save_throws,
          test_load_world_is_atomic_on_failure,
-         test_every_module_changes_the_save_bytes)
+         test_every_module_changes_the_save_bytes,
+         test_huge_section_count_throws_cleanly)
