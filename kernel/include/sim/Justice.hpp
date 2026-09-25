@@ -29,12 +29,21 @@ struct Crime {
     DayNumber day = 0;
     Id witnessed_by;    // npc id, or "" when unwitnessed (evidence remains)
     bool atoned = false;
+    // W2-A (kernel/src/Actions.cpp): the pre-hearing stages city-life §3.3
+    // names (alarm -> pursuit -> detention). "" until a crime orchestrated
+    // through commit_crime() sets it; report_crime()/hold_hearing() never
+    // read or write it themselves.
+    std::string stage;  // "" | "alarmed" | "pursued" | "detained" | "heard"
 };
 
 struct Hearing {
     Id crime_id;
     DayNumber day = 0;
     std::string verdict;  // "compensation" | "confiscation" | "debt_service" | "exile" | "death" | "dismissed"
+    // W2-A additions (kernel/src/Actions.cpp fills these; hold_hearing()
+    // itself never touches them — it writes ONLY the fields above):
+    Id tablet_id;               // "verdict_tablet_<crime_id>" once sealed
+    Silver compensation_paid = 0;  // silver actually moved from the purse, 0 if none/unpaid
 };
 
 struct JusticeState {

@@ -94,6 +94,16 @@ void break_oath(FactionState& state, const Id& oath_id) {
     // Unknown oath id: nothing to break — absence handled gracefully.
 }
 
+void outlaw(FactionState& state, const Id& faction_id) {
+    state.standing_by_faction[faction_id] = 0;  // rank 0: no standing left to lose
+    state.outlawed_by_faction[faction_id] = true;
+}
+
+bool is_outlawed(const FactionState& state, const Id& faction_id) {
+    const auto it = state.outlawed_by_faction.find(faction_id);
+    return it != state.outlawed_by_faction.end() && it->second;
+}
+
 void tick_faction(const WorldContext& ctx, FactionState& state, int days) {
     // The contract documents no per-day faction dynamics (no standing decay,
     // no oath expiry — mechanics.md row 26 keeps rpg-systems §4.2 "unchanged"
