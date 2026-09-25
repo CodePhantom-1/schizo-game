@@ -189,4 +189,10 @@ void fail(QuestState& state, const Id& def_id) {
     state.active.erase(it);
 }
 
+void abandon(QuestState& state, const Id& def_id, DayNumber day) {
+    if (find_active(state, def_id) == nullptr) return;
+    fail(state, def_id);
+    log_journal(state, def_id, day, "abandoned", "");
+}
+
 }  // namespace sim

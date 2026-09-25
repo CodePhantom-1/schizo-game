@@ -80,6 +80,10 @@ void complete(QuestState& state, const Id& def_id, DayNumber day);
 // deadline sweep) — e.g. the player abandons it. No-op if not active.
 void fail(QuestState& state, const Id& def_id);
 
+// A7: the player gives an active quest up — fail() plus an "abandoned"
+// journal entry on `day`, so the journal tells what happened. No-op if not active.
+void abandon(QuestState& state, const Id& def_id, DayNumber day);
+
 // Finds the active quest by def_id — safe to call after any number of ticks,
 // unlike a reference held across tick_quests(). nullptr if not active.
 Quest* find_active(QuestState& state, const Id& def_id);
