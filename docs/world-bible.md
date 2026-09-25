@@ -167,3 +167,13 @@ Given in the notes as reference material (with the notes' own footnotes: (1) loc
 2. `[A]` — material the notes import from the real Sumerian/Akkadian record (pantheon names, the city lists, Barûtu, zisurru, astragalomancy and the other divination forms). These rows get real sources in the content database, exactly as the parent project sources its material.
 3. `INVENTED: EFFECT` — carried unchanged from the parent magic policy (rpg-systems §0): the practice may be canon or `[A]`; that it *works* is the game's world, flagged in the codex.
 4. `OPEN` — a gap, ambiguity or contradiction in the notes. Routed to [game-design.md §11](game-design.md). **Never resolved silently.**
+
+---
+
+## 12. Designer rulings on open canon (D-013 → D-016) `[CANON]`
+
+Three gaps the content storm surfaced were ruled by the designer on 2026-09-25:
+
+1. **Sea gems** (the notes name them only as offering material, notes L57): they are **gifts from the abyssal water god Enki — an extension of his power. They are magical gems, controlled by the god of magic, Enki.** Physically they are gems of the sea that can be found on the shore; they come in **platonic shapes** and out of **sea materials like coral or seaweed**. (Consequence already standing in the data: the first great temple's offering of fish and sea gems to the two waters returns the water god's own gifts to the waters; Enki is now named the god of magic — of a piece with his Mercury face in the astrotheology, notes L195.)
+2. **The regalia** (the notes say the northerners "lowered kingship" but never name the objects, notes L58): **the emperor wears no regalia — naked except underwear.** There are no regalia objects; the nakedness is the statement. (The OPEN items row is resolved by negation and removed; a customs row records it.)
+3. **The tribute basket** (conquest "for tribute and gold", notes L15;L104): **gems and fruits and a bottle of a strange white liquid.** The liquid's nature stays deliberately unwritten — the basket's mystery travels with the tribute.
