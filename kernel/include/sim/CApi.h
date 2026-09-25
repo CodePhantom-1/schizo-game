@@ -462,3 +462,6 @@ int sim_world_death_count(const SimWorld* world);
 // --- W5-B: faction politics (tiers, oaths, outlawry, treaties, raid politics) --
 #include "sim/CApiFaction.h"
 // --- end W5-B
+// --- W5-A: divine wrath (wrath queries, the curse, the oath-break verb) --------
+#include "sim/CApiDivine.h"
+// --- end W5-A

@@ -19,6 +19,7 @@
 namespace sim {
 
 struct WorldContext;  // defined in sim/Context.hpp (the seam — never included by module headers)
+struct DivineState;   // defined in sim/Divine.hpp (W5: divine wrath)
 
 struct Oath {
     Id id;             // "oath_<n>" in sequence
@@ -53,7 +54,10 @@ std::string tier_of(int standing);
 // unbroken oath to a major faction (the one-Great-King rule).
 Oath* swear(FactionState& state, const Id& swearer, const Id& to_faction, DayNumber day);
 // Breaks the oath: marks it, drops standing with that faction by 40, sets the curse.
-void break_oath(FactionState& state, const Id& oath_id);
+// W5 (additive, defaulted): when `divine` is given, the gods also take notice —
+// the breaker gains divine wrath (mechanics.md row 26's oath-breaker curse;
+// sim/Divine.hpp note_oath_break). Null keeps the Wave-1 behaviour exactly.
+void break_oath(FactionState& state, const Id& oath_id, DivineState* divine = nullptr);
 
 // W2-A: forces standing with the faction to 0 and marks it outlawed (rank 0,
 // mechanics.md row 12). Used by Actions.cpp on an exile/death verdict.

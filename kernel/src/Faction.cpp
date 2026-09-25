@@ -9,9 +9,14 @@
 // randomness — the documented faction mechanics are pure bookkeeping, so
 // ctx.rng is never touched and identical (state, inputs) yield identical bytes.
 //
-// Writes ONLY FactionState. Canon is never needed here: swear()/break_oath()
-// take no WorldContext, so no db table is consulted and no row is resolved.
+// Writes ONLY FactionState — with one W5 exception: when break_oath is handed
+// a DivineState* (defaulted, additive), it also notes the oath-break as
+// divine wrath through sim/Divine.hpp's own single accrual path. Canon is
+// never needed here: swear()/break_oath() take no WorldContext, so no db
+// table is consulted and no row is resolved.
 #include "sim/Faction.hpp"
+
+#include "sim/Divine.hpp"  // W5: note_oath_break — the gods take notice
 
 #include <algorithm>
 #include <utility>
@@ -85,13 +90,17 @@ Oath* swear(FactionState& state, const Id& swearer, const Id& to_faction, DayNum
     return &state.oaths.back();
 }
 
-void break_oath(FactionState& state, const Id& oath_id) {
+void break_oath(FactionState& state, const Id& oath_id, DivineState* divine) {
     for (Oath& o : state.oaths) {
         if (o.id != oath_id) continue;
         if (o.broken) return;  // already broken: one drop and one curse, per oath
         o.broken = true;
         add_standing(state, o.to_faction, -kOathBreakDrop);  // clamped [0, 100]
         state.oath_breaker_curse = true;  // the curse's bite is Magic's problem
+        // W5 hook: the oath-breaker curse is divine wrath (mechanics.md row
+        // 26) — the breaker's god-witnessed betrayal accrues wrath with the
+        // oath-witness deity (sim/Divine.hpp).
+        if (divine != nullptr) note_oath_break(*divine, o.swearer);
         return;
     }
     // Unknown oath id: nothing to break — absence handled gracefully.

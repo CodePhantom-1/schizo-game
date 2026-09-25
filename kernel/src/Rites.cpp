@@ -7,6 +7,7 @@
 // ONLY MagicState, and the fixed success formula is untouched.
 #include "sim/Rites.hpp"
 
+#include "sim/Divine.hpp"   // W5: divine wrath — impure/failed rites, the omen skew, atonement
 #include "sim/Progression.hpp"  // W4-A: the Sacred skills grow by performing
 
 #include <algorithm>
@@ -232,6 +233,10 @@ RiteOutcome perform_rite_in_world(WorldState& w, const Id& rite_id, const Id& ta
     // Sacred skill (skills.csv grows_by rite:<tradition>; mechanics.md row 21).
     (void)note_rite(w, rite_id, out.rite.succeeded);
 
+    // W5: a rite performed while impure, or performed and failed, offends the
+    // god it addresses — divine wrath (mechanics.md rows 13/20; sim/Divine.hpp).
+    note_rite_offence(w, rite_id, out.addressed, out.rite.succeeded);
+
     if (!out.rite.succeeded) return out;  // a failed rite does nothing to the world
 
     // INVENTED: EFFECT — the effect families.
@@ -256,7 +261,12 @@ RiteOutcome perform_rite_in_world(WorldState& w, const Id& rite_id, const Id& ta
         // The question the liver answers: does the god look on the asker
         // with favour (favour >= the neutral 50)? The sign reads true only
         // kOmenTruthPct of the time — never a certainty.
-        const bool truth = favour(w.magic, out.addressed) >= 50;
+        // W5: divine wrath is the ill omen — the asker's wrath with the god
+        // skews the perceived favour down by the wrath tier, so a wrathful
+        // asker's signs read worse (sim/Divine.hpp divine_omen_penalty).
+        const bool truth = favour(w.magic, out.addressed) -
+                               divine_omen_penalty(w, kRitePerformer, out.addressed) >=
+                           50;
         // Integer draw (D-022): identical on every CPU.
         const std::uint64_t draw =
             w.rng.fork(static_cast<std::uint64_t>(w.day) ^ kOmenSalt).below(100);
@@ -269,6 +279,15 @@ RiteOutcome perform_rite_in_world(WorldState& w, const Id& rite_id, const Id& ta
         omen.confidence_pct = kOmenTruthPct;
         w.rite_effects.omens.push_back(omen);
         out.effect = "omen:" + omen.subject + ":" + omen.sign + ":" + std::to_string(kOmenTruthPct);
+    }
+
+    // W5: the atonement rite — a successful supplication addressed to an
+    // offended god drops his divine wrath sharply and lifts his curse
+    // (rites.csv su_ila_supplication; sim/Divine.hpp perform_atonement).
+    if (rite_id == kAtonementRite) {
+        const std::string atonement = perform_atonement(w, out.addressed);
+        if (!atonement.empty())
+            out.effect += (out.effect.empty() ? "" : ";") + atonement;
     }
     return out;
 }
