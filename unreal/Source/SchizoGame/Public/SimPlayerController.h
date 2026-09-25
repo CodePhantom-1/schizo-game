@@ -1,4 +1,10 @@
-// SimPlayerController.h — the Use verb and the player's hands (Phase 4 slice).
+// SimPlayerController.h — the player's verbs and the body's clock (Phase 6
+// Player track). Use (E) traces from the eyes and talks to whatever the
+// street offers through ISimInteractable; Eat (F) and Quaff (G) consume the
+// best of what is carried, on the kernel's own judgement; Tab holds up the
+// carried goods. Every whole game-hour the street's clock passes, the
+// player's needs advance through the C API — the sim stays the single source
+// of truth for the body.
 #pragma once
 
 #include "CoreMinimal.h"
@@ -15,7 +21,41 @@ public:
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void BeginPlay() override;
 
+	/** HUD reads: the verb label of whatever is under the crosshair right now
+	 * ("Open", "Drink", ""...), for the diegetic prompt. */
+	UFUNCTION(BlueprintPure, Category = "Sim")
+	FString GetLookVerbLabel() const { return CurrentVerbLabel; }
+
+	/** HUD reads: Tab is held (show the carried-goods overlay). */
+	UFUNCTION(BlueprintPure, Category = "Sim")
+	bool IsInventoryShown() const { return bInventoryHeld; }
+
 protected:
 	/** The Use verb: trace from the camera; interact with what the street offers. */
 	void OnUse();
+
+	/** F: eat the best food carried (the kernel ranks it — sim_world_best_food). */
+	void OnEat();
+
+	/** G: drink the best drink carried (beer; water is drawn at the well, never held). */
+	void OnQuaff();
+
+	/** Tab held/released: the carried-goods overlay. */
+	void OnInventoryPressed();
+	void OnInventoryReleased();
+
+	/** Shared eye trace used by Use and the per-frame look label. */
+	bool TraceLook(struct FHitResult& OutHit) const;
+
+	/** Owns the verb HUD (ASimHud): the game mode's default HUD draws nothing,
+	 * and this wave may not edit SimGameMode to set HUDClass — so the controller
+	 * lazily swaps its own in, engine-order-proof by re-checking every tick. */
+	void EnsureSimHud();
+
+	FString CurrentVerbLabel;
+	bool bInventoryHeld = false;
+
+	/** Absolute sim hour (day*24 + hour) as of the last passive needs tick;
+	 * negative until the first valid reading. */
+	double LastAbsoluteHour = -1.0;
 };

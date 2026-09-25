@@ -1,0 +1,126 @@
+// SimHud.cpp — words and numbers from the kernel, nothing invented: needs,
+// named conditions, the purse and the carried goods all read through
+// sim/CApi.h on the frame they are drawn. The street's clock stays where it
+// is (SimGameMode's on-screen line).
+#include "SimHud.h"
+
+#include "SchizoGame.h"
+#include "SimPlayerController.h"
+#include "SimWorldSubsystem.h"
+#include "sim/CApi.h"
+
+#include "Engine/Canvas.h"
+#include "Engine/Engine.h"
+
+void ASimHud::BeginPlay()
+{
+	Super::BeginPlay();
+	UE_LOG(LogSchizoGame, Log, TEXT("SimHud active."));
+}
+
+void ASimHud::DrawNeedRow(const FString& Label, int Value, float X, float& Y)
+{
+	// Value is the kernel's 0..100 (higher = worse for every need but health);
+	// clamp the drawing, not the data.
+	const float Fill = FMath::Clamp(static_cast<float>(Value), 0.f, 100.f) / 100.f;
+	const float BarWidth = 120.f;
+	const float BarHeight = 10.f;
+	const float LabelWidth = 90.f;
+
+	Canvas->DrawText(GEngine->GetSmallFont(), Label, X, Y, 1.2f, 1.2f);
+	DrawRect(FLinearColor::Black, X + LabelWidth, Y + 2.f, BarWidth, BarHeight);
+	// Health reads the other way (full is good); the bar mirrors the number.
+	const FLinearColor FillColor = Label == TEXT("Health") ? FLinearColor(0.2f, 0.5f, 0.2f)
+	                                                       : FLinearColor(0.6f, 0.4f, 0.15f);
+	DrawRect(FillColor, X + LabelWidth, Y + 2.f, BarWidth * Fill, BarHeight);
+	Canvas->DrawText(GEngine->GetSmallFont(), FString::Printf(TEXT("%d"), Value),
+		X + LabelWidth + BarWidth + 10.f, Y, 1.2f, 1.2f);
+	Y += 22.f;
+}
+
+void ASimHud::DrawHUD()
+{
+	Super::DrawHUD();
+	if (Canvas == nullptr)
+	{
+		return;  // headless (-nullrhi): nothing to draw on, nothing to read
+	}
+
+	const float X = 40.f;
+	float Y = 40.f;
+	const ASimPlayerController* SimPC = Cast<ASimPlayerController>(PlayerOwner);
+
+	// The crosshair's verb prompt: what the Use key would do right now.
+	if (SimPC != nullptr)
+	{
+		const FString Verb = SimPC->GetLookVerbLabel();
+		if (!Verb.IsEmpty())
+		{
+			Canvas->DrawText(GEngine->GetSmallFont(), FString::Printf(TEXT("[E] %s"), *Verb),
+				X, Y, 1.5f, 1.5f);
+			Y += 30.f;
+		}
+	}
+
+	// The body, from the kernel (needs and health; -1 means "no world yet").
+	if (SimWorld* Handle = USimWorldSubsystem::GetSimHandle())
+	{
+		Y += 10.f;
+		const int Hunger = sim_world_hunger(Handle, "player");
+		const int Thirst = sim_world_thirst(Handle, "player");
+		const int Fatigue = sim_world_fatigue(Handle, "player");
+		const int Health = sim_world_health(Handle, "player");
+		DrawNeedRow(TEXT("Hunger"), Hunger, X, Y);
+		DrawNeedRow(TEXT("Thirst"), Thirst, X, Y);
+		DrawNeedRow(TEXT("Fatigue"), Fatigue, X, Y);
+		DrawNeedRow(TEXT("Health"), Health, X, Y);
+
+		// The named conditions at the kernel's own thresholds ("hungry;parched").
+		char Effects[128] = {};
+		if (sim_world_need_effects(Handle, "player", Effects, sizeof(Effects)) > 0)
+		{
+			const FString EffectsLine = FString(UTF8_TO_TCHAR(Effects)).Replace(TEXT(";"), TEXT(", "));
+			if (!EffectsLine.IsEmpty())
+			{
+				Canvas->DrawText(GEngine->GetSmallFont(), EffectsLine, X, Y, 1.2f, 1.2f);
+				Y += 22.f;
+			}
+		}
+
+		// The purse, weighed in silver grains (CApi's sim_world_purse).
+		Canvas->DrawText(GEngine->GetSmallFont(),
+			FString::Printf(TEXT("Silver %lld"), sim_world_purse(Handle, "player")),
+			X, Y, 1.2f, 1.2f);
+		Y += 26.f;
+
+		// Carried goods while Tab is held: the kernel's own inventory list
+		// ("beer:2;grain:3"), not a shortlist.
+		if (SimPC != nullptr && SimPC->IsInventoryShown())
+		{
+			Canvas->DrawText(GEngine->GetSmallFont(), TEXT("Carried"), X, Y, 1.2f, 1.2f);
+			Y += 22.f;
+			char Inventory[512] = {};
+			if (sim_world_inventory(Handle, "player", Inventory, sizeof(Inventory)) > 0)
+			{
+				TArray<FString> Records;
+				FString(UTF8_TO_TCHAR(Inventory)).ParseIntoArray(Records, TEXT(";"), true);
+				for (const FString& Record : Records)
+				{
+					FString Item;
+					FString Count;
+					if (Record.Split(TEXT(":"), &Item, &Count))
+					{
+						Canvas->DrawText(GEngine->GetSmallFont(),
+							FString::Printf(TEXT("%s x %s"), *Item, *Count), X + 16.f, Y, 1.2f, 1.2f);
+						Y += 20.f;
+					}
+				}
+			}
+			else
+			{
+				Canvas->DrawText(GEngine->GetSmallFont(), TEXT("nothing"), X + 16.f, Y, 1.2f, 1.2f);
+				Y += 20.f;
+			}
+		}
+	}
+}
