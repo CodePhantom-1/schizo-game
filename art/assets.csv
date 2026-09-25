@@ -1,0 +1,15 @@
+id,file,kind,license,source_ref,tag
+SM_WallPlain,art/generated/meshes/SM_WallPlain.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_WallDoor,art/generated/meshes/SM_WallDoor.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_WallWindow,art/generated/meshes/SM_WallWindow.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_Corner,art/generated/meshes/SM_Corner.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_RoofSlab,art/generated/meshes/SM_RoofSlab.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_RoofAccess,art/generated/meshes/SM_RoofAccess.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_Pilaster,art/generated/meshes/SM_Pilaster.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_Stair,art/generated/meshes/SM_Stair.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_Lintel,art/generated/meshes/SM_Lintel.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_CourtyardTile,art/generated/meshes/SM_CourtyardTile.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_Awning,art/generated/meshes/SM_Awning.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+House_SmallSingleRoom,art/generated/meshes/House_SmallSingleRoom.fbx,mesh_house_example,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+House_TwoRoomCourtyard,art/generated/meshes/House_TwoRoomCourtyard.fbx,mesh_house_example,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+House_RoofAccess,art/generated/meshes/House_RoofAccess.fbx,mesh_house_example,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
