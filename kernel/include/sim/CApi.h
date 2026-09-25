@@ -7,6 +7,10 @@
 // Ownership: SimWorld is owned by the caller (create → use → destroy).
 // Strings: outputs are written into caller buffers (cap-limited); inputs are
 // borrowed, never stored.
+// Exceptions: none ever cross this boundary. On an internal failure (e.g.
+// out of memory) a function returns its error value (-1, or nullptr for the
+// constructors); void functions become a no-op for the failed step.
+// Canon: create/load return nullptr when canon_dir holds no seasons.csv.
 #pragma once
 
 #include <stdint.h>

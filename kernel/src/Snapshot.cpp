@@ -400,7 +400,9 @@ void load_world(WorldState& out, const std::string& canon_dir, const std::string
                 npc.loyalty = static_cast<int>(Reader::parse_i64(f[6]));
                 npc.role = f[8];
                 std::size_t memcount = static_cast<std::size_t>(Reader::parse_u64(f[7]));
-                npc.memory.reserve(memcount);
+                // No reserve(memcount): the count is untrusted file data; a
+                // corrupt one must fail as "unexpected end of data", not as a
+                // petabyte allocation.
                 for (std::size_t j = 0; j < memcount; ++j) {
                     std::vector<std::string> mf = rd.next();
                     if (mf.size() != 3) throw std::runtime_error("snapshot: bad memory row");

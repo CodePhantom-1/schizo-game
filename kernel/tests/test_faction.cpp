@@ -7,6 +7,7 @@
 #include "sim/Context.hpp"  // the seam: builds a real WorldContext (const refs)
 
 #include "sim/Test.hpp"
+#include <climits>
 
 #include <string>
 #include <utility>
@@ -323,6 +324,18 @@ static bool test_canon_faction_oath_lifecycle() {
     return true;
 }
 
+
+// Bug-review 2026-09-25: s + delta overflowed int (UB; wrapped to 0).
+static bool test_add_standing_extreme_delta_clamps() {
+    FactionState s;
+    add_standing(s, "the_empire", 50);
+    add_standing(s, "the_empire", INT_MAX);
+    SIM_CHECK_EQ(standing(s, "the_empire"), 100);
+    add_standing(s, "the_empire", INT_MIN);
+    SIM_CHECK_EQ(standing(s, "the_empire"), 0);
+    return true;
+}
+
 SIM_MAIN(test_unknown_faction_stands_at_zero,
          test_add_standing_clamps_to_0_100,
          test_tier_boundaries,
@@ -335,4 +348,5 @@ SIM_MAIN(test_unknown_faction_stands_at_zero,
          test_tick_maintains_standing_invariant,
          test_tick_on_empty_db_and_state_is_safe,
          test_state_bytes_deterministic_across_seeds,
-         test_canon_faction_oath_lifecycle)
+         test_canon_faction_oath_lifecycle,
+         test_add_standing_extreme_delta_clamps)

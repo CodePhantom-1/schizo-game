@@ -6,6 +6,8 @@
 #include "sim/Actions.hpp"
 
 #include "sim/Test.hpp"
+#include <fstream>
+#include <filesystem>
 
 #include <cstdint>
 #include <string>
@@ -250,6 +252,25 @@ static bool test_city_alias_is_one_city() {
     return true;
 }
 
+
+// Bug-review 2026-09-25: escalate_verdict read penalty_options from an OPEN
+// laws.csv row that hold_hearing had (correctly) refused to use.
+static bool test_escalation_never_reads_an_open_law_row() {
+    const std::filesystem::path dir =
+        std::filesystem::temp_directory_path() / "sim_actions_open_law_fixture";
+    std::filesystem::create_directories(dir);
+    std::ofstream(dir / "laws.csv") << "id,penalty_options,tag,source_ref\n"
+                                       "open_law,compensation;death,OPEN,\n";
+    WorldState w;
+    w.init(dir.string(), kSeed);
+    const Id crime_id = commit_crime(w, "player", "open_law", kCity, {});
+    const Hearing sealed = hold_crime_hearing(w, crime_id, "someone", kCity);
+    // Fallback compensation, unpaid (empty purse) -> the INVENTED
+    // debt_service fallback, never the OPEN row's "death".
+    SIM_CHECK_EQ(sealed.verdict, std::string("debt_service"));
+    return true;
+}
+
 SIM_MAIN(test_hearing_for_unknown_crime_is_dismissed,
          test_due_hearing_applies_consequences_in_the_tick,
          test_quest_reward_pays_once_and_only_when_active, test_abandoned_quest_is_journaled,
@@ -259,4 +280,5 @@ SIM_MAIN(test_hearing_for_unknown_crime_is_dismissed,
          test_burglary_verdict_is_death_and_outlaws,
          test_quest_completion_pays_silver_and_standing,
          test_quest_failure_pays_nothing,
-         test_same_seed_same_script_same_state_bytes)
+         test_same_seed_same_script_same_state_bytes,
+         test_escalation_never_reads_an_open_law_row)

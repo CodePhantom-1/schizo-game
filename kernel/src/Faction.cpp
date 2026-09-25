@@ -36,7 +36,10 @@ void add_standing(FactionState& state, const Id& faction_id, int delta) {
     // Unknown factions start at 0 (the documented default) and the result of
     // the write is clamped — this is the one path every standing write takes.
     int& s = state.standing_by_faction[faction_id];
-    s = clamp_standing(s + delta);
+    // Widened: s + INT_MAX (the C API passes the engine's int through) must
+    // saturate, not overflow.
+    s = static_cast<int>(std::clamp<long long>(static_cast<long long>(s) + delta, kStandingMin,
+                                                kStandingMax));
 }
 
 std::string tier_of(int standing_value) {

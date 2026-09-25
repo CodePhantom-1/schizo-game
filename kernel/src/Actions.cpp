@@ -49,7 +49,10 @@ std::vector<std::string> split_semi(const std::string& s) {
 // row names nothing further or no row exists at all.
 std::string escalate_verdict(const Db& db, const Id& law_row, const std::string& from) {
     if (!law_row.empty()) {
-        if (const auto row = db.find("laws", law_row)) {
+        const auto row = db.find("laws", law_row);
+        // An OPEN row is unwritten canon: hold_hearing() refuses it, and so
+        // must the escalation (never resolve an OPEN row).
+        if (row && ascii_lower(trim(row->get("tag"))).rfind("open", 0) != 0) {
             const std::vector<std::string> options = split_semi(row->get("penalty_options"));
             const auto it = std::find(options.begin(), options.end(), from);
             if (it != options.end() && std::next(it) != options.end()) return *std::next(it);
