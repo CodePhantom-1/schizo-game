@@ -27,6 +27,10 @@ struct FSimQuestInfo
 	UPROPERTY(BlueprintReadOnly, Category = "Sim") FString Id;
 	UPROPERTY(BlueprintReadOnly, Category = "Sim") FString Title;
 	UPROPERTY(BlueprintReadOnly, Category = "Sim") FString Giver;
+	/** quests.csv kind: history_arc, systemic, faction, emergent, … */
+	UPROPERTY(BlueprintReadOnly, Category = "Sim") FString Kind;
+	/** quests.csv act (opening, act_i..act_iv): pacing metadata, never a lock (D-021). */
+	UPROPERTY(BlueprintReadOnly, Category = "Sim") FString Act;
 	/** Active quests only. */
 	UPROPERTY(BlueprintReadOnly, Category = "Sim") FString Stage;
 	/** Active quests only: deadline day, 0 = none. */
@@ -95,19 +99,19 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Sim|Quests", meta = (WorldContext = "Ctx"))
 	static TArray<FSimJournalEntry> GetJournal(const UObject* Ctx, const FString& QuestId);
 
-	/** 0 accepted; -2 unknown; -3 already active, completed or failed. */
+	/** 0 accepted; -2 unknown; -3 already active, completed or failed; -4 driven by the world. */
 	UFUNCTION(BlueprintCallable, Category = "Sim|Quests", meta = (WorldContext = "Ctx"))
 	static int32 AcceptQuest(const UObject* Ctx, const FString& QuestId);
 
-	/** 1 stage changed, 0 same stage, -3 not active. */
+	/** 1 stage changed, 0 same stage, -3 not active, -4 driven by the world. */
 	UFUNCTION(BlueprintCallable, Category = "Sim|Quests", meta = (WorldContext = "Ctx"))
 	static int32 AdvanceQuest(const UObject* Ctx, const FString& QuestId, const FString& Stage, const FString& Text);
 
-	/** 0 done (rewards paid), -3 not active. */
+	/** 0 done (rewards paid), -3 not active, -4 driven by the world. */
 	UFUNCTION(BlueprintCallable, Category = "Sim|Quests", meta = (WorldContext = "Ctx"))
 	static int32 CompleteQuest(const UObject* Ctx, const FString& QuestId);
 
-	/** 0 given up (journaled "abandoned"), -3 not active. */
+	/** 0 given up (journaled "abandoned"), -3 not active, -4 driven by the world. */
 	UFUNCTION(BlueprintCallable, Category = "Sim|Quests", meta = (WorldContext = "Ctx"))
 	static int32 AbandonQuest(const UObject* Ctx, const FString& QuestId);
 

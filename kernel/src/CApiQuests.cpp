@@ -3,6 +3,7 @@
 
 #include "sim/Actions.hpp"
 #include "sim/Dialogue.hpp"
+#include "sim/Population.hpp"
 #include "sim/Quests.hpp"
 
 #include <algorithm>
@@ -42,6 +43,30 @@ const Row* quest_row(const WorldState& w, const Id& id) {
     return nullptr;
 }
 
+const QuestDef* find_def(const WorldState& w, const Id& id) {
+    for (const QuestDef& d : w.quests.defs)
+        if (d.id == id) return &d;
+    return nullptr;
+}
+
+bool known_def(const WorldState& w, const Id& id) { return find_def(w, id) != nullptr; }
+
+// A quest the world drives itself: a def with no quests.csv row (WildWorld's
+// rescue_<npc>). The kernel creates, advances and pays it; the player's verbs
+// never do (-4). Every canon row, of any kind, stays the player's (D-021).
+bool world_driven(const WorldState& w, const Id& id) { return known_def(w, id) && quest_row(w, id) == nullptr; }
+
+// The title of a world-driven quest, generated from what the kernel knows.
+std::string generated_title(const WorldState& w, const Id& id) {
+    const std::string prefix = "rescue_";
+    if (id.rfind(prefix, 0) == 0) {
+        const Id npc = id.substr(prefix.size());
+        for (const Npc& n : w.population.npcs)
+            if (n.id == npc) return "Rescue " + n.name;
+    }
+    return id;
+}
+
 // The ids in one named list, in stable order (defs order for "available").
 bool list_ids(const WorldState& w, const std::string& list, std::vector<Id>& out) {
     const QuestState& q = w.quests;
@@ -53,15 +78,12 @@ bool list_ids(const WorldState& w, const std::string& list, std::vector<Id>& out
     if (list == "failed") { out = q.failed_list; return true; }
     if (list == "available") {
         for (const QuestDef& d : q.defs)
-            if (!find_active(q, d.id) && !contains(q.completed, d.id) && !contains(q.failed_list, d.id))
+            if (!find_active(q, d.id) && !contains(q.completed, d.id) && !contains(q.failed_list, d.id) &&
+                !world_driven(w, d.id))
                 out.push_back(d.id);
         return true;
     }
     return false;
-}
-
-bool known_def(const WorldState& w, const Id& id) {
-    return std::any_of(w.quests.defs.begin(), w.quests.defs.end(), [&](const QuestDef& d) { return d.id == id; });
 }
 
 PlayerContext player_context(const WorldState& w) {
@@ -95,16 +117,32 @@ int sim_world_quest_at(const SimWorld* w, const char* list, int index, char* out
 int sim_world_quest_title(const SimWorld* w, const char* quest, char* out, int cap) {
     return guard([&] {
         if (w == nullptr || quest == nullptr) return -1;
-        const Row* r = quest_row(w->world, quest);
-        return r ? write_req(out, cap, r->get("name")) : -1;
+        if (const Row* r = quest_row(w->world, quest)) return write_req(out, cap, r->get("name"));
+        return known_def(w->world, quest) ? write_req(out, cap, generated_title(w->world, quest)) : -1;
     });
 }
 
 int sim_world_quest_giver(const SimWorld* w, const char* quest, char* out, int cap) {
     return guard([&] {
         if (w == nullptr || quest == nullptr) return -1;
-        const Row* r = quest_row(w->world, quest);
-        return r ? write_req(out, cap, r->get("giver")) : -1;
+        if (const Row* r = quest_row(w->world, quest)) return write_req(out, cap, r->get("giver"));
+        return known_def(w->world, quest) ? write_req(out, cap, std::string()) : -1;  // the world gives it
+    });
+}
+
+int sim_world_quest_kind(const SimWorld* w, const char* quest, char* out, int cap) {
+    return guard([&] {
+        if (w == nullptr || quest == nullptr) return -1;
+        const QuestDef* d = find_def(w->world, quest);
+        return d ? write_req(out, cap, d->kind) : -1;
+    });
+}
+
+int sim_world_quest_act(const SimWorld* w, const char* quest, char* out, int cap) {
+    return guard([&] {
+        if (w == nullptr || quest == nullptr) return -1;
+        if (const Row* r = quest_row(w->world, quest)) return write_req(out, cap, r->get("act"));
+        return known_def(w->world, quest) ? write_req(out, cap, std::string()) : -1;
     });
 }
 
@@ -131,6 +169,7 @@ int sim_world_quest_accept(SimWorld* w, const char* quest) {
         if (w == nullptr || quest == nullptr) return -1;
         QuestState& q = w->world.quests;
         if (!known_def(w->world, quest)) return -2;
+        if (world_driven(w->world, quest)) return -4;
         if (find_active(q, quest) || contains(q.completed, quest) || contains(q.failed_list, quest)) return -3;
         accept(q, quest, w->world.day);
         return 0;
@@ -140,6 +179,7 @@ int sim_world_quest_accept(SimWorld* w, const char* quest) {
 int sim_world_quest_advance(SimWorld* w, const char* quest, const char* stage, const char* text) {
     return guard([&] {
         if (w == nullptr || quest == nullptr || stage == nullptr) return -1;
+        if (world_driven(w->world, quest)) return -4;
         if (!find_active(w->world.quests, quest)) return -3;
         return advance_stage(w->world.quests, quest, w->world.day, stage, text ? text : "") ? 1 : 0;
     });
@@ -148,6 +188,7 @@ int sim_world_quest_advance(SimWorld* w, const char* quest, const char* stage, c
 int sim_world_quest_complete(SimWorld* w, const char* quest) {
     return guard([&] {
         if (w == nullptr || quest == nullptr) return -1;
+        if (world_driven(w->world, quest)) return -4;
         if (!find_active(w->world.quests, quest)) return -3;
         complete_quest(w->world, quest, w->world.day);  // pays silver + standing (Actions.hpp)
         return 0;
@@ -157,6 +198,7 @@ int sim_world_quest_complete(SimWorld* w, const char* quest) {
 int sim_world_quest_abandon(SimWorld* w, const char* quest) {
     return guard([&] {
         if (w == nullptr || quest == nullptr) return -1;
+        if (world_driven(w->world, quest)) return -4;
         if (!find_active(w->world.quests, quest)) return -3;
         abandon(w->world.quests, quest, w->world.day);
         return 0;

@@ -37,6 +37,8 @@ namespace SimQuery
 			Q.Id = Str(Id);
 			if (sim_world_quest_title(W, Id, Buf, sizeof(Buf)) >= 0) Q.Title = Str(Buf);
 			if (sim_world_quest_giver(W, Id, Buf, sizeof(Buf)) >= 0) Q.Giver = Str(Buf);
+			if (sim_world_quest_kind(W, Id, Buf, sizeof(Buf)) >= 0) Q.Kind = Str(Buf);
+			if (sim_world_quest_act(W, Id, Buf, sizeof(Buf)) >= 0) Q.Act = Str(Buf);
 			if (List == ESimQuestList::Active)
 			{
 				if (sim_world_quest_stage(W, Id, Buf, sizeof(Buf)) >= 0) Q.Stage = Str(Buf);

@@ -5,6 +5,7 @@
 // value instead of letting std::bad_alloc escape (which would std::terminate
 // the engine). Its own binary so the replacement touches no other suite.
 #include "sim/CApi.h"
+#include "sim/CApiVerbs.h"
 
 #include "sim/Test.hpp"
 
@@ -145,4 +146,57 @@ static bool test_k1_k2_entry_points_do_not_throw() {
     return true;
 }
 
-SIM_MAIN(test_no_exception_escapes_the_c_boundary, test_k1_k2_entry_points_do_not_throw)
+// A7 + A14 (quests, journal, dialogue, people, events, calendar): every new
+// entry point under failing allocation returns its error value; the calendar
+// reads that never allocate keep answering.
+static bool test_a7_entry_points_do_not_throw() {
+    SimWorld* w = sim_world_create("../db/canon", 42);
+    SIM_CHECK(w != nullptr);
+    char buf[256], buf2[256];
+    int64_t day = 0;
+    int y = 0, m = 0, d = 0;
+
+    g_fail_alloc = true;
+    const int results[] = {
+        sim_world_quest_count(w, "available"),
+        sim_world_quest_at(w, "available", 0, buf, sizeof(buf)),
+        sim_world_quest_title(w, kLong, buf, sizeof(buf)),
+        sim_world_quest_giver(w, kLong, buf, sizeof(buf)),
+        sim_world_quest_kind(w, kLong, buf, sizeof(buf)),
+        sim_world_quest_act(w, kLong, buf, sizeof(buf)),
+        sim_world_quest_stage(w, kLong, buf, sizeof(buf)),
+        static_cast<int>(sim_world_quest_deadline(w, kLong)),
+        sim_world_quest_accept(w, kLong),
+        sim_world_quest_advance(w, kLong, kLong, kLong),
+        sim_world_quest_complete(w, kLong),
+        sim_world_quest_abandon(w, kLong),
+        sim_world_journal_count(w, kLong),
+        sim_world_journal_at(w, kLong, 0, &day, buf, sizeof(buf), buf2, sizeof(buf2)),
+        sim_world_dialogue_count(w, kLong),
+        sim_world_dialogue_at(w, kLong, 0, buf, sizeof(buf), buf2, sizeof(buf2)),
+        sim_world_npc_name(w, kLong, buf, sizeof(buf)),
+        sim_world_npc_memory_count(w, kLong),
+        sim_world_npc_memory_at(w, kLong, 0, &day, buf, sizeof(buf), buf2, sizeof(buf2)),
+        sim_world_event_at(w, 0, &day, buf, sizeof(buf), buf2, sizeof(buf2)),
+        sim_world_set_need(w, kLong, "hunger", 50),
+    };
+    const int date = sim_world_date(w, &y, &m, &d);
+    const int month = sim_world_month_name(w, buf, sizeof(buf));
+    const int phase = sim_world_moon_phase(w, buf, sizeof(buf));
+    const int lit = sim_world_moon_illumination(w);
+    const int omen = sim_world_day_omen(w, buf, sizeof(buf));
+    const int observance = sim_world_day_observance(w, buf, sizeof(buf));
+    g_fail_alloc = false;
+
+    for (int r : results) SIM_CHECK_EQ(r, -1);
+    SIM_CHECK_EQ(date, 0);
+    SIM_CHECK(month > 0 && phase > 0 && omen > 0 && observance > 0);
+    SIM_CHECK_EQ(lit, 0);
+    // The world still works after the storm.
+    SIM_CHECK(sim_world_quest_count(w, "available") > 30);
+    sim_world_destroy(w);
+    return true;
+}
+
+SIM_MAIN(test_no_exception_escapes_the_c_boundary, test_k1_k2_entry_points_do_not_throw,
+         test_a7_entry_points_do_not_throw)

@@ -704,7 +704,8 @@ int sim_world_day_omen(const SimWorld* world, char* out, int cap) {
     try {
         if (world == nullptr) return -1;
         const sim::CalendarDayDef* d = world->world.cal.month_day(world->world.day);
-        return write_str(out, cap, d ? d->omen : std::string());
+        static const std::string kNone;  // a reference either way: no copy, no allocation
+        return write_str(out, cap, d ? d->omen : kNone);
     } catch (...) {
         return -1;
     }
@@ -714,7 +715,8 @@ int sim_world_day_observance(const SimWorld* world, char* out, int cap) {
     try {
         if (world == nullptr) return -1;
         const sim::CalendarDayDef* d = world->world.cal.month_day(world->world.day);
-        return write_str(out, cap, d ? d->name : std::string());
+        static const std::string kNone;  // a reference either way: no copy, no allocation
+        return write_str(out, cap, d ? d->name : kNone);
     } catch (...) {
         return -1;
     }

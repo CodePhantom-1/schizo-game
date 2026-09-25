@@ -93,3 +93,10 @@ Both lost pieces rebuilt and merged; 40/40 kernel tests. Divine wrath (`sim/Divi
 - **Decisions:** stale branches deleted (designer yes). No branch protection (delegated): pushes to main stay direct; CI reports and is checked after every push. The moon rites that fire at the Moon Pool moved to O4; the rest of A3's smoke lines arrive with A10/C3/D1.
 - **For Tommy:** [docs/notes-for-tommy.md](docs/notes-for-tommy.md) (git lfs install; darker nights; the crescent city redesign).
 - **Next:** Stage A part 2 — the bridge (quests, journal, dialogue, NPC memory, events feed through the C API; a report of C API calls Unreal doesn't reach yet), then part 3 (the UI shell: menus, settings, save/load, new game, camera), then Stage AA (the crescent city).
+
+## Stage A part 2 (2026-09-26) — the bridge: done, reviewed, pushed
+- **C API:** `CApiQuests.h` (quest lists, title/giver/kind/act/stage/deadline, accept/advance/complete/abandon, the journal, dialogue lines) and `CApiPeople.h` (npc display names, memories, the events feed). `Quests::abandon` journals "abandoned".
+- **Rule:** a quest with no `quests.csv` row (WildWorld's `rescue_<npc>`) is driven by the world: never offered, and the player's verbs return -4 (so completing it can't pay a rescue that didn't happen); it gets a generated title ("Rescue <name>"). Every canon quest of any kind stays the player's; the act is metadata, never a lock (D-021).
+- **Unreal:** `USimQueryLibrary` (Blueprint) + `SimQuery::` (C++) for quests, journal, dialogue, names, memories, events; console `sim.Quests/Accept/Journal/Talk/Memory/Events`.
+- **Reach report:** `docs/capi-reach.md` — every kernel call, whether Unreal uses it yet, and the stage that will; CI fails a call with no stage.
+- **Next:** Stage A part 3 — the UI shell (menus, settings, save/load slots, new game, the journal/dialogue panels on USimQueryLibrary, third-person camera polish).

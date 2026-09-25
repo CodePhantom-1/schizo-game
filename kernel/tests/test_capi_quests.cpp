@@ -3,6 +3,9 @@
 #include "sim/CApiQuests.h"
 #include "sim/Test.hpp"
 
+#include "sim/Quests.hpp"
+#include "../src/CApiInternal.hpp"  // to plant a world-driven def the way WildWorld does
+
 #include <cctype>
 #include <cstring>
 #include <filesystem>
@@ -83,7 +86,7 @@ static bool test_quest_verbs_refuse_nonsense() {
 static bool test_journal_survives_save_load() {
     SimWorld* w = sim_world_create("../db/canon", 42);
     sim_world_quest_accept(w, "the_outsiders_first_days");
-    const char* tricky = "He said, \"bread\"; then left, quickly";
+    const char* tricky = "He said, \"bread\"; then left,\n\tquickly";
     SIM_CHECK_EQ(sim_world_quest_advance(w, "the_outsiders_first_days", "met_baker", tricky), 1);
     const std::string path = (std::filesystem::temp_directory_path() / "sim_journal_save.txt").string();
     SIM_CHECK_EQ(sim_world_save(w, path.c_str()), 0);
@@ -125,6 +128,64 @@ static bool test_dialogue_speaker_keys() {
     return true;
 }
 
+// A world-driven quest: a def with no quests.csv row, created and advanced by
+// the kernel itself (WildWorld's rescue_<npc>). Returns the npc id used.
+static std::string plant_rescue(SimWorld* w) {
+    char npc[128];
+    sim_world_npc_id(w, 0, npc, sizeof npc);
+    sim::QuestDef def;
+    def.id = std::string("rescue_") + npc;
+    def.kind = "emergent";
+    def.reward_silver = 30;
+    w->world.quests.defs.push_back(def);
+    sim::accept(w->world.quests, def.id, w->world.day);
+    return npc;
+}
+
+static bool test_world_driven_quests_are_not_player_verbs() {
+    SimWorld* w = sim_world_create("../db/canon", 42);
+    const int available = sim_world_quest_count(w, "available");
+    const std::string npc = plant_rescue(w);
+    const std::string qid = "rescue_" + npc;
+    SIM_CHECK_EQ(sim_world_quest_count(w, "available"), available);  // never offered
+    SIM_CHECK_EQ(sim_world_quest_complete(w, qid.c_str()), -4);        // no reward without a rescue
+    SIM_CHECK_EQ(sim_world_quest_advance(w, qid.c_str(), "x", ""), -4);
+    SIM_CHECK_EQ(sim_world_quest_abandon(w, qid.c_str()), -4);
+    SIM_CHECK_EQ(sim_world_quest_count(w, "active"), 1);               // untouched
+    // Canon quests of every kind stay the player's (D-021: open play).
+    SIM_CHECK_EQ(sim_world_quest_accept(w, "a_roof_for_the_outsider"), 0);  // kind emergent, but a canon row
+    sim_world_destroy(w);
+    return true;
+}
+
+static bool test_world_driven_quests_have_a_title() {
+    SimWorld* w = sim_world_create("../db/canon", 42);
+    const std::string npc = plant_rescue(w);
+    const std::string qid = "rescue_" + npc;
+    char name[128], title[256], kind[64];
+    sim_world_npc_name(w, npc.c_str(), name, sizeof name);
+    SIM_CHECK(sim_world_quest_title(w, qid.c_str(), title, sizeof title) > 0);
+    SIM_CHECK_EQ(std::string(title), std::string("Rescue ") + name);
+    SIM_CHECK(sim_world_quest_kind(w, qid.c_str(), kind, sizeof kind) > 0);
+    SIM_CHECK_EQ(std::string(kind), "emergent");
+    sim_world_destroy(w);
+    return true;
+}
+
+static bool test_quest_act_and_kind() {
+    SimWorld* w = sim_world_create("../db/canon", 42);
+    char b[64];
+    SIM_CHECK(sim_world_quest_act(w, "the_outsiders_first_days", b, sizeof b) > 0);
+    SIM_CHECK_EQ(std::string(b), "opening");
+    SIM_CHECK(sim_world_quest_kind(w, "the_outsiders_first_days", b, sizeof b) > 0);
+    SIM_CHECK_EQ(std::string(b), "systemic");
+    SIM_CHECK_EQ(sim_world_quest_act(w, "no_such_quest", b, sizeof b), -1);
+    sim_world_destroy(w);
+    return true;
+}
+
 SIM_MAIN(test_quest_lifecycle, test_deadline_fails_and_lists_it, test_quest_verbs_refuse_nonsense,
          test_journal_survives_save_load,
-         test_dialogue_lines_for_a_speaker, test_dialogue_speaker_keys)
+         test_dialogue_lines_for_a_speaker, test_dialogue_speaker_keys,
+         test_world_driven_quests_are_not_player_verbs, test_world_driven_quests_have_a_title,
+         test_quest_act_and_kind)

@@ -20,6 +20,8 @@ bool FSimQueryTest::RunTest(const FString& Parameters)
 	if (TestEqual(TEXT("one active"), Active.Num(), 1))
 	{
 		TestEqual(TEXT("its title"), Active[0].Title, FString(TEXT("The Outsider's First Days")));
+		TestEqual(TEXT("its kind"), Active[0].Kind, FString(TEXT("systemic")));
+		TestEqual(TEXT("its act"), Active[0].Act, FString(TEXT("opening")));
 	}
 	TestEqual(TEXT("journal has the acceptance"), SimQuery::GetJournal(W, TEXT("the_outsiders_first_days")).Num(), 1);
 	TestTrue(TEXT("the captain speaks"), SimQuery::GetDialogue(W, TEXT("the captain of the prisoner transport")).Num() > 0);

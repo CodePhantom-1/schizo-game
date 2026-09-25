@@ -155,7 +155,8 @@ namespace
 			if (H == nullptr) return;
 			const int32 Rc = SimQuery::AcceptQuest(H, Args[0]);
 			UE_LOG(LogSimRuntime, Display, TEXT("sim.Accept %s: %s"), *Args[0],
-				Rc == 0 ? TEXT("accepted") : Rc == -2 ? TEXT("no such quest") : TEXT("already active, completed or failed"));
+				Rc == 0 ? TEXT("accepted") : Rc == -2 ? TEXT("no such quest") : Rc == -4 ? TEXT("the world drives this quest itself")
+				: TEXT("already active, completed or failed"));
 		}));
 
 	FAutoConsoleCommandWithWorldAndArgs CmdJournal(TEXT("sim.Journal"), TEXT("sim.Journal <quest> — the quest's journal"),

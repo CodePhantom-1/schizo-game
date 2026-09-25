@@ -16,17 +16,27 @@ typedef struct SimWorld SimWorld;
 
 // Quests -----------------------------------------------------------------------
 // `list`: "available" (never accepted, completed or failed) | "active" |
-// "completed" | "failed". -1 on an unknown list.
+// "completed" | "failed". -1 on an unknown list. "available" never lists a
+// world-driven quest. The player's verbs below return -4 for a world-driven
+// quest: the kernel itself creates, advances and pays it.
 int sim_world_quest_count(const SimWorld* world, const char* list);
 int sim_world_quest_at(const SimWorld* world, const char* list, int index, char* out, int cap);
-// quests.csv's name / giver for a quest id; -1 on an unknown quest.
+// quests.csv's name / giver for a quest id; -1 on an unknown quest. A
+// world-driven quest (no quests.csv row, e.g. rescue_<npc>) gets a generated
+// title ("Rescue <name>") and an empty giver.
 int sim_world_quest_title(const SimWorld* world, const char* quest, char* out, int cap);
 int sim_world_quest_giver(const SimWorld* world, const char* quest, char* out, int cap);
+// quests.csv's kind (history_arc|systemic|faction|emergent|…) and act
+// (opening, act_i..act_iv; "" for a world-driven quest); -1 unknown quest.
+// The act is pacing metadata, never a lock (D-021).
+int sim_world_quest_kind(const SimWorld* world, const char* quest, char* out, int cap);
+int sim_world_quest_act(const SimWorld* world, const char* quest, char* out, int cap);
 // The active quest's stage label; -1 when the quest is not active.
 int sim_world_quest_stage(const SimWorld* world, const char* quest, char* out, int cap);
 // The active quest's deadline day (0 = none); -1 when not active.
 int64_t sim_world_quest_deadline(const SimWorld* world, const char* quest);
-// 0 accepted; -2 unknown quest; -3 already active, completed or failed.
+// 0 accepted; -2 unknown quest; -3 already active, completed or failed;
+// -4 world-driven.
 int sim_world_quest_accept(SimWorld* world, const char* quest);
 // Sets an active quest's stage (journals it with `text`): 1 changed, 0 same
 // stage, -3 not active.
