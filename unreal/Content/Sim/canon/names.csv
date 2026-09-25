@@ -1,0 +1,46 @@
+id,name,culture,gender,tag,source_ref
+ur_namma,Ur-Namma,sumerian,male,A,attested Ur III onomasticon (royal inscriptions)
+shulgi,Shulgi,sumerian,male,A,attested Ur III onomasticon (royal inscriptions)
+gudea,Gudea,sumerian,male,A,attested Lagash II ensi-dynasty inscriptions (Gudea period)
+ur_ningirsu,Ur-Ningirsu,sumerian,male,A,attested Lagash II ensi-dynasty inscriptions (Gudea period)
+nammahani,Nammahani,sumerian,male,A,attested Lagash II ensi-dynasty inscriptions (Gudea period)
+lugalzagesi,Lugalzagesi,sumerian,male,A,attested Sumerian King List and royal inscriptions
+ur_shara,Ur-Shara,sumerian,male,A,attested Ur III onomasticon
+shesh_kalla,Shesh-kalla,sumerian,male,A,attested Ur III onomasticon
+ur_lisi,Ur-Lisi,sumerian,male,A,attested Ur III onomasticon
+ur_enlil,Ur-Enlil,sumerian,male,A,attested Ur III onomasticon
+lu_nanna,Lu-Nanna,sumerian,male,A,attested Ur III / Old Babylonian onomasticon
+lu_dingira,Lu-dingira,sumerian,male,A,attested Ur III / Old Babylonian onomasticon
+ur_utu,Ur-Utu,sumerian,male,A,attested Old Babylonian onomasticon (Sippar archive records)
+puabi,Puabi,sumerian,female,A,attested Early Dynastic record (Royal Cemetery of Ur inscriptions)
+kugbau,Kugbau,sumerian,female,A,attested Sumerian King List
+baranamtarra,Baranamtarra,sumerian,female,A,attested Early Dynastic Lagash temple records
+geme_nanna,Geme-Nanna,sumerian,female,A,attested Ur III onomasticon
+geme_enlil,Geme-Enlil,sumerian,female,A,attested Ur III onomasticon
+geme_shara,Geme-Shara,sumerian,female,A,attested Ur III onomasticon
+enmenanna,Enmenanna,sumerian,female,A,attested en-priestess inscriptions of Nanna at Ur
+enannatumma,Enannatumma,sumerian,female,A,attested en-priestess inscriptions of Nanna at Ur
+enmahgalana,Enmahgalana,sumerian,female,A,attested en-priestess inscriptions of Nanna at Ur
+hammurabi,Hammurabi,akkadian,male,A,attested Old Babylonian onomasticon (king lists and archive texts)
+samsu_iluna,Samsu-iluna,akkadian,male,A,attested Old Babylonian onomasticon (king lists and archive texts)
+sin_muballit,Sin-muballit,akkadian,male,A,attested Old Babylonian onomasticon (king lists and archive texts)
+apil_sin,Apil-Sin,akkadian,male,A,attested Old Babylonian onomasticon (king lists and archive texts)
+rim_sin,Rim-Sin,akkadian,male,A,attested Old Babylonian onomasticon (king lists and archive texts)
+warad_sin,Warad-Sin,akkadian,male,A,attested Old Babylonian onomasticon (king lists and archive texts)
+sin_iddinam,Sin-iddinam,akkadian,male,A,attested Old Babylonian onomasticon
+sin_eribam,Sin-eribam,akkadian,male,A,attested Old Babylonian onomasticon
+iddin_sin,Iddin-Sin,akkadian,male,A,attested Old Babylonian onomasticon
+ea_nasir,Ea-nasir,akkadian,male,A,attested Old Babylonian onomasticon (Ur archive records)
+shamash_hazir,Shamash-hazir,akkadian,male,A,attested Old Babylonian onomasticon (royal letter corpora)
+ishme_dagan,Ishme-Dagan,akkadian,male,A,attested Old Babylonian onomasticon
+beltani,Beltani,akkadian,female,A,attested Old Babylonian onomasticon
+erishti_aya,Erishti-Aya,akkadian,female,A,attested Old Babylonian onomasticon
+lamassani,Lamassani,akkadian,female,A,attested Old Babylonian onomasticon
+iltani,Iltani,akkadian,female,A,attested Old Assyrian and Old Babylonian onomasticon
+huzalatum,Huzalatum,akkadian,female,A,attested Old Babylonian onomasticon
+matatum,Matatum,akkadian,female,A,attested Old Babylonian onomasticon
+kunshiatum,Kunshiatum,akkadian,female,A,attested Old Babylonian onomasticon
+waqurtum,Waqurtum,akkadian,female,A,attested Old Babylonian onomasticon (Mari archival letters)
+kubatum,Kubatum,akkadian,female,A,attested Ur III / Old Babylonian onomasticon
+ishtar_ummi,Ishtar-ummi,akkadian,female,A,attested Old Babylonian onomasticon
+amat_shamash,Amat-Shamash,akkadian,female,A,attested Old Babylonian onomasticon

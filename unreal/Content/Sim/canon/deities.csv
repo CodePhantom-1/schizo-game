@@ -1,0 +1,17 @@
+id,name,also_known_as,domain_and_role,pantheons,planetary,cult_sites,tag,source_ref
+an,An,Sky Father,the foreigners' sky worship; his two sons came to rule the City of the Abyss and the City of Kings,triad_of_heaven;seven_who_decree;anus_pantheon,,city_of_the_sky,CANON,wb §2-3;§5-6; notes L46;L59;L61
+enlil,Enlil,god of kings,kingship; the legacy of kings is mummified and guarded at his city,triad_of_heaven;seven_who_decree;anus_pantheon;enlils_pantheon,,city_of_kings,CANON,wb §5-6; notes L48;L62;L85
+enki,Enki,lord of water and wisdom,saw that men became unworthy and ended the golden age; sent the flood; the god of magic (designer ruling D-016) — the sea gems are his gifts and extensions of his power,triad_of_heaven;seven_who_decree;anus_pantheon;enkis_pantheon,Mercury (notes: Mercury-ish),,CANON,wb §1-2;§6; notes L23;L63;L90;L195; D-016
+ninurta,Ninurta,,,enlils_pantheon,,,CANON,wb §6; notes L86
+utu,Utu,,the sun; the Retributors of Utu are his paladin guild,seven_who_decree,Sun,city_of_the_sun,CANON,wb §5-6; notes L50;L71
+nanna,Nanna,,the moon,seven_who_decree,Moon,city_of_the_moon (temple of sun and moon),CANON,wb §5-6; notes L52;L72
+inanna,Inanna,Ishtar; the lady of the skies,the Empire's patron: tribute and conquest in her honor; described as a demonic entity by the Brotherhood; the Sumerian ending names her cult,seven_who_decree;anus_pantheon,Venus (see planetary_powers:venus),city_of_the_sky (cult center of the Sky Father and the Lady of the Skies),CANON,wb §4.1;§5;§6; notes L15;L32;L46;L104;L195
+ninhursag,Ninhursag,Ki/Abzu/Nammu/Ninhursag (listed together in Anu's pantheon),,seven_who_decree;anus_pantheon,,,CANON,wb §6; notes L70;L78
+isimud,Isimud,,,enkis_pantheon,,,CANON,wb §6; notes L91
+abzu,Abzu,,primordial water (cf. the City of the Abyss's worship),enkis_pantheon;anus_pantheon,,,CANON,wb §6; notes L54;L78;L92
+the_two_waters,the deities of salt and fresh water,,the southern armada's gods; first great temple; sacrifices of fish and sea gems,,,,CANON,wb §3; notes L57
+water_lord,Water Lord,consort: the Swamp Queen,the two-waters worship of the City of the Abyss shifted to him under northern rule,,,city_of_the_abyss,CANON,wb §3; notes L58
+swamp_queen,Swamp Queen,consort of the Water Lord,,,,city_of_the_abyss,CANON,wb §3; notes L58
+underworld_queen,the queen of the underworld,earth mother of the underworld (at Gravestone),the dead cult; great statue in the temple built within the earth,,,city_of_the_dead; gravestone (whether these are one city or two is OPEN — game-design §11.7),CANON,wb §5; notes L44;L103
+taurissian_former_sun_god,the former sun god of the Taurissian people,,the City of the Warrior Spirit was once his city,,,city_of_the_warrior_spirit,CANON,wb §5; notes L56
+the_eight_of_medicine,the 8 deities of medicine,list missing from the notes,,,,,OPEN,notes L97 (list unwritten)

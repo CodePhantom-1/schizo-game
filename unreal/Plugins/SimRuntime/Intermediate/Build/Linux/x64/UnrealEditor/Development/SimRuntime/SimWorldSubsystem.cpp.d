@@ -3126,4 +3126,6 @@
   Runtime/CoreUObject/Public/UObject/ScriptMacros.h \
   /home/codephantom/Desktop/game/schizo-game/unreal/Plugins/SimRuntime/Source/SimRuntime/Public/SimRuntimeModule.h \
   /home/codephantom/Desktop/game/schizo-game/kernel/include/sim/CApi.h \
-  Runtime/Engine/Classes/Engine/World.h Runtime/Core/Public/Misc/Paths.h
+  Runtime/Engine/Classes/Engine/World.h \
+  Runtime/Core/Public/HAL/IConsoleManager.h \
+  Runtime/Core/Public/Misc/Paths.h

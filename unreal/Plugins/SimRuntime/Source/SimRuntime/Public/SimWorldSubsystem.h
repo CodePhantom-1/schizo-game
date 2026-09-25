@@ -51,13 +51,19 @@ public:
 
 	/**
 	 * Real minutes of engine time per sim day (parent architecture §4.2 default:
-	 * 45). Settable so the acts' pacing and the vertical slice can differ.
+	 * 45). Overridable at runtime by the console variable sim.DaysPerRealMinute
+	 * (debug pacing; 0 = use this property).
 	 */
 	UPROPERTY(Config, EditAnywhere, Category = "Sim")
 	float SimDaysPerRealMinute = 45.0f;
 
+	/** Debug/act-scripting: advance the world N days immediately. */
+	UFUNCTION(BlueprintCallable, Category = "Sim")
+	static void AdvanceSimDays(int32 Days);
+
 private:
 	/** The opaque kernel world (sim/CApi.h). Owned; never null after Initialize. */
 	struct SimWorld* SimHandle = nullptr;
+	bool bCanonFailed = false;  // one-shot: canon missing — stop retrying creation
 	double SecondsSinceLastDay = 0.0;
 };

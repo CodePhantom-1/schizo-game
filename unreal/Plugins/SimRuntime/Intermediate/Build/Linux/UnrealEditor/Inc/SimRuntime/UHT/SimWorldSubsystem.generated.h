@@ -19,6 +19,7 @@ PRAGMA_DISABLE_DEPRECATION_WARNINGS
 
 // ********** Begin Class USimWorldSubsystem *******************************************************
 #define FID_Desktop_game_schizo_game_unreal_Plugins_SimRuntime_Source_SimRuntime_Public_SimWorldSubsystem_h_21_RPC_WRAPPERS_NO_PURE_DECLS \
+	DECLARE_FUNCTION(execAdvanceSimDays); \
 	DECLARE_FUNCTION(execGetSimDrought); \
 	DECLARE_FUNCTION(execSetSimDrought); \
 	DECLARE_FUNCTION(execGetSimPrice); \

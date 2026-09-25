@@ -12,8 +12,8 @@ import shutil
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SRC = ROOT / "data" / "ue"          # engine-ready exports (from export_datatables.py)
-DST = ROOT / "unreal" / "SchizoGame" / "Content" / "Sim" / "canon"
+SRC = ROOT / "db" / "canon"        # kernel-readable canon (id-keyed; the UE DataTables in data/ue are a separate artifact)
+DST = ROOT / "unreal" / "Content" / "Sim" / "canon"
 
 
 def main() -> int:
@@ -25,7 +25,7 @@ def main() -> int:
     for csv_file in SRC.glob("*.csv"):
         shutil.copy2(csv_file, DST / csv_file.name)
         staged += 1
-    print(f"staged {staged} DataTables -> {DST.relative_to(ROOT)}")
+    print(f"staged {staged} canon tables -> {DST.relative_to(ROOT)}")
     return 0
 
 

@@ -22,6 +22,66 @@ SIMRUNTIME_API UClass* Z_Construct_UClass_USimWorldSubsystem(ETypeConstructPhase
 // ********** End Same Module References ***********************************************************
 #define UHT_STRUCT_BASE(INIT) UE::CodeGen::ConstInit::TCompiledInObjectPtr<const FStructBaseChain>(UE::Private::AsStructBaseChain(INIT))
 
+// ********** Begin Class USimWorldSubsystem Function AdvanceSimDays *******************************
+#ifdef UHT_STATICS
+#error UHT_STATICS already defined
+#endif
+#define UHT_STATICS Z_Construct_UFunction_USimWorldSubsystem_AdvanceSimDays_Statics
+struct UHT_STATICS
+{
+	struct SimWorldSubsystem_eventAdvanceSimDays_Parms
+	{
+		int32 Days;
+	};
+#if WITH_METADATA
+	static constexpr UECodeGen_Private::FMetaDataPairParam Type_MetaData[] = {
+		{ "Category", "Sim" },
+#if !UE_BUILD_SHIPPING
+		{ "Comment", "/** Debug/act-scripting: advance the world N days immediately. */" },
+#endif
+		{ "ModuleRelativePath", "Public/SimWorldSubsystem.h" },
+#if !UE_BUILD_SHIPPING
+		{ "ToolTip", "Debug/act-scripting: advance the world N days immediately." },
+#endif
+	};
+#endif // WITH_METADATA
+
+// ********** Begin Function AdvanceSimDays constinit property declarations ************************
+	static const UECodeGen_Private::FIntPropertyParams NewProp_Days;
+	static const UECodeGen_Private::FPropertyParamsBase* const PropPointers[];
+// ********** End Function AdvanceSimDays constinit property declarations **************************
+	static const UECodeGen_Private::FFunctionParams FuncParams;
+};
+
+// ********** Begin Function AdvanceSimDays Property Definitions ***********************************
+const UECodeGen_Private::FIntPropertyParams UHT_STATICS::NewProp_Days = { "Days", nullptr, (EPropertyFlags)0x0010000000000080, UECodeGen_Private::EPropertyGenFlags::Int, nullptr, nullptr, 1, STRUCT_OFFSET(SimWorldSubsystem_eventAdvanceSimDays_Parms, Days), METADATA_PARAMS(0, nullptr) };
+const UECodeGen_Private::FPropertyParamsBase* const UHT_STATICS::PropPointers[] = {
+	(const UECodeGen_Private::FPropertyParamsBase*)&UHT_STATICS::NewProp_Days,
+};
+static_assert(UE_ARRAY_COUNT(UHT_STATICS::PropPointers) < 2048);
+// ********** End Function AdvanceSimDays Property Definitions *************************************
+const UECodeGen_Private::FFunctionParams UHT_STATICS::FuncParams = { { (FTypeConstructFunc*)Z_Construct_UClass_USimWorldSubsystem, nullptr, "AdvanceSimDays", UHT_STATICS::PropPointers, UE_ARRAY_COUNT(UHT_STATICS::PropPointers), DataSizeOf<UHT_STATICS::SimWorldSubsystem_eventAdvanceSimDays_Parms>(), RF_Public|RF_Transient|RF_MarkAsNative, (EFunctionFlags)0x04022401, 0, 0, METADATA_PARAMS(UE_ARRAY_COUNT(UHT_STATICS::Type_MetaData), UHT_STATICS::Type_MetaData)},  };
+static_assert(sizeof(UHT_STATICS::SimWorldSubsystem_eventAdvanceSimDays_Parms) < MAX_uint16);
+UFunction* Z_Construct_UFunction_USimWorldSubsystem_AdvanceSimDays(ETypeConstructPhase Phase)
+{
+	static UFunction* ReturnFunction = nullptr;
+	if (!ReturnFunction)
+	{
+		UECodeGen_Private::ConstructUFunction(&ReturnFunction, UHT_STATICS::FuncParams);
+	}
+	return ReturnFunction;
+}
+#undef UHT_STATICS
+DEFINE_FUNCTION(USimWorldSubsystem::execAdvanceSimDays)
+{
+	P_GET_PROPERTY(FIntProperty,Z_Param_Days);
+	P_FINISH;
+	P_NATIVE_BEGIN;
+	USimWorldSubsystem::AdvanceSimDays(Z_Param_Days);
+	P_NATIVE_END;
+}
+// ********** End Class USimWorldSubsystem Function AdvanceSimDays *********************************
+
 // ********** Begin Class USimWorldSubsystem Function GetSimDay ************************************
 #ifdef UHT_STATICS
 #error UHT_STATICS already defined
@@ -349,11 +409,11 @@ struct UHT_STATICS
 	static constexpr UECodeGen_Private::FMetaDataPairParam NewProp_SimDaysPerRealMinute_MetaData[] = {
 		{ "Category", "Sim" },
 #if !UE_BUILD_SHIPPING
-		{ "Comment", "/**\n\x09 * Real minutes of engine time per sim day (parent architecture \xc2\xa7""4.2 default:\n\x09 * 45). Settable so the acts' pacing and the vertical slice can differ.\n\x09 */" },
+		{ "Comment", "/**\n\x09 * Real minutes of engine time per sim day (parent architecture \xc2\xa7""4.2 default:\n\x09 * 45). Overridable at runtime by the console variable sim.DaysPerRealMinute\n\x09 * (debug pacing; 0 = use this property).\n\x09 */" },
 #endif
 		{ "ModuleRelativePath", "Public/SimWorldSubsystem.h" },
 #if !UE_BUILD_SHIPPING
-		{ "ToolTip", "Real minutes of engine time per sim day (parent architecture \xc2\xa7""4.2 default:\n45). Settable so the acts' pacing and the vertical slice can differ." },
+		{ "ToolTip", "Real minutes of engine time per sim day (parent architecture \xc2\xa7""4.2 default:\n45). Overridable at runtime by the console variable sim.DaysPerRealMinute\n(debug pacing; 0 = use this property)." },
 #endif
 	};
 #endif // WITH_METADATA
@@ -363,6 +423,7 @@ struct UHT_STATICS
 	static const UECodeGen_Private::FPropertyParamsBase* const PropPointers[];
 // ********** End Class USimWorldSubsystem constinit property declarations *************************
 	static constexpr UE::CodeGen::FClassNativeFunction Funcs[] = {
+		{ .NameUTF8 = UTF8TEXT("AdvanceSimDays"), .Pointer = &USimWorldSubsystem::execAdvanceSimDays },
 		{ .NameUTF8 = UTF8TEXT("GetSimDay"), .Pointer = &USimWorldSubsystem::execGetSimDay },
 		{ .NameUTF8 = UTF8TEXT("GetSimDrought"), .Pointer = &USimWorldSubsystem::execGetSimDrought },
 		{ .NameUTF8 = UTF8TEXT("GetSimPrice"), .Pointer = &USimWorldSubsystem::execGetSimPrice },
@@ -371,6 +432,7 @@ struct UHT_STATICS
 	};
 	static FTypeConstructFunc* DependentSingletons[];
 	static constexpr FClassFunctionLinkInfo FuncInfo[] = {
+		{ &Z_Construct_UFunction_USimWorldSubsystem_AdvanceSimDays, "AdvanceSimDays" }, // 0d0d92a9ad9ab6abada31f5aecf1a12766b353ed
 		{ &Z_Construct_UFunction_USimWorldSubsystem_GetSimDay, "GetSimDay" }, // ebde33c753c5976988df72c183fc84d6cf47def5
 		{ &Z_Construct_UFunction_USimWorldSubsystem_GetSimDrought, "GetSimDrought" }, // d7d580493d9bb82c280200cf107d4f4a43250138
 		{ &Z_Construct_UFunction_USimWorldSubsystem_GetSimPrice, "GetSimPrice" }, // cb0ab9d8479f352171458b859faf4d1927d88479
@@ -463,10 +525,10 @@ USimWorldSubsystem::~USimWorldSubsystem() {}
 struct UHT_STATICS
 {
 	static constexpr FClassRegisterCompiledInInfo ClassInfo[] = {
-		{ Z_Construct_UClass_USimWorldSubsystem, TEXT("USimWorldSubsystem"), &Z_Registration_Info_UClass_USimWorldSubsystem, CONSTRUCT_RELOAD_VERSION_INFO(FClassReloadVersionInfo, sizeof(USimWorldSubsystem), 1079786366U) },
+		{ Z_Construct_UClass_USimWorldSubsystem, TEXT("USimWorldSubsystem"), &Z_Registration_Info_UClass_USimWorldSubsystem, CONSTRUCT_RELOAD_VERSION_INFO(FClassReloadVersionInfo, sizeof(USimWorldSubsystem), 2328480760U) },
 	};
 }; // UHT_STATICS 
-static FRegisterCompiledInInfo Z_CompiledInDeferFile_FID_Desktop_game_schizo_game_unreal_Plugins_SimRuntime_Source_SimRuntime_Public_SimWorldSubsystem_h__Script_SimRuntime_24f8da6a98fdaded61ff5ae41270efe053d8e99b{
+static FRegisterCompiledInInfo Z_CompiledInDeferFile_FID_Desktop_game_schizo_game_unreal_Plugins_SimRuntime_Source_SimRuntime_Public_SimWorldSubsystem_h__Script_SimRuntime_fdbb8d8c6e554fed45382287e2aa43dd452fe2de{
 	TEXT("/Script/SimRuntime"),
 	UHT_STATICS::ClassInfo, UE_ARRAY_COUNT(UHT_STATICS::ClassInfo),
 	nullptr, 0,

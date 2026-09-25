@@ -1,0 +1,8 @@
+id,tier,label,basis,tag,source_ref
+rank_0,0 — the Outsider,the Outsider,the immigrant-prisoner start: stateless outside any city's protection,CANON,game-design §3; notes L3;L105; D-015
+rank_1,1 — Sojourner,Sojourner,a resident guest under a local protector,CANON,designer approval 2026-09-25 (D-015); proposals P1
+rank_2,2 — Householder,Householder,"a free member of a community: owns, trades, sues",CANON,D-015; proposals P1
+rank_3,3 — Éren (King's Man),Éren (King's Man),a palace dependant holding land for service — the Empire's tribute principle made personal (eren attested),CANON,D-015; P1; notes L15;L104
+rank_4,4 — Gigir (Chariot Warrior),Gigir (Chariot Warrior),the elite land-for-service tier (gigir = chariot),CANON,D-015; P1
+rank_5,5 — Sukkal (Intimate of the King),Sukkal (Intimate of the King),envoys and high officials (sukkal = envoy/vizier),CANON,D-015; P1
+rank_6,6 — Lugal (King),Lugal (King),the right of kingship; founding the traditional kingdom,CANON,endings §2; notes L9;L11;L39; D-015

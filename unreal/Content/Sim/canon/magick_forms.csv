@@ -1,0 +1,11 @@
+id,form,canon,system_slot,tag,source_ref
+numerology,Numerology,basic forms or advanced,opt-in pending (game-design §8.3.2),CANON,wb §8.1; notes L189
+kabbalah_hermetism,Kabbalah / Hermeticism,a really primitive form; as above so below,opt-in pending (game-design §8.3.3),CANON,wb §8.1; notes L190
+astrology,Astrology,definitely basic forms; all 12 zodiacs but primitive; add some extra constellations but not all,Divination skill and family (imported),CANON,wb §8.1; notes L191
+divination_barutu,Divination (Barutu),haruspicy was very common in Mesopotamia; it was called Barutu,Divination skill and family (imported),CANON,wb §8.1; notes L192
+sex_magick,Sex magick,tied to Inanna (see planetary_powers:venus),opt-in pending (game-design §8.3.1; rating consequence flagged),CANON,wb §8.1; notes L193
+hymns,Hymns,vibrating the names of deities,Rites and Incantation skills; the favour economy (imported),CANON,wb §8.1; notes L194
+astrotheology,Astrotheology,the planets recognized in the pantheon: Sun; Moon; Saturn and Ishtar; as well as Mercury-ish (Enki was sometimes identified with Mercury),deity data (deities.csv planetary column),CANON,wb §8.1; notes L195
+demonology,Demonology,demons some evil; neutral or benevolent; much of medicine consisted of exorcisms,purification and curse-and-binding families; sorcery is a crime (imported),CANON,wb §8.1; notes L196
+amulets_talismans,Amulets / Talismans,worn to repel demons and bad spirits,Protection family (imported),CANON,wb §8.1; notes L197
+exorcisms_zisurru,Exorcisms / Zisurru,protecting people and places with different types of flour; followed by the gloss SAG.BA.SAG.BA,Incantation; purification (imported),CANON,wb §8.1; notes L198
