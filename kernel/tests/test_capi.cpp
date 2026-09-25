@@ -141,6 +141,109 @@ static bool test_craft_chain_and_eat_through_c() {
     return ok;
 }
 
+// K-1: learn -> refuse (not known) -> perform (offering rite, favour +2)
+// through the C boundary alone. seed 1, day 5: Rng{1}.fork(5).unit() =
+// 0.099786 (test_magic.cpp), under every score exercised below.
+static bool test_learn_and_perform_rite_through_c() {
+    SimWorld* w = sim_world_create("../db/canon", 1);
+    if (!w) return false;
+    sim_world_advance_days(w, 4);  // day 5
+
+    bool ok = sim_world_knows_rite(w, "sacrifice_fish_sea_gems") == 0;
+    char effect[128];
+    ok = ok && sim_world_perform_rite(w, "player", "sacrifice_fish_sea_gems",
+                                      "temple:city_of_the_moon", effect, sizeof(effect)) == 1;  // not known
+
+    ok = ok && sim_world_learn_rite(w, "sacrifice_fish_sea_gems") == 0;
+    ok = ok && sim_world_knows_rite(w, "sacrifice_fish_sea_gems") == 1;
+    ok = ok && sim_world_give_item(w, "player", "fish", 2) == 2;
+    ok = ok && sim_world_give_item(w, "player", "sea_gems", 1) == 1;
+
+    ok = ok && sim_world_perform_rite(w, "player", "sacrifice_fish_sea_gems",
+                                      "temple:city_of_the_moon", effect, sizeof(effect)) == 3;  // succeeded
+    ok = ok && std::strcmp(effect, "offering (favour)") == 0;
+    ok = ok && sim_world_favour(w, "the_two_waters") == 52;
+    ok = ok && sim_world_item_count(w, "player", "fish") == 1;              // presence-only: -1
+    ok = ok && sim_world_item_count(w, "player", "sea_gems") == 0;          // consumed to 0
+
+    ok = ok && sim_world_perform_rite(w, "player", "no_such_rite", "riverbank",
+                                      effect, sizeof(effect)) == 0;  // unknown rite
+    sim_world_destroy(w);
+    return ok;
+}
+
+// K-1: a protection rite's ward, queried back through the C boundary.
+static bool test_ward_query_through_c() {
+    SimWorld* w = sim_world_create("../db/canon", 1);
+    if (!w) return false;
+    sim_world_advance_days(w, 4);  // day 5
+
+    bool ok = sim_world_learn_rite(w, "zisurru_warding") == 0;
+    ok = ok && sim_world_give_item(w, "player", "different_types_of_flour", 1) == 1;
+    char effect[128];
+    ok = ok && sim_world_perform_rite(w, "player", "zisurru_warding", "household:city_of_the_moon",
+                                      effect, sizeof(effect)) == 3;
+
+    char wards[256];
+    const int len = sim_world_active_wards(w, "player", wards, sizeof(wards));
+    ok = ok && len > 0 && std::string(wards).find("protection") != std::string::npos;
+
+    // Nobody else has a ward.
+    char none[64];
+    ok = ok && sim_world_active_wards(w, "nobody", none, sizeof(none)) == 0;
+    sim_world_destroy(w);
+    return ok;
+}
+
+// K-1: a divination rite's omen (barutu_haruspicy has no canon time_window
+// override reachable through the C boundary alone — World::init doesn't yet
+// wire calendar.csv's festival prose into the Calendar the C API builds, a
+// gap outside this track — so this exercises the non-festival score (0.70:
+// favour 0.20 + materials 0.20 + purity 0.20 + place 0.10), still enough to
+// succeed and land a "favourable" reading at this seed's draw).
+static bool test_omen_query_through_c() {
+    SimWorld* w = sim_world_create("../db/canon", 1);
+    if (!w) return false;
+    sim_world_advance_days(w, 4);  // day 5
+
+    bool ok = sim_world_learn_rite(w, "barutu_haruspicy") == 0;
+    ok = ok && sim_world_give_item(w, "player", "a_burned_goat's_liver", 1) == 1;
+    char effect[128];
+    char omen_before[64];
+    ok = ok && sim_world_last_omen(w, "barutu_haruspicy", omen_before, sizeof(omen_before)) == 0;
+    ok = ok && std::string(omen_before).empty();
+
+    ok = ok && sim_world_perform_rite(w, "player", "barutu_haruspicy", "house:city_of_the_moon",
+                                      effect, sizeof(effect)) == 3;
+    char omen[64];
+    const int len = sim_world_last_omen(w, "barutu_haruspicy", omen, sizeof(omen));
+    ok = ok && len > 0 && std::string(omen).rfind("favourable\t", 0) == 0;
+    sim_world_destroy(w);
+    return ok;
+}
+
+// K-1: healing/purification through the C boundary — Needs relief and a
+// purity boost, both from one successful rite.
+static bool test_healing_rite_through_c() {
+    SimWorld* w = sim_world_create("../db/canon", 1);
+    if (!w) return false;
+    sim_world_advance_days(w, 4);  // day 5
+
+    sim_world_advance_needs(w, "player", 20, 0);  // work up hunger/thirst/fatigue first
+    const int hunger_before = sim_world_hunger(w, "player");
+
+    bool ok = sim_world_learn_rite(w, "gula_healing_rite") == 0;
+    ok = ok && sim_world_give_item(w, "player", "herbs", 1) == 1;
+    ok = ok && sim_world_give_item(w, "player", "clean_water", 1) == 1;
+    ok = ok && sim_world_give_item(w, "player", "a_lamb", 1) == 1;
+    char effect[128];
+    ok = ok && sim_world_perform_rite(w, "player", "gula_healing_rite", "temple:city_of_the_moon",
+                                      effect, sizeof(effect)) == 3;
+    ok = ok && sim_world_hunger(w, "player") < hunger_before;
+    sim_world_destroy(w);
+    return ok;
+}
+
 static bool test_task_at_through_c() {
     SimWorld* w = sim_world_create("../db/canon", 42);
     if (!w) return false;
@@ -207,6 +310,10 @@ SIM_MAIN(test_lifecycle_and_clock,
          test_inventory_through_c,
          test_eat_drink_error_codes_through_c,
          test_craft_chain_and_eat_through_c,
+         test_learn_and_perform_rite_through_c,
+         test_ward_query_through_c,
+         test_omen_query_through_c,
+         test_healing_rite_through_c,
          test_task_at_through_c,
          test_save_load_continue_through_c,
          test_save_load_null_and_bad_path)
