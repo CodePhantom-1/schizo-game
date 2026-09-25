@@ -1,9 +1,10 @@
 // Magic.cpp — the five powers of a rite (contract: kernel/contracts/module_Magic.md).
 //
 // Implements every declaration in sim/Magic.hpp against the FIXED formula of
-// Magic.hpp:8-16. Deterministic given (ctx, state, inputs): no wall clock, no
-// static mutable state, no threads; the single draw comes from
-// ctx.rng.fork(day).unit() exactly as the header prescribes (Magic.hpp:15).
+// the header. Deterministic given (ctx, state, inputs): no wall clock, no
+// static mutable state, no threads, no floating point in the outcome; the
+// single draw is ctx.rng.fork(day).fork(stable_hash(rite_id)).below(10000)
+// exactly as the header prescribes (D-022).
 //
 // Readings the header forces / leaves to the implementer (each documented here):
 //
@@ -252,18 +253,25 @@ RiteResult perform_rite(const WorldContext& ctx, MagicState& state,
         return result;
     }
 
-    // The five powers, weighted exactly as Magic.hpp:8-15 fixes them.
-    const double favour_component =
-        0.40 * (static_cast<double>(favour(state, result.deity)) / 100.0);
-    const double score =
-        favour_component +
-        0.20 * (has_all_materials(*rite, inputs) ? 1.0 : 0.0) +
-        0.20 * (state.purity >= purity_requirement(*rite) ? 1.0 : 0.0) +
-        0.10 * (place_acceptable(state.place, rite->get("place")) ? 1.0 : 0.0) +
-        0.10 * (time_acceptable(*rite, ctx) ? 1.0 : 0.0);
+    // The five powers, weighted exactly as Magic.hpp fixes them, in integer
+    // basis points (D-022: no floating point, so identical on every CPU).
+    // (favour is clamped on every write; the clamp here only keeps a value
+    // read from a hand-edited save from overflowing the multiply.)
+    const int score_bp =
+        std::clamp(favour(state, result.deity), 0, 100) * 4000 / 100 +
+        (has_all_materials(*rite, inputs) ? 2000 : 0) +
+        (state.purity >= purity_requirement(*rite) ? 2000 : 0) +
+        (place_acceptable(state.place, rite->get("place")) ? 1000 : 0) +
+        (time_acceptable(*rite, ctx) ? 1000 : 0);
 
-    result.score = score;
-    result.succeeded = ctx.rng.fork(static_cast<std::uint64_t>(ctx.day)).unit() < score;
+    // D-022: each rite has its own roll on the day (a stable FNV-1a salt of
+    // its id), drawn as an unbiased integer in [0, 10000).
+    const std::uint64_t roll = ctx.rng.fork(static_cast<std::uint64_t>(ctx.day))
+                                   .fork(stable_hash(rite_id))
+                                   .below(10000);
+    result.score_bp = score_bp;
+    result.score = static_cast<double>(score_bp) / 10000.0;
+    result.succeeded = roll < static_cast<std::uint64_t>(score_bp);
     result.performed = true;
     result.effect_family = rite->get("effect_family");
 
