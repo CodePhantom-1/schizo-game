@@ -78,7 +78,7 @@ Db Db::load(const std::string& canon_dir) {
     const std::vector<std::string> tables = {
         "buildings", "callings", "calendar", "cities", "customs", "deities",
         "dialogues", "divination_forms", "endings", "events", "factions",
-        "foods", "items", "laws", "magick_forms", "names", "pantheons",
+        "festivals", "foods", "items", "laws", "magick_forms", "names", "pantheons",
         "people", "places", "planetary_powers", "quests", "ranks", "regions", "rites",
         "schedules", "seasons", "skills", "story", "talents",
         "terrain_schemes", "treaties", "world_lore", "recipes"};

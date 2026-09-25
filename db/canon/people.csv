@@ -1,12 +1,12 @@
-id,name,role,city,faction,tag,source_ref
+id,name,role,city,faction,tag,source_ref,shift
 law_giver,The great Law Giver,founder of the Empire; the player's previous incarnation (implied),city_of_jewels,the_empire,CANON,wb §4.1;§5; notes L15;L28;L42
 the_prophet,The enigmatic Prophet,leader of the rebellious alliance; the seer from Ur; the mysterious sage of the swamps,city_of_the_moon,neo_sumerian_rebellion,CANON,wb §4.2;§5; notes L19;L52;L104
 the_warchief,The mighty warchief,ruler of the City of the Warrior Spirit,city_of_the_warrior_spirit,eastern_barbarian_alliance,CANON,wb §5; notes L56 (name OPEN)
-ur_utu_gatekeeper_dawn,Ur-Utu,gatekeeper,city_of_the_moon,,INVENTED,INVENTED (D-018); name db/canon/names.csv:ur_utu (A); role per schedules.csv gates_open_at_dawn; the street's dawn gatekeeper
-sin_iddinam_gatekeeper_dusk,Sin-iddinam,gatekeeper,city_of_the_moon,,INVENTED,INVENTED (D-018); name db/canon/names.csv:sin_iddinam (A); role per schedules.csv gates_close_at_dusk; the street's dusk gatekeeper
-sin_eribam_watchman,Sin-eribam,watchman,city_of_the_moon,,INVENTED,INVENTED (D-018); name db/canon/names.csv:sin_eribam (A); role per schedules.csv watchmen_night_patrol
-iddin_sin_watchman,Iddin-Sin,watchman,city_of_the_moon,,INVENTED,INVENTED (D-018); name db/canon/names.csv:iddin_sin (A); role per schedules.csv watchmen_night_patrol
-ishme_dagan_watchman,Ishme-Dagan,watchman,city_of_the_moon,,INVENTED,INVENTED (D-018); name db/canon/names.csv:ishme_dagan (A); role per schedules.csv deep_watch
+ur_utu_gatekeeper_dawn,Ur-Utu,gatekeeper,city_of_the_moon,,INVENTED,INVENTED (D-018); name db/canon/names.csv:ur_utu (A); role per schedules.csv gates_open_at_dawn; the street's dawn gatekeeper,dawn
+sin_iddinam_gatekeeper_dusk,Sin-iddinam,gatekeeper,city_of_the_moon,,INVENTED,INVENTED (D-018); name db/canon/names.csv:sin_iddinam (A); role per schedules.csv gates_close_at_dusk; the street's dusk gatekeeper,dusk
+sin_eribam_watchman,Sin-eribam,watchman,city_of_the_moon,,INVENTED,INVENTED (D-018); name db/canon/names.csv:sin_eribam (A); role per schedules.csv watchmen_night_patrol,night_patrol
+iddin_sin_watchman,Iddin-Sin,watchman,city_of_the_moon,,INVENTED,INVENTED (D-018); name db/canon/names.csv:iddin_sin (A); role per schedules.csv watchmen_night_patrol,night_patrol
+ishme_dagan_watchman,Ishme-Dagan,watchman,city_of_the_moon,,INVENTED,INVENTED (D-018); name db/canon/names.csv:ishme_dagan (A); role per schedules.csv deep_watch,deep
 ur_shara_baker,Ur-Shara,baker,city_of_the_moon,southern_city_states_alliance,INVENTED,INVENTED (D-018); name db/canon/names.csv:ur_shara (A); role per schedules.csv baker_fires_the_oven; owns places.csv bakery_place;bakers_house_place
 shesh_kalla_miller,Shesh-kalla,miller,city_of_the_moon,southern_city_states_alliance,INVENTED,INVENTED (D-018); name db/canon/names.csv:shesh_kalla (A); role per schedules.csv miller_turns_the_quern; owns places.csv millers_house_place
 ur_lisi_brewer,Ur-Lisi,brewer,city_of_the_moon,southern_city_states_alliance,INVENTED,INVENTED (D-018); name db/canon/names.csv:ur_lisi (A); role per schedules.csv brewer_mashes_the_malt; owns places.csv brewery_tavern_place
@@ -23,7 +23,7 @@ matatum_produce_trader,Matatum,market trader,city_of_the_moon,southern_city_stat
 nammahani_potter,Nammahani,craftsman,city_of_the_moon,southern_city_states_alliance,INVENTED,INVENTED (D-018); name db/canon/names.csv:nammahani (A); role per schedules.csv workshops_full_work; owns places.csv potters_house_place
 kunshiatum_weaver,Kunshiatum,craftsman,city_of_the_moon,southern_city_states_alliance,INVENTED,INVENTED (D-018); name db/canon/names.csv:kunshiatum (A); role per schedules.csv workshops_full_work; owns places.csv weavers_house_place
 geme_nanna_water_carrier,Geme-Nanna,water-carrier,city_of_the_moon,southern_city_states_alliance,INVENTED,INVENTED (D-018); name db/canon/names.csv:geme_nanna (A); role per schedules.csv water_carriers_draw; works places.csv street_well_place
-geme_shara_water_carrier,Geme-Shara,water-carrier,city_of_the_moon,southern_city_states_alliance,INVENTED,INVENTED (D-018); name db/canon/names.csv:geme_shara (A); role per schedules.csv water_carrier_rains_short_draw; works places.csv street_well_place
+geme_shara_water_carrier,Geme-Shara,water-carrier,city_of_the_moon,southern_city_states_alliance,INVENTED,INVENTED (D-018); name db/canon/names.csv:geme_shara (A); role per schedules.csv water_carrier_rains_short_draw; works places.csv street_well_place,rains_shift
 huzalatum_household_elder,Huzalatum,household,city_of_the_moon,southern_city_states_alliance,INVENTED,INVENTED (D-018); name db/canon/names.csv:huzalatum (A); role per schedules.csv evening_meal_and_lamps; owns places.csv elder_house_1_place
 amat_shamash_household_elder,Amat-Shamash,household,city_of_the_moon,southern_city_states_alliance,INVENTED,INVENTED (D-018); name db/canon/names.csv:amat_shamash (A); role per schedules.csv evening_meal_and_lamps; owns places.csv elder_house_2_place
 beltani_household,Beltani,household,city_of_the_moon,southern_city_states_alliance,INVENTED,"INVENTED (D-018); name db/canon/names.csv:beltani (A); role per schedules.csv evening_meal_and_lamps; the baker's wife, lives at places.csv bakers_house_place"

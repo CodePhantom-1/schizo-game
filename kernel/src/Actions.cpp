@@ -9,25 +9,14 @@
 // contracts explicitly leave to it (see the W2-A comments on those fields).
 #include "sim/Actions.hpp"
 
+#include "sim/Text.hpp"
+
 #include <algorithm>
 #include <map>
 #include <optional>
 
 namespace sim {
 namespace {
-
-std::string trim(const std::string& s) {
-    const std::size_t first = s.find_first_not_of(" \t\r\n");
-    if (first == std::string::npos) return {};
-    const std::size_t last = s.find_last_not_of(" \t\r\n");
-    return s.substr(first, last - first + 1);
-}
-
-std::string ascii_lower(std::string s) {
-    for (char& c : s)
-        if (c >= 'A' && c <= 'Z') c = static_cast<char>(c - 'A' + 'a');
-    return s;
-}
 
 std::vector<std::string> split_semi(const std::string& s) {
     std::vector<std::string> out;

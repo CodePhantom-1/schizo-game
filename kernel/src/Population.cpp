@@ -24,6 +24,7 @@
 #include "sim/Population.hpp"
 
 #include "sim/Context.hpp"  // the seam: module implementation reads ctx members here
+#include "sim/Text.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -34,30 +35,16 @@
 namespace sim {
 namespace {
 
-std::string trim(const std::string& s) {
-    std::size_t b = 0, e = s.size();
-    while (b < e && std::isspace(static_cast<unsigned char>(s[b]))) ++b;
-    while (e > b && std::isspace(static_cast<unsigned char>(s[e - 1]))) --e;
-    return s.substr(b, e - b);
-}
-
-std::string ascii_lower_trim(const std::string& s) {
-    std::string t = trim(s);
-    std::transform(t.begin(), t.end(), t.begin(),
-                    [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-    return t;
-}
-
 // A resident's `role` column names a schedules.csv role only when it matches
 // one case-insensitively; a named leader's narrative title never does, so
 // this is a safe, additive probe (D-011 light residents; INVENTED matching
 // rule — exact, case-insensitive — content authors write roles that already
 // mirror schedules.csv, per the Schedule module contract's content-gap note).
 std::string matching_schedule_role(const WorldContext& ctx, const std::string& raw_role) {
-    const std::string wanted = ascii_lower_trim(raw_role);
+    const std::string wanted = normalize_key(raw_role);
     if (wanted.empty()) return {};
     for (const std::string& role : schedule_roles(ctx.db))
-        if (ascii_lower_trim(role) == wanted) return role;
+        if (normalize_key(role) == wanted) return role;
     return {};
 }
 
@@ -98,7 +85,7 @@ void wire_resident_links(PopulationState& state) {
 
     for (const Npc* n : residents) {
         if (!n->household.empty()) by_household[n->household].push_back(n->id);
-        by_city_role[{n->home_city, ascii_lower_trim(n->role)}].push_back(n->id);
+        by_city_role[{n->home_city, normalize_key(n->role)}].push_back(n->id);
         by_city[n->home_city].push_back(n->id);
     }
 
@@ -184,6 +171,7 @@ void seed_people(const WorldContext& ctx, PopulationState& state) {
         npc.home_city = row.get("city");
         npc.faction_id = row.get("faction");
         npc.role = matching_schedule_role(ctx, row.get("role"));
+        npc.shift = trim(row.get("shift"));  // schedules.csv's `shift` column, verbatim
         // household and patron_deity have no canon source at Wave 1 (people.csv
         // carries no such column); they stay empty rather than invented.
         state.npcs.push_back(std::move(npc));
@@ -215,7 +203,7 @@ std::optional<ScheduledTask> npc_task_at(const Db& db, const Calendar& cal,
                                           DayNumber day, int hour) {
     const Npc* npc = find_npc(state, npc_id);
     if (npc == nullptr || npc->role.empty()) return std::nullopt;
-    return task_at(db, cal, npc->role, day, hour);
+    return task_at(db, cal, npc->role, day, hour, npc->shift);
 }
 
 }  // namespace sim

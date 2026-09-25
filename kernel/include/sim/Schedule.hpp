@@ -25,22 +25,28 @@ struct ScheduledTask {
 std::vector<std::string> schedule_roles(const Db& db);
 
 // The rows for `role` that apply on `day`: season blank, or season equal to
-// cal.season_id(day). Sorted by hour. When a seasonal row and an all-season
-// row share the same hour, the seasonal one wins. Role matching is
-// case-insensitive and trims whitespace. OPEN-tagged rows are skipped.
+// cal.season_id(day). Sorted by hour. Role matching is case-insensitive and
+// trims whitespace. OPEN-tagged rows are skipped.
+//
+// `variant` (schedules.csv's `shift` column) narrows to one person's shift
+// within a role: a row whose own `shift` is blank is shared by everyone in
+// the role; a row whose `shift` is set only applies when it equals `variant`
+// (case-insensitive, trimmed). Passing "" (the default — a bare role query
+// with no particular person in mind) selects only the shared rows, which is
+// every row in today's canon (D-012/D-018 glue predates the shift column),
+// so existing callers see no behaviour change.
+//
+// Precedence when two applicable rows share an hour: a festival row (its
+// `festival` column equal to cal.festival_id(day), on a festival day) beats
+// a seasonal row, which beats an all-season row.
 std::vector<ScheduledTask> day_plan(const Db& db, const Calendar& cal, const std::string& role,
-                                     DayNumber day);
+                                     DayNumber day, const std::string& variant = "");
 
 // The task in force at `hour` (0..23): the day_plan row with the greatest
 // hour <= hour. Before the first row of the day, the previous day's last
-// task carries over. nullopt if the role has no rows at all in canon.
+// task carries over. nullopt if the role (narrowed by `variant` as above)
+// has no rows at all in canon.
 std::optional<ScheduledTask> task_at(const Db& db, const Calendar& cal, const std::string& role,
-                                      DayNumber day, int hour);
-
-// Festival-override hook: festival days are OPEN in canon (day content is
-// undecided), so this module makes no behavioural change for
-// cal.is_festival(day) yet. When festival schedules are authored, day_plan
-// should consult a `festival` column (or a dedicated table) the same way it
-// already consults `season`. No behaviour lives here today — documented only.
+                                      DayNumber day, int hour, const std::string& variant = "");
 
 }  // namespace sim

@@ -5,6 +5,7 @@
 #include "sim/World.hpp"
 #include "sim/Snapshot.hpp"
 #include "sim/Schedule.hpp"
+#include "sim/Population.hpp"
 
 #include <cstring>
 #include <fstream>
@@ -255,6 +256,25 @@ int sim_world_task_at(const SimWorld* world, const char* role, int hour, char* o
     if (world == nullptr || role == nullptr) return -1;
     const std::optional<ScheduledTask> t =
         task_at(world->world.db, world->world.cal, role, world->world.day, hour);
+    if (!t) return -1;
+    return write_str(out, cap, t->task);
+}
+
+int sim_world_is_festival(const SimWorld* world) {
+    if (world == nullptr) return 0;
+    return world->world.cal.is_festival(world->world.day) ? 1 : 0;
+}
+
+int sim_world_festival_name(const SimWorld* world, char* out, int cap) {
+    if (world == nullptr) return -1;
+    return write_str(out, cap, world->world.cal.festival_name(world->world.day));
+}
+
+int sim_world_npc_task_at(const SimWorld* world, const char* npc_id, int hour, char* out, int cap) {
+    if (world == nullptr || npc_id == nullptr) return -1;
+    const std::optional<ScheduledTask> t = npc_task_at(world->world.db, world->world.cal,
+                                                        world->world.population, Id(npc_id),
+                                                        world->world.day, hour);
     if (!t) return -1;
     return write_str(out, cap, t->task);
 }

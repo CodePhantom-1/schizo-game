@@ -16,6 +16,7 @@
 #include "sim/Justice.hpp"
 
 #include "sim/Context.hpp"
+#include "sim/Text.hpp"
 
 #include <algorithm>
 #include <optional>
@@ -24,26 +25,6 @@
 
 namespace sim {
 namespace {
-
-char ascii_lower(char c) {
-    return (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c;
-}
-
-std::string ascii_lower(std::string s) {
-    for (char& c : s) c = ascii_lower(c);
-    return s;
-}
-
-std::string trim(const std::string& s) {
-    const auto is_space = [](char c) {
-        return c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '\f' || c == '\v';
-    };
-    std::size_t b = 0;
-    std::size_t e = s.size();
-    while (b < e && is_space(s[b])) ++b;
-    while (e > b && is_space(s[e - 1])) --e;
-    return s.substr(b, e - b);
-}
 
 // The verdict domain every Hearing.verdict is drawn from (Justice.hpp).
 bool is_known_verdict(const std::string& v) {

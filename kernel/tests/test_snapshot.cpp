@@ -144,6 +144,7 @@ static bool test_wave2_fields_round_trip() {
     w.quests.journal["q_x"].push_back(JournalEntry{3, "met", "a line\twith tab"});
     SIM_CHECK(!w.population.npcs.empty());
     w.population.npcs.front().role = "baker";
+    w.population.npcs.front().shift = "dawn";  // K-2: per-person schedule variant
     Crime& c = report_crime(w.justice, "player", "theft", "theft", w.day, "");
     c.stage = "detained";
     c.hearing_day = 12;
@@ -157,6 +158,7 @@ static bool test_wave2_fields_round_trip() {
     SIM_CHECK_EQ(r.quests.defs.front().reward_standing, 4);
     SIM_CHECK_EQ(r.quests.journal["q_x"].front().text, std::string("a line\twith tab"));
     SIM_CHECK_EQ(r.population.npcs.front().role, std::string("baker"));
+    SIM_CHECK_EQ(r.population.npcs.front().shift, std::string("dawn"));
     SIM_CHECK_EQ(r.justice.open_crimes.back().stage, std::string("detained"));
     SIM_CHECK_EQ(r.justice.open_crimes.back().hearing_day, DayNumber{12});
     SIM_CHECK_EQ(r.justice.verdicts.back().tablet_id, std::string("verdict_tablet_crime_x"));

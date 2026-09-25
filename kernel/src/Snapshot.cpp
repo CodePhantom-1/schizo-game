@@ -173,7 +173,8 @@ std::string save_world(const WorldState& w) {
         wr.line({"POP_NPCS", s64(static_cast<std::int64_t>(w.population.npcs.size()))});
         for (const Npc& n : w.population.npcs) {
             wr.line({n.id, n.name, n.home_city, n.household, n.faction_id, n.patron_deity,
-                     s64(n.loyalty), s64(static_cast<std::int64_t>(n.memory.size())), n.role});
+                     s64(n.loyalty), s64(static_cast<std::int64_t>(n.memory.size())), n.role,
+                     n.shift});
             for (const MemoryEntry& m : n.memory)
                 wr.line({s64(m.day), m.subject, m.fact});
         }
@@ -368,7 +369,7 @@ void load_world(WorldState& out, const std::string& canon_dir, const std::string
             std::size_t n = rd.section("POP_NPCS");
             for (std::size_t i = 0; i < n; ++i) {
                 std::vector<std::string> f = rd.next();
-                if (f.size() != 9) throw std::runtime_error("snapshot: bad npc row");
+                if (f.size() != 10) throw std::runtime_error("snapshot: bad npc row");
                 Npc npc;
                 npc.id = f[0];
                 npc.name = f[1];
@@ -378,6 +379,7 @@ void load_world(WorldState& out, const std::string& canon_dir, const std::string
                 npc.patron_deity = f[5];
                 npc.loyalty = static_cast<int>(Reader::parse_i64(f[6]));
                 npc.role = f[8];
+                npc.shift = f[9];
                 std::size_t memcount = static_cast<std::size_t>(Reader::parse_u64(f[7]));
                 npc.memory.reserve(memcount);
                 for (std::size_t j = 0; j < memcount; ++j) {

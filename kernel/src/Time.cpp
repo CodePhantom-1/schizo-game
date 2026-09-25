@@ -21,6 +21,8 @@ Calendar::Calendar(const CalendarConfig& cfg) : cfg_(cfg) {
               [](const SeasonDef& a, const SeasonDef& b) {
                   return a.start_day_of_year < b.start_day_of_year;
               });
+    // is_festival() binary-searches this; callers may hand it in any order.
+    std::sort(cfg_.festival_days.begin(), cfg_.festival_days.end());
 }
 
 int Calendar::days_per_year() const { return cfg_.days_per_month * cfg_.months_per_year; }
@@ -63,7 +65,25 @@ const std::string& Calendar::month_name(const Date& d) const {
 }
 
 bool Calendar::is_festival(DayNumber day) const {
-    return std::binary_search(cfg_.festival_days.begin(), cfg_.festival_days.end(), day);
+    if (cfg_.festival_days.empty()) return false;
+    const DayNumber doy = static_cast<DayNumber>(day_of_year(day));
+    return std::binary_search(cfg_.festival_days.begin(), cfg_.festival_days.end(), doy);
+}
+
+const std::string& Calendar::festival_id(DayNumber day) const {
+    if (!is_festival(day)) return kEmptyName;
+    const int doy = day_of_year(day);
+    for (const FestivalDef& f : cfg_.festivals)
+        if (f.day_of_year == doy) return f.id;
+    return kEmptyName;
+}
+
+const std::string& Calendar::festival_name(DayNumber day) const {
+    if (!is_festival(day)) return kEmptyName;
+    const int doy = day_of_year(day);
+    for (const FestivalDef& f : cfg_.festivals)
+        if (f.day_of_year == doy) return f.name;
+    return kEmptyName;
 }
 
 }  // namespace sim

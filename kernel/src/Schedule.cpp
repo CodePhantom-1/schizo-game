@@ -1,25 +1,13 @@
 #include "sim/Schedule.hpp"
 
+#include "sim/Text.hpp"
+
 #include <algorithm>
 #include <cctype>
 #include <map>
 
 namespace sim {
 namespace {
-
-std::string trim(const std::string& s) {
-    std::size_t b = 0, e = s.size();
-    while (b < e && std::isspace(static_cast<unsigned char>(s[b]))) ++b;
-    while (e > b && std::isspace(static_cast<unsigned char>(s[e - 1]))) --e;
-    return s.substr(b, e - b);
-}
-
-std::string normalize(const std::string& s) {
-    std::string t = trim(s);
-    std::transform(t.begin(), t.end(), t.begin(),
-                    [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-    return t;
-}
 
 bool is_open(const Row& row) { return trim(row.get("tag")) == "OPEN"; }
 
@@ -31,7 +19,7 @@ std::vector<std::string> schedule_roles(const Db& db) {
         if (is_open(row)) continue;
         const std::string role = trim(row.get("role"));
         if (role.empty()) continue;
-        by_key.emplace(normalize(role), role);
+        by_key.emplace(normalize_key(role), role);
     }
     std::vector<std::string> out;
     out.reserve(by_key.size());
@@ -42,25 +30,49 @@ std::vector<std::string> schedule_roles(const Db& db) {
 
 namespace {
 
-// The role's non-OPEN rows — one table scan; task_at reuses it across days.
-std::vector<const Row*> role_rows(const Db& db, const std::string& role) {
-    const std::string wanted = normalize(role);
+// The role's non-OPEN rows matching `variant` (blank `shift` = shared by
+// everyone in the role; a set `shift` only matches that exact variant) — one
+// table scan; task_at reuses it across days.
+std::vector<const Row*> role_rows(const Db& db, const std::string& role, const std::string& variant) {
+    const std::string wanted_role = normalize_key(role);
+    const std::string wanted_variant = normalize_key(variant);
     std::vector<const Row*> out;
-    for (const Row& row : db.rows("schedules"))
-        if (!is_open(row) && normalize(row.get("role")) == wanted) out.push_back(&row);
+    for (const Row& row : db.rows("schedules")) {
+        if (is_open(row) || normalize_key(row.get("role")) != wanted_role) continue;
+        const std::string row_variant = normalize_key(row.get("shift"));
+        if (!row_variant.empty() && row_variant != wanted_variant) continue;
+        out.push_back(&row);
+    }
     return out;
 }
 
+// Priority a row wins the hour-tie-break with: festival beats season beats
+// all-season (day_plan's documented precedence).
+int row_priority(const Row& row, const std::string& season_now, const std::string& festival_now) {
+    const std::string festival = trim(row.get("festival"));
+    if (!festival.empty() && !festival_now.empty() && festival == festival_now) return 2;
+    const std::string season = trim(row.get("season"));
+    if (!season.empty() && season == season_now) return 1;
+    return 0;
+}
+
 std::vector<ScheduledTask> plan_from_rows(const std::vector<const Row*>& rows,
-                                          const std::string& season_now) {
-    std::map<int, ScheduledTask> by_hour;  // hour -> chosen row (seasonal beats all-season)
-    std::map<int, bool> seasonal_at_hour;
+                                          const std::string& season_now,
+                                          const std::string& festival_now) {
+    std::map<int, std::pair<int, ScheduledTask>> by_hour;  // hour -> (priority, chosen row)
 
     for (const Row* rp : rows) {
         const Row& row = *rp;
-        const std::string season = trim(row.get("season"));
-        const bool is_seasonal = !season.empty();
-        if (is_seasonal && season != season_now) continue;
+        const std::string festival = trim(row.get("festival"));
+        // A festival-tagged row only ever applies on its own festival's day;
+        // a seasonal row only on its own season; an all-season row (both
+        // blank) always applies.
+        if (!festival.empty()) {
+            if (festival_now.empty() || festival != festival_now) continue;
+        } else {
+            const std::string season = trim(row.get("season"));
+            if (!season.empty() && season != season_now) continue;
+        }
 
         int hour = 0;
         try {
@@ -69,40 +81,39 @@ std::vector<ScheduledTask> plan_from_rows(const std::vector<const Row*>& rows,
             continue;  // malformed hour: skip rather than crash on canon data
         }
 
+        const int priority = row_priority(row, season_now, festival_now);
         auto it = by_hour.find(hour);
-        if (it != by_hour.end() && seasonal_at_hour[hour] && !is_seasonal) {
-            continue;  // an existing seasonal row wins over an all-season one
-        }
+        if (it != by_hour.end() && it->second.first > priority) continue;  // a higher row already won
+
         ScheduledTask t;
         t.schedule_id = row.get("id");
         t.role = trim(row.get("role"));
         t.hour = hour;
         t.task = row.get("task");
-        by_hour[hour] = t;
-        seasonal_at_hour[hour] = is_seasonal;
+        by_hour[hour] = {priority, t};
     }
 
     std::vector<ScheduledTask> out;
     out.reserve(by_hour.size());
-    for (auto& [hour, task] : by_hour) out.push_back(task);
+    for (auto& [hour, entry] : by_hour) out.push_back(entry.second);
     return out;
 }
 
 }  // namespace
 
 std::vector<ScheduledTask> day_plan(const Db& db, const Calendar& cal, const std::string& role,
-                                     DayNumber day) {
-    return plan_from_rows(role_rows(db, role), cal.season_id(day));
+                                     DayNumber day, const std::string& variant) {
+    return plan_from_rows(role_rows(db, role, variant), cal.season_id(day), cal.festival_id(day));
 }
 
 std::optional<ScheduledTask> task_at(const Db& db, const Calendar& cal, const std::string& role,
-                                      DayNumber day, int hour) {
-    const std::vector<const Row*> rows = role_rows(db, role);
+                                      DayNumber day, int hour, const std::string& variant) {
+    const std::vector<const Row*> rows = role_rows(db, role, variant);
     if (rows.empty()) return std::nullopt;  // the only nullopt: a role with no rows
 
     auto last_at_or_before = [&](DayNumber d, int h) -> std::optional<ScheduledTask> {
         std::optional<ScheduledTask> best;
-        for (const ScheduledTask& t : plan_from_rows(rows, cal.season_id(d)))
+        for (const ScheduledTask& t : plan_from_rows(rows, cal.season_id(d), cal.festival_id(d)))
             if (t.hour <= h) best = t;  // plan is hour-ascending
         return best;
     };

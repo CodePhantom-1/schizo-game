@@ -130,6 +130,21 @@ int sim_world_craft(SimWorld* world, const char* actor, const char* recipe,
 // -1 on a null argument or no schedule rows at all for that role.
 int sim_world_task_at(const SimWorld* world, const char* role, int hour, char* out, int cap);
 
+// True (1) when the current day is a festival day (repeats every year);
+// false (0) otherwise, or on a null world.
+int sim_world_is_festival(const SimWorld* world);
+
+// The current festival's name ("" when today isn't a festival day). Writes
+// at most cap-1 bytes plus NUL; returns the untruncated length, or -1 on a
+// null argument.
+int sim_world_festival_name(const SimWorld* world, char* out, int cap);
+
+// The task `npc_id` is doing at `hour` (0..23) on the current day, from its
+// own role and shift (Population.hpp npc_task_at). Writes at most cap-1
+// bytes plus NUL; returns the untruncated length, or -1 on a null argument,
+// an unknown npc, or an npc with no schedule-matching role.
+int sim_world_npc_task_at(const SimWorld* world, const char* npc_id, int hour, char* out, int cap);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

@@ -43,6 +43,11 @@ struct Npc {
                                           // ("founder of the Empire; …") never matches a
                                           // schedule role and so stays empty (D-011 light
                                           // residents; additive, keeps named NPCs unchanged)
+    std::string shift;                   // people.csv's `shift` column, verbatim (e.g.
+                                          // "dawn", "dusk", "deep"); empty means this npc
+                                          // runs the role's shared (shift-blank) rows only
+                                          // — two people of one role can now differ
+                                          // (Schedule.hpp's `variant` parameter)
     std::vector<MemoryEntry> memory;     // ordered by day
 };
 

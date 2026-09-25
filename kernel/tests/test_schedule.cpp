@@ -20,9 +20,16 @@ using namespace sim;
 namespace {
 
 // The approved seasons (D-015): rains(1), sowing(91), harvest(181), vintage(271).
+// The K-2 festivals (db/canon/festivals.csv): new_waters(1), first_cutting_procession
+// (181), ishtars_torch(271), feeding_of_the_dead(360).
 Calendar real_calendar() {
     CalendarConfig cfg;
     cfg.seasons = {{"rains", 1}, {"sowing", 91}, {"harvest", 181}, {"vintage", 271}};
+    cfg.festivals = {{"new_waters", 1, "New Waters"},
+                      {"first_cutting_procession", 181, "First-Cutting Procession"},
+                      {"ishtars_torch", 271, "Ishtar's Torch"},
+                      {"feeding_of_the_dead", 360, "Feeding of the Dead"}};
+    cfg.festival_days = {1, 181, 271, 360};
     return Calendar(cfg);
 }
 
@@ -189,9 +196,22 @@ static bool test_every_real_canon_row_reachable() {
     const Db db = Db::load("../db/canon");
     const Calendar cal = real_calendar();
     std::set<Id> reachable;
-    for (DayNumber day : {DayNumber{1}, DayNumber{100}, DayNumber{200}, DayNumber{300}}) {
+    // Every season boundary, every real festival day (1/181/271/360), and
+    // every shift variant used in schedules.csv/people.csv (K-2: two people
+    // of a role can now differ) — a variant-tagged row is invisible to a
+    // bare "" query, by design (Schedule.hpp), so it must be probed for
+    // explicitly to be counted reachable.
+    const std::vector<DayNumber> days = {DayNumber{1}, DayNumber{100}, DayNumber{200},
+                                          DayNumber{300}, DayNumber{181}, DayNumber{271},
+                                          DayNumber{360}};
+    const std::vector<std::string> variants = {"",       "dawn",   "dusk",
+                                                "night_patrol", "deep", "rains_shift"};
+    for (DayNumber day : days) {
         for (const std::string& role : schedule_roles(db)) {
-            for (const ScheduledTask& t : day_plan(db, cal, role, day)) reachable.insert(t.schedule_id);
+            for (const std::string& variant : variants) {
+                for (const ScheduledTask& t : day_plan(db, cal, role, day, variant))
+                    reachable.insert(t.schedule_id);
+            }
         }
     }
     for (const Row& row : db.rows("schedules")) {
