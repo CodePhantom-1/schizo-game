@@ -6,6 +6,7 @@
 #include "sim/CApiFaction.h"
 
 #include "sim/Faction.hpp"
+#include "sim/Wild.hpp"
 #include "sim/WildActions.hpp"
 
 #include <cstring>
@@ -46,6 +47,27 @@ std::string join(const std::vector<Id>& v, char sep) {
     for (const Id& x : v) {
         if (!out.empty()) out += sep;
         out += x;
+    }
+    return out;
+}
+
+// Terms are free prose with machine tokens in front ("no_raids; the sage of
+// the swamps …"). Only the tokens survive into the record — prose holds
+// semicolons, and the engine splits this record on them.
+std::string term_tokens(const std::string& terms) {
+    std::string out;
+    std::size_t pos = 0;
+    while (pos <= terms.size()) {
+        const std::size_t sep = terms.find(';', pos);
+        const std::string tok = terms.substr(pos, sep == std::string::npos ? std::string::npos : sep - pos);
+        const std::size_t b = tok.find_first_not_of(" \t");
+        const std::size_t e = tok.find_last_not_of(" \t");
+        if (b != std::string::npos && tok.find(' ', b) > e && tok.find('\t', b) > e) {
+            if (!out.empty()) out += '|';
+            out += tok.substr(b, e - b + 1);
+        }
+        if (sep == std::string::npos) break;
+        pos = sep + 1;
     }
     return out;
 }
@@ -101,7 +123,8 @@ int sim_world_treaty(const SimWorld* world, int index, char* out, int cap) {
             index >= static_cast<int>(world->world.wild.treaty_defs.size()))
             return -1;
         const TreatyDef& t = world->world.wild.treaty_defs[static_cast<std::size_t>(index)];
-        return write_req(out, cap, t.id + ";" + t.name + ";" + join(t.parties, '|') + ";" + t.terms);
+        return write_req(out, cap, t.id + ";" + t.name + ";" + join(t.parties, '|') + ";" +
+                                       term_tokens(t.terms));
     });
 }
 
@@ -115,6 +138,7 @@ int sim_world_treaty_live_between(const SimWorld* world, const char* a, const ch
 int sim_world_band_politics(const SimWorld* world, const char* group, char* out, int cap) {
     return guard([&] {
         if (world == nullptr || group == nullptr) return -1;
+        if (find_group_def(world->world.wild, Id(group)) == nullptr) return -1;  // unknown group
         const BandPolitics p = band_politics(world->world, Id(group));
         return write_req(out, cap, p.faction + ";" + std::to_string(p.net_pts) + ";" +
                                        (p.blocked ? "1" : "0") + ";" + p.note);

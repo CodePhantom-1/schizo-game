@@ -127,3 +127,9 @@ suspension or oath-swearing verbs (the Faction module's to build); no
 Empire-signed treaties (round-2 §9); no change to the partisans'
 kind-gated target choice (their charter is identity, not politics); no
 hardcoded player-faction id (none exists in canon).
+
+## Review follow-ups (2026-09-25, wave-5 bug review)
+- `lead_raid` now refuses treaty-blocked targets ("a sworn treaty forbids this raid") — the sworn obligation binds the player-led band too, not only the autonomous assessment loop.
+- Unaligned bands carry grudges again: the grudge rule fires before the faction check (the W4-C caravan-grudge weight's original reading, restored on review; dormant in today's canon either way).
+- `sim_world_band_politics` returns -1 for an unknown group id (an unaligned band still reads ";0;0;" — the two are distinguishable now, as the header always promised).
+- `sim_world_treaty`'s terms field carries only the machine tokens ('|'-joined, e.g. `no_raids`); the prose terms stay in treaties.csv.

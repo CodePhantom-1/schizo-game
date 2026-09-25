@@ -33,7 +33,9 @@ int sim_world_oath_breaker_curse(const SimWorld* world);
 // standing forced 0, rank 0), 0 when not; -1 on null.
 int sim_world_is_outlawed(const SimWorld* world, const char* faction);
 
-// Treaties (treaties.csv): "id;name;parties;terms" (parties '|'-joined).
+// Treaties (treaties.csv): "id;name;parties;terms" (parties '|'-joined; terms
+// carries only the machine tokens, '|'-joined — e.g. "no_raids" — because the
+// prose around them holds semicolons).
 int sim_world_treaty_count(const SimWorld* world);
 int sim_world_treaty(const SimWorld* world, int index, char* out, int cap);
 // 1 when a live sworn peace ("no_raids" terms, neither party outlawed) binds

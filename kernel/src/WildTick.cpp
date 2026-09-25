@@ -128,7 +128,10 @@ namespace wild {
 RaidPolitics raid_politics(const WorldState& w, const GroupDef& def, const Id& holder) {
     // Every rule is ledgered in docs/proposals/invented-ledger-faction-raids.md.
     RaidPolitics p;
-    if (def.faction.empty() || holder.empty() || def.faction == holder) return p;
+    // Holder-keyed from the start: an unaligned band still carries its
+    // grudges (the W4-C caravan-grudge weight, restored on review). An empty
+    // faction no-ops the outlaw/war/treaty rules below on its own.
+    if (holder.empty() || def.faction == holder) return p;
     auto note = [&p](const char* why) {
         if (!p.note.empty()) p.note += ',';
         p.note += why;

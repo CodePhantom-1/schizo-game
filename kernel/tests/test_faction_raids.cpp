@@ -183,8 +183,27 @@ static bool test_assess_raid_skips_blocked_targets() {
     const RaidAssessment a = assess_raid(w, g.id, w.day);
     SIM_CHECK(!a.blocked);
     if (!a.target.empty()) SIM_CHECK(a.target == "caravans");
-    // ...and a full city charter (a designer adding fields) still cannot
-    // break the pact: the politics layer holds even then.
+    // A full city charter cannot break the pact either: a synthetic
+    // treaty-bound band that prefers fields finds every target blocked, so
+    // the assessment loop itself must come back empty-handed.
+    GroupDef d;
+    d.id = "pact_watch";
+    d.faction = "neo_sumerian_rebellion";  // bound by southern_cause_pact
+    d.territory = {"fields_beyond_the_gate_place"};
+    d.prefers["fields"] = 50;
+    w.wild.group_defs.push_back(d);
+    Group& pw = w.wild.groups["pact_watch"];
+    pw.id = "pact_watch";
+    pw.active = true;
+    pw.strength = 6;
+    pw.supplies = 60;
+    pw.morale = 80;
+    pw.formed_day = w.day;
+    const RaidAssessment single = wild::assess_target(w, pw, d, "fields", w.day);
+    SIM_CHECK(!single.place.empty());  // the target is real and within reach…
+    SIM_CHECK(single.blocked);         // …and the pact forbids it…
+    const RaidAssessment skipped = assess_raid(w, "pact_watch", w.day);
+    SIM_CHECK(skipped.target.empty());  // …so the loop skips it entirely
     return true;
 }
 
@@ -250,6 +269,10 @@ static bool test_capi_faction_reads() {
     SIM_CHECK(sim_world_treaty(w, 0, buf, sizeof buf) > 0);
     SIM_CHECK(std::strstr(buf, "southern_cause_pact") != nullptr);
     SIM_CHECK(std::strstr(buf, "neo_sumerian_rebellion|southern_city_states_alliance") != nullptr);
+    // The record's terms field carries machine tokens only — the prose around
+    // them holds semicolons and would break a ';'-split consumer.
+    SIM_CHECK(std::strcmp(buf, "southern_cause_pact;The Pact of the Southern Cause;"
+                                "neo_sumerian_rebellion|southern_city_states_alliance;no_raids") == 0);
     SIM_CHECK_EQ(sim_world_treaty(w, 99, buf, sizeof buf), -1);
     SIM_CHECK_EQ(sim_world_treaty_live_between(w, "neo_sumerian_rebellion",
                                                "southern_city_states_alliance"), 1);
@@ -266,6 +289,7 @@ static bool test_capi_faction_reads() {
     SIM_CHECK(sim_world_band_politics(w, "cavern_jackals", buf, sizeof buf) >= 0);
     SIM_CHECK(std::strcmp(buf, ";0;0;") == 0);  // unaligned: empty everything
     SIM_CHECK_EQ(sim_world_band_politics(w, nullptr, buf, sizeof buf), -1);
+    SIM_CHECK_EQ(sim_world_band_politics(w, "no_such_band", buf, sizeof buf), -1);
 
     sim_world_destroy(w);
     SIM_CHECK_EQ(sim_world_oath_count(nullptr), -1);

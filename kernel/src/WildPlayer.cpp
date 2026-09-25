@@ -390,6 +390,7 @@ WildActionResult lead_raid(WorldState& w, const std::string& target, int hour) {
     const GroupDef& def = *def_or_band(w, *g, scratch);
     RaidAssessment a = assess_target(w, *g, def, target, w.day);
     if (a.place.empty()) return res(-4, "nothing of that kind within reach");
+    if (a.blocked) return res(-4, "a sworn treaty forbids this raid");
     Rng r = action_stream(w, "raid:" + target);
     const RaidRecord rec = resolve_raid(w, *g, def, a, r, true, hour);
     ++w.wild.infamy;
