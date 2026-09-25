@@ -7,7 +7,7 @@ Where everything comes from:
 - **Content — 100% the notes** ([docs/world-bible.md](docs/world-bible.md), archived verbatim at [db/sources/notes.md](db/sources/notes.md)): the world, the story, the factions, the cities, the pantheon, the magick, the endings, the tone. Nothing is invented and **nothing is imported from any other project — including no storyline**.
 - **Mechanics — imported systems** ([docs/mechanics.md](docs/mechanics.md)): the game's systems are carried unchanged from the earlier Age of Bronze blueprint ([../docs/](../docs/)) by the designer's instruction. **Systems only** — no story, setting, tone or content crosses over with them.
 
-> **Status: Phase 2 complete; content storm running.** Kernel done (12/12 suites, ten-year determinism proven); UE5 bring-up deferred pending engine install (D-012c — designer action item); the seven-table content storm is running on GLM-5.3-Flash. No engine project exists yet.
+> **Status: Phase 3 begun — the game builds inside Unreal.** The UE 5.8.3 editor was compiled from source, and the SchizoGame project (SimRuntime plugin + world kernel) builds through UnrealBuildTool. Kernel: 16/16 suites green; all four acts have quest/dialogue data. Next: subsystem verification in the editor, then the grey-box street of the City of the Moon. Kernel done (12/12 suites, ten-year determinism proven); UE5 bring-up deferred pending engine install (D-012c — designer action item); the seven-table content storm is running on GLM-5.3-Flash. No engine project exists yet.
 
 ## The blueprint set
 
