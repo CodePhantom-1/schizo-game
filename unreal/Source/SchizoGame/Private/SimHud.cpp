@@ -70,14 +70,39 @@ void ASimHud::DrawHUD()
 		{
 			const int32 H = FMath::Clamp(FMath::FloorToInt(Hour), 0, 23);
 			const int32 M = FMath::Clamp(FMath::FloorToInt((Hour - H) * 60.f), 0, 59);
-			const FString Clock = FString::Printf(TEXT("Day %lld  -  %s  -  %02d:%02d"), Day,
-				*USimWorldSubsystem::GetSimSeasonFor(GetWorld()), H, M);
-			float W = 0.f, Hh = 0.f;
-			Canvas->StrLen(GEngine->GetMediumFont(), Clock, W, Hh);
-			FCanvasTextItem Item(FVector2D(Canvas->ClipX - W - 40.f, 36.f), FText::FromString(Clock),
-				GEngine->GetMediumFont(), FLinearColor(0.95f, 0.9f, 0.8f));
-			Item.EnableShadow(FLinearColor(0.f, 0.f, 0.f, 0.8f), FVector2D(1.f, 1.f));
-			Canvas->DrawItem(Item);
+			int32 Year = 1, Month = 1, Dom = 1;
+			USimWorldSubsystem::GetSimDateFor(GetWorld(), Year, Month, Dom);
+			const FString MonthName = USimWorldSubsystem::GetSimMonthNameFor(GetWorld());
+			const FText Line1 = FText::Format(NSLOCTEXT("SimHud", "ClockLine", "{0} {1}, year {2}  -  {3}  -  {4}"),
+				FText::AsNumber(Dom),
+				MonthName.IsEmpty() ? FText::AsNumber(Month) : FText::FromString(MonthName),
+				FText::AsNumber(Year),
+				FText::FromString(USimWorldSubsystem::GetSimSeasonFor(GetWorld())),
+				FText::FromString(FString::Printf(TEXT("%02d:%02d"), H, M)));
+
+			const FString Phase = USimWorldSubsystem::GetSimMoonPhaseFor(GetWorld());
+			const FString Omen = USimWorldSubsystem::GetSimDayOmenFor(GetWorld());
+			const FString Observance = USimWorldSubsystem::GetSimDayObservanceFor(GetWorld());
+			FText MoonText = NSLOCTEXT("SimHud", "MoonWaning", "Waning moon");
+			if (Phase == TEXT("new")) MoonText = NSLOCTEXT("SimHud", "MoonNew", "New crescent");
+			else if (Phase == TEXT("waxing")) MoonText = NSLOCTEXT("SimHud", "MoonWaxing", "Waxing moon");
+			else if (Phase == TEXT("full")) MoonText = NSLOCTEXT("SimHud", "MoonFull", "Full moon");
+			FText Line2 = MoonText;
+			if (Omen == TEXT("favourable")) Line2 = FText::Format(NSLOCTEXT("SimHud", "Favourable", "{0}  -  a favourable day"), Line2);
+			else if (Omen == TEXT("unfavourable")) Line2 = FText::Format(NSLOCTEXT("SimHud", "Unfavourable", "{0}  -  an unfavourable day"), Line2);
+			if (!Observance.IsEmpty()) Line2 = FText::Format(NSLOCTEXT("SimHud", "Observance", "{0}  -  {1}"), Line2, FText::FromString(Observance));
+
+			float LineY = 36.f;
+			for (const FText& Line : {Line1, Line2})
+			{
+				float W = 0.f, Hh = 0.f;
+				Canvas->StrLen(GEngine->GetMediumFont(), Line.ToString(), W, Hh);
+				FCanvasTextItem Item(FVector2D(Canvas->ClipX - W - 40.f, LineY), Line,
+					GEngine->GetMediumFont(), FLinearColor(0.95f, 0.9f, 0.8f));
+				Item.EnableShadow(FLinearColor(0.f, 0.f, 0.f, 0.8f), FVector2D(1.f, 1.f));
+				Canvas->DrawItem(Item);
+				LineY += Hh + 4.f;
+			}
 		}
 	}
 

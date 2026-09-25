@@ -140,6 +140,31 @@ public:
 	/** GetSimHandle() for the caller's own world. Same rules: never destroy, never cache. */
 	static struct SimWorld* GetSimHandleFor(const UObject* WorldContextObject);
 
+	// --- the calendar (A14, D-024 §7) ---------------------------------------
+	/** Today's date. False (outputs untouched) before the world exists. */
+	UFUNCTION(BlueprintPure, Category = "Sim|Calendar", meta = (WorldContext = "WorldContextObject"))
+	static bool GetSimDateFor(const UObject* WorldContextObject, int32& Year, int32& Month, int32& DayOfMonth);
+
+	/** Month name (months.csv); empty before the world exists or when months are unnamed. */
+	UFUNCTION(BlueprintPure, Category = "Sim|Calendar", meta = (WorldContext = "WorldContextObject"))
+	static FString GetSimMonthNameFor(const UObject* WorldContextObject);
+
+	/** "new" | "waxing" | "full" | "waning"; empty before the world exists. */
+	UFUNCTION(BlueprintPure, Category = "Sim|Calendar", meta = (WorldContext = "WorldContextObject"))
+	static FString GetSimMoonPhaseFor(const UObject* WorldContextObject);
+
+	/** 0 (new) .. 100 (full); -1 before the world exists. */
+	UFUNCTION(BlueprintPure, Category = "Sim|Calendar", meta = (WorldContext = "WorldContextObject"))
+	static int32 GetSimMoonIlluminationFor(const UObject* WorldContextObject);
+
+	/** "favourable" | "unfavourable" | "" (calendar_days.csv). */
+	UFUNCTION(BlueprintPure, Category = "Sim|Calendar", meta = (WorldContext = "WorldContextObject"))
+	static FString GetSimDayOmenFor(const UObject* WorldContextObject);
+
+	/** Today's named day of the month (e.g. the eššešu of Nanna), or empty. */
+	UFUNCTION(BlueprintPure, Category = "Sim|Calendar", meta = (WorldContext = "WorldContextObject"))
+	static FString GetSimDayObservanceFor(const UObject* WorldContextObject);
+
 private:
 	float SecondsPerDay() const;
 };

@@ -199,7 +199,15 @@ void ASimDayNight::ApplyHour(float Hour)
 {
 	const float SunPhase = (Hour - 6.f) / 12.f * PI;
 	const FVector S = BodyDir(SunPhase, kSunTiltDeg);
-	const FVector M = BodyDir(SunPhase + PI + 0.3f, kMoonTiltDeg);
+	// The moon's place in the sky follows its phase (A14): with the sun at the
+	// new crescent (day 1), opposite it at full (day 15). Illumination scales
+	// its light; a dark-moon night stays dark (real darkness, city-life §8).
+	int32 Year = 1, Month = 1, Dom = 15;
+	USimWorldSubsystem::GetSimDateFor(this, Year, Month, Dom);
+	const float MoonOffset = 2.f * PI * static_cast<float>(Dom - 1) / 28.f;
+	const int32 Illum = USimWorldSubsystem::GetSimMoonIlluminationFor(this);
+	const float MoonLit = Illum < 0 ? 1.f : FMath::Max(0.05f, Illum / 100.f);
+	const FVector M = BodyDir(SunPhase + MoonOffset, kMoonTiltDeg);
 
 	const float Sz = static_cast<float>(S.Z), Mz = static_cast<float>(M.Z);
 	const float SunUp = FMath::SmoothStep(-0.06f, 0.1f, Sz);
@@ -209,7 +217,7 @@ void ASimDayNight::ApplyHour(float Hour)
 	Sun->SetIntensity(kSunLux * SunUp);
 	Sun->SetCastShadows(SunUp > 0.01f);
 	Moon->SetWorldRotation((-M).Rotation());
-	Moon->SetIntensity(kMoonLux * MoonUp);
+	Moon->SetIntensity(kMoonLux * MoonUp * MoonLit);
 	Moon->SetCastShadows(MoonUp > 0.2f);
 
 	// Haze: warm dust by day, a golden glow at the horizon hours, deep blue by night.

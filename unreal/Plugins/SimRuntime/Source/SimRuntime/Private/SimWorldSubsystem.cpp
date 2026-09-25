@@ -52,6 +52,17 @@ namespace
 		const USimGameInstanceSubsystem* SimOwner = FindSimOwner(World);
 		return SimOwner ? SimOwner->GetHandle() : nullptr;
 	}
+
+	/** Reads one C API string writer into an FString ("" when the world is missing). */
+	FString ReadSimString(const SimWorld* Handle, int (*Fn)(const SimWorld*, char*, int))
+	{
+		if (Handle == nullptr)
+		{
+			return FString();
+		}
+		char Buf[256] = {};
+		return Fn(Handle, Buf, sizeof(Buf)) >= 0 ? FString(UTF8_TO_TCHAR(Buf)) : FString();
+	}
 }
 
 void USimWorldSubsystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -286,4 +297,44 @@ void USimWorldSubsystem::SkipSimHoursFor(const UObject* WorldContextObject, floa
 	UE_LOG(LogSimRuntime, Log, TEXT("Skipped %.2f sim hours — day %lld, hour %.2f."),
 		Hours, sim_world_day(SimOwner->GetHandle()),
 		24.0 * SimOwner->GetSecondsSinceLastDay() / DaySeconds);
+}
+
+// --- the calendar (A14) -------------------------------------------------------
+
+bool USimWorldSubsystem::GetSimDateFor(const UObject* WorldContextObject, int32& Year, int32& Month, int32& DayOfMonth)
+{
+	int Y = 0, M = 0, D = 0;
+	if (sim_world_date(HandleIn(WorldOf(WorldContextObject)), &Y, &M, &D) != 0)
+	{
+		return false;
+	}
+	Year = Y;
+	Month = M;
+	DayOfMonth = D;
+	return true;
+}
+
+FString USimWorldSubsystem::GetSimMonthNameFor(const UObject* WorldContextObject)
+{
+	return ReadSimString(HandleIn(WorldOf(WorldContextObject)), &sim_world_month_name);
+}
+
+FString USimWorldSubsystem::GetSimMoonPhaseFor(const UObject* WorldContextObject)
+{
+	return ReadSimString(HandleIn(WorldOf(WorldContextObject)), &sim_world_moon_phase);
+}
+
+int32 USimWorldSubsystem::GetSimMoonIlluminationFor(const UObject* WorldContextObject)
+{
+	return sim_world_moon_illumination(HandleIn(WorldOf(WorldContextObject)));
+}
+
+FString USimWorldSubsystem::GetSimDayOmenFor(const UObject* WorldContextObject)
+{
+	return ReadSimString(HandleIn(WorldOf(WorldContextObject)), &sim_world_day_omen);
+}
+
+FString USimWorldSubsystem::GetSimDayObservanceFor(const UObject* WorldContextObject)
+{
+	return ReadSimString(HandleIn(WorldOf(WorldContextObject)), &sim_world_day_observance);
 }
