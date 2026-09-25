@@ -94,6 +94,8 @@ kernel/
 
 No Unreal install exists on this machine; the install needs the designer's Epic/GitHub access (action item). The content storms (§8's pattern) are pulled forward while the engine is out — they are engine-independent and everything downstream consumes them.
 
+**BRING-UP VERIFIED (2026-09-25):** the built editor ran the project headless (-game -nullrhi): SchizoGame module up, SimRuntime loaded, and the kernel logged *"Sim world created: day 1"* from the staged canon. Two observations carried as bring-up TODOs: (a) the subsystem initialized twice (two worlds — needs a per-world guard or an explicit single-world policy); (b) the first sim day ticks at 45 real minutes (parent architecture default), so day-tick verification needs a shortened interval or a debug advance command.
+
 **When the engine lands, this phase resumes:** `unreal/Plugins/SimRuntime/` binds the kernel to UE (daily tick on the game clock, DataTables import from `db/canon/`) — serial, coordinator — then parallel build agents: `Player/` (first-person; the interaction verb set: touch, sit, eat, drink, carry, open, knock, pray, work) · `NPC/` (StateTree behaviour, Smart Object tasks, Mass crowds — L0/L1/L2) · `UI/` (diegetic: working scales, the drawn map, the codex) · `World/` (World Partition, PCG) · `Audio/`. **DoD:** walk a grey-box street at noon and midnight; doors open; a scheduled NPC does a full day's tasks; silver weighed on real scales; one readable tablet; day/night; save/load through the kernel snapshot.
 
 ## 7. Phase 4 — the vertical slice: "one street" → gate
