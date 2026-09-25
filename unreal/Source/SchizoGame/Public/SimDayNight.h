@@ -42,6 +42,14 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Sim")
 	static bool IsSimNightHour(float Hour);
 
+	/**
+	 * The moon's angle ahead of the sun, radians 0..2pi, for a day of the
+	 * kernel's lunar month (1..DaysPerMonth) and hour: 0 at the new crescent
+	 * (day 1, 00:00), pi at full (the kernel's middle day), back to 2pi at the
+	 * month's end. Continuous through every midnight (no nightly jump).
+	 */
+	static float MoonOrbitAngle(int32 DayOfMonth, float Hour, int32 DaysPerMonth = 30);
+
 protected:
 	virtual void BeginPlay() override;
 

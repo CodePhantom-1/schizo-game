@@ -19,6 +19,8 @@ jobs:
         run: python3 tools/coverage_check.py
       - name: staged canon matches db/canon
         run: python3 tools/stage_canon_for_ue.py --check
+      - name: ue_test.sh verdict (crafted logs)
+        run: tools/tests/test_ue_test.sh
       - name: build kernel
         run: cmake -S kernel -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j
       - name: kernel tests

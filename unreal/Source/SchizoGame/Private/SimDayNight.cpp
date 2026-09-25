@@ -195,6 +195,16 @@ void ASimDayNight::FindOrSpawnSky()
 	Grade->RegisterComponent();
 }
 
+float ASimDayNight::MoonOrbitAngle(int32 DayOfMonth, float Hour, int32 DaysPerMonth)
+{
+	// Continuous days since the new crescent; the kernel is full on its
+	// middle day, so waxing spans [0, Full] and waning [Full, DaysPerMonth].
+	const float Full = static_cast<float>(DaysPerMonth / 2 - 1);
+	const float D = FMath::Clamp(static_cast<float>(DayOfMonth - 1) + FMath::Clamp(Hour, 0.f, 24.f) / 24.f,
+		0.f, static_cast<float>(DaysPerMonth));
+	return D <= Full ? PI * D / Full : PI + PI * (D - Full) / (static_cast<float>(DaysPerMonth) - Full);
+}
+
 void ASimDayNight::ApplyHour(float Hour)
 {
 	const float SunPhase = (Hour - 6.f) / 12.f * PI;
@@ -204,7 +214,7 @@ void ASimDayNight::ApplyHour(float Hour)
 	// its light; a dark-moon night stays dark (real darkness, city-life §8).
 	int32 Year = 1, Month = 1, Dom = 15;
 	USimWorldSubsystem::GetSimDateFor(this, Year, Month, Dom);
-	const float MoonOffset = 2.f * PI * static_cast<float>(Dom - 1) / 28.f;
+	const float MoonOffset = MoonOrbitAngle(Dom, Hour);
 	const int32 Illum = USimWorldSubsystem::GetSimMoonIlluminationFor(this);
 	const float MoonLit = Illum < 0 ? 1.f : FMath::Max(0.05f, Illum / 100.f);
 	const FVector M = BodyDir(SunPhase + MoonOffset, kMoonTiltDeg);
