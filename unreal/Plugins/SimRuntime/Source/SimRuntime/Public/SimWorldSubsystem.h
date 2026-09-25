@@ -57,6 +57,13 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "Sim")
 	float SimDaysPerRealMinute = 45.0f;
 
+	/**
+	 * The live kernel world of the current play world, for game code that
+	 * calls the C API (sim/CApi.h) directly — needs, inventory, crafting,
+	 * schedules, save/load. nullptr before the world exists. Never destroy it.
+	 */
+	static struct SimWorld* GetSimHandle();
+
 	/** Debug/act-scripting: advance the world N days immediately. */
 	UFUNCTION(BlueprintCallable, Category = "Sim")
 	static void AdvanceSimDays(int32 Days);

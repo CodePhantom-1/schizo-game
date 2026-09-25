@@ -113,6 +113,12 @@ void USimWorldSubsystem::AdvanceSimDays(int32 Days)
 	}
 }
 
+SimWorld* USimWorldSubsystem::GetSimHandle()
+{
+	USimWorldSubsystem* Sim = GetSim(GEngine ? GEngine->GetCurrentPlayWorld() : nullptr);
+	return Sim ? Sim->SimHandle : nullptr;
+}
+
 int64 USimWorldSubsystem::GetSimDay()
 {
 	const USimWorldSubsystem* Sim = GetSim(GEngine ? GEngine->GetCurrentPlayWorld() : nullptr);
