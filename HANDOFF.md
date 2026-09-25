@@ -82,3 +82,7 @@ Both lost pieces rebuilt and merged; 40/40 kernel tests. Divine wrath (`sim/Divi
 - The street is dressed: 10 code-built props placed by place kind, a gradient sky dome (unlit, no GPU capture), warm post-process (tools/art/props_gen.py + ue_import_props.py; sim.PropsDressing 0 hides).
 - Verification: kernel probed end-to-end like a player (69/70 beats; the one bug — player exile voiding faction treaties — fixed, split books in Faction.hpp, 40/40); UE code audited (gate now passable, dead PSO cvar fixed, window/roof collision restored).
 - The iGPU's FIRST launch after any content change compiles pipelines for ~10-15 min (frames stall, window may sit black) — it is working, not hung; subsequent launches are fast. The 5700 XT remains gated on the kernel reboot.
+
+## Linux check of Tommy's b5a0e5e (2026-09-25)
+- Builds on Linux / UE 5.8.3; `-game -nullrhi` boots to day 1 (the city: 491 houses, terrain, walls, ziggurat, lighthouse); the iGPU windowed launch renders day and night with no GPU reset.
+- Fixed on the way: `tools/build_kernel_for_ue.sh` now finds libc++ inside the UE 5.8 clang SDK (it moved out of ThirdParty/Unix). `SimDayNight`: forward-shading priorities clamp at 0 in the engine, so the fill's -1 tied with the moon at night (the orange "multiple directional lights" warning) — now sun 2 / moon 1 / fill 0; and the night exposure floor rises after dusk (`kNightExposureFloor`), because histogram auto-exposure lifted moonlit nights to look like noon.

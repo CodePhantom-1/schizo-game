@@ -22,6 +22,8 @@ namespace
 	constexpr float kMoonLux = 0.4f;
 	constexpr float kSunTiltDeg = 62.f;
 	constexpr float kMoonTiltDeg = 55.f;
+	// EV floor at night: higher = darker nights (the eye cannot adapt below it).
+	constexpr float kNightExposureFloor = 2.0f;
 
 	/** Unit vector toward a body on the tilted day circle; Phase 0 = rising in the east. */
 	FVector BodyDir(float Phase, float TiltDeg)
@@ -81,7 +83,7 @@ void ASimDayNight::FindOrSpawnSky()
 	Sun = Make(NewObject<UDirectionalLightComponent>(this, TEXT("Sun")));
 	Sun->SetAtmosphereSunLight(true);
 	Sun->SetAtmosphereSunLightIndex(0);
-	Sun->SetForwardShadingPriority(1);
+	Sun->SetForwardShadingPriority(2);  // priorities clamp at 0: sun 2 > moon 1 > fill 0, never a tie
 	Sun->SetIntensity(kSunLux);
 	Sun->SetLightSourceAngle(0.9f);
 	Sun->DynamicShadowDistanceMovableLight = 30000.f;
@@ -93,7 +95,7 @@ void ASimDayNight::FindOrSpawnSky()
 	Moon = Make(NewObject<UDirectionalLightComponent>(this, TEXT("Moon")));
 	Moon->SetAtmosphereSunLight(true);
 	Moon->SetAtmosphereSunLightIndex(1);
-	Moon->SetForwardShadingPriority(0);
+	Moon->SetForwardShadingPriority(1);
 	Moon->SetIntensity(kMoonLux);
 	Moon->SetLightColor(FLinearColor(0.62f, 0.74f, 1.f));
 	Moon->SetLightSourceAngle(2.2f);
@@ -106,7 +108,7 @@ void ASimDayNight::FindOrSpawnSky()
 	// The shadowless fill from overhead stands in for sky bounce.
 	SkyFill = Make(NewObject<UDirectionalLightComponent>(this, TEXT("SkyFill")));
 	SkyFill->SetCastShadows(false);
-	SkyFill->SetForwardShadingPriority(-1);
+	SkyFill->SetForwardShadingPriority(0);
 	SkyFill->SetIntensity(1.6f);
 	SkyFill->RegisterComponent();
 	SkyFill->SetWorldRotation(FRotator(-65.f, 35.f, 0.f));
@@ -224,6 +226,13 @@ void ASimDayNight::ApplyHour(float Hour)
 	if (SkyFill != nullptr)
 	{
 		SkyFill->SetIntensity(FMath::Lerp(0.08f, 1.6f, Day));
+	}
+	// Real darkness (city-life §8): by night the eye may not adapt all the way
+	// up — the exposure floor rises so a moonlit street reads as night, not
+	// as a dim noon. By day Tommy's range stands (-0.6 .. 3).
+	if (Grade != nullptr)
+	{
+		Grade->Settings.AutoExposureMinBrightness = FMath::Lerp(kNightExposureFloor, -0.6f, Day);
 	}
 
 	if (FMath::FloorToInt(Hour) != FMath::FloorToInt(LastLoggedHour))

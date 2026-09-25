@@ -14,7 +14,8 @@
 #   UE_TOOLCHAIN  the toolchain dir (…/Linux_x64/<version>/x86_64-unknown-linux-gnu);
 #                 defaults to $LINUX_MULTIARCH_ROOT/x86_64-unknown-linux-gnu, else the
 #                 newest one under $UE_ROOT/Engine/Extras/ThirdPartyNotUE/SDKs/HostLinux/Linux_x64.
-#   UE_LIBCXX     UE's libc++ root; defaults to $UE_ROOT/Engine/Source/ThirdParty/Unix/LibCxx.
+#   UE_LIBCXX     UE's libc++ root; defaults to $UE_ROOT/Engine/Source/ThirdParty/Unix/LibCxx,
+#                 or the toolchain itself (UE 5.8 ships libc++ inside the clang SDK).
 #   KERNEL_UE_BUILD_DIR  output dir (default kernel/build-ue, where SimRuntime.Build.cs looks).
 # --clean deletes kernel/build-ue first (needed when the compiler changes).
 set -euo pipefail
@@ -33,6 +34,10 @@ else
 	TOOLCHAIN="$(ls -d "$SDK_BASE"/*/x86_64-unknown-linux-gnu 2>/dev/null | sort | tail -n 1 || true)"
 fi
 LIBCXX="${UE_LIBCXX:-$UE_ROOT/Engine/Source/ThirdParty/Unix/LibCxx}"
+# UE 5.8 moved libc++ into the toolchain SDK (…/x86_64-unknown-linux-gnu/include/c++/v1).
+if [[ -z "${UE_LIBCXX:-}" && ! -d "$LIBCXX/include/c++/v1" && -d "$TOOLCHAIN/include/c++/v1" ]]; then
+	LIBCXX="$TOOLCHAIN"
+fi
 
 CXX="$TOOLCHAIN/bin/clang++"
 if [[ -z "$TOOLCHAIN" || ! -x "$CXX" ]]; then
