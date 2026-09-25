@@ -177,3 +177,16 @@ Three gaps the content storm surfaced were ruled by the designer on 2026-09-25:
 1. **Sea gems** (the notes name them only as offering material, notes L57): they are **gifts from the abyssal water god Enki — an extension of his power. They are magical gems, controlled by the god of magic, Enki.** Physically they are gems of the sea that can be found on the shore; they come in **platonic shapes** and out of **sea materials like coral or seaweed**. (Consequence already standing in the data: the first great temple's offering of fish and sea gems to the two waters returns the water god's own gifts to the waters; Enki is now named the god of magic — of a piece with his Mercury face in the astrotheology, notes L195.)
 2. **The regalia** (the notes say the northerners "lowered kingship" but never name the objects, notes L58): **the emperor wears no regalia — naked except underwear.** There are no regalia objects; the nakedness is the statement. (The OPEN items row is resolved by negation and removed; a customs row records it.)
 3. **The tribute basket** (conquest "for tribute and gold", notes L15;L104): **gems and fruits and a bottle of a strange white liquid.** The liquid's nature stays deliberately unwritten — the basket's mystery travels with the tribute.
+
+## 13. Creative gap-filling under D-018 (2026-09-25)
+
+The designer authorized the agent to fill remaining gaps with its own creativity, "as long as it fits the theme and canon" (DECISIONS.md D-018). Full reasoning is in [proposals/round-2-invented.md](proposals/round-2-invented.md); the world-bible-relevant highlights:
+
+1. **The 8 deities of medicine** (§6, notes L97's missing list): Gula, Ninisina, Ninkarrak, Nintinugga, Damu, Ninazu, Baba, Meme — the real Mesopotamian healing-deity circle, grounded (`[A]`) rather than invented from nothing.
+2. **"The empire of the bull"** (endings §3.2's unnamed hidden evil): **Gugalanna, the Bull of Heaven** — an ancient contemporary of Ishtar in the real mythic corpus (Epic of Gilgamesh), consort of the underworld queen. This does **not** touch D-004: Ishtar's own "demonic" reading stays unconfirmed; only the *other* entity's identity is answered.
+3. **City of the Dead = Gravestone**: ruled one city, not two — *e-ab-kur-irkalla-ki* is its native cultic name (§5, §11 of game-design resolved).
+4. **Real-site correspondences** (§10, §11.7): six of the eight cities paired to real Sumerian sites (Akkad, Kutha, Uruk, Nippur, Larsa, Eridu); City of the Moon = Ur confirmed from the notes' own pairing of the Prophet with "a seer from the city of Ur." City of the Warrior Spirit stays unpaired — it is Taurissian, not Sumerian.
+5. **The homeland** (§11.5): the Land of Kaldun, the Kaldunai people — a marsh-lowland nation, Aramaic-adjacent tongue, ancestor-reverence in place of a lost state cult. Never visited on the map; lore and memory only.
+6. **Sun and Saturn planetary power-lists** (§8.3, the notes' own gap): written in the notes' register — Sun/Utu (kingship, oaths, exposure, healing), Saturn/Ninurta (boundaries, endurance, the price every ending exacts).
+
+Full ledger, with veto instructions: [proposals/invented-ledger-design.md](proposals/invented-ledger-design.md).

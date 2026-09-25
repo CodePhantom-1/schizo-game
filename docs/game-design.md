@@ -151,28 +151,28 @@ The parent's honesty section (parent game-design §11) applies twice over. The e
 
 ## 11. Open decisions (for the designer)
 
-The notes leave these open. Nothing below is decided anywhere in this blueprint set; the mechanics for any of them exist only if the parent systems already provide them.
+The notes leave these open. Where a row below says `INVENTED (D-018)`, the designer's blanket creative-gap-filling authorization (DECISIONS.md D-018, 2026-09-25) has been exercised — full reasoning and canon grounding for each is in [proposals/round-2-invented.md](proposals/round-2-invented.md); the flat veto list is [proposals/invented-ledger-design.md](proposals/invented-ledger-design.md). Any item still marked plain `OPEN` remains genuinely undecided — D-018 was deliberately not stretched to cover it.
 
-1. **The title.**
-2. **The map:** which of the eight cities are on it, at what scale (1:1 like the imported world-map pattern, or compressed), and whether the player's homeland is ever seen or only lore.
-3. **The past life:** confirm the implication of world-bible §5 + endings §3.1 — that the player is the reincarnation of the Law Giver of the City of Jewels — and decide when and how the game reveals it.
-4. **Reincarnation vs heirs:** the past-life device vs the parent's heir system (living-world §9). Generational time skips, a single life, or a past-life-flavoured take on the heir system? No new mechanic is built until this is answered.
-5. **The homeland:** the Chaldean-like nation's name, people and culture (it is off-map canon; it still needs a dossier for the player's identity, starting skills and languages).
-6. **Backgrounds:** one fixed prisoner start (the notes), or the parent's five-background system reskinned?
-7. **City identities:** do the eight cities sit on the real Sumerian sites of world-bible §10; is *e-ab-kur-irkalla-ki* ("Gravestone") the City of the Dead's native name; is the lost City of Jewels Akkad (whose real location is itself lost)? The notes suggest all three; none is stated.
-8. **The two ancient peoples** who rule the strange land (the notes' opening) — which two, and of the origin myth's peoples (southern boat folk, northern settlers)?
-9. **The Empire as "Great King":** confirm the one-oath rule (rpg-systems §4.2) binds to the Emperor, and what treaties, embargoes or bans exist between the powers.
-10. **Rank ladder labels:** the imported 7-tier ladder (0 outsider → 6 king) keeps its structure; the parent project's rank labels are **not** carried — this setting's ranks replace them.
-11. **The cosmology:** literal (§8.4) or ambiguous? Ishtar = the lady of the skies is canon (world-bible §6); what remains is the "demonic" reading, and the identity of the "empire of the bull" (endings §3.2).
-12. **The hidden ending's sequence:** the notes require "a very specific sequence of events" and don't give it. The parent's template (silent sequence, no markers, one rumour — parent endings §3.4) is the mechanic; the steps are the designer's.
-13. **Endings 1–3:** unlock conditions (parent pattern: standing + Act IV actions) and where the player founds his city in each. The hidden ending's founding site is canon: a new city on the ruins of Ur, the old foundations razed ([endings.md §3.4](endings.md)).
-14. **The act boundaries** of §6 — the beats are canon, the four-act arrangement is a proposal.
-15. **The clock:** can the player alter local outcomes only, or does the great reset give local outcomes more reach?
-16. **The Empire's tribute:** run it on the parent's *ilku*/land-grant mechanic (rpg-systems §5.2)?
-17. **The wider world** (world-bible §9): lore only, off-map ventures, or future scope?
-18. **Directions:** terrain scheme A or B, Plan 1 or Plan 2 per direction, and the meaning of "Taurus D"; are the Tree-of-Life/Pentagram sums lore or mechanics?
-19. **Deity data:** domains, cult sites, festivals and taboos for the pantheon lists — plus the still-missing **8 deities of medicine** list, whether **Sun and Saturn** planetary power-lists get written (the notes give none; Venus was completed at the designer's request), and the garbled Enki-pantheon line.
-20. **NPC voices:** subtitles plus barks, or voiced main NPCs (the imported budget default, or the costlier option).
+1. **The title.** `OPEN` — marketing, not lore; no notes-canon constrains it.
+2. **The map:** `INVENTED (D-018)` → see round-2-invented.md §2. Only the City of the Moon is on the v1 map (D-005); the rest sit off-map through people/caravans/rumour; the player's homeland is never seen, lore only.
+3. **The past life:** `INVENTED (D-018)` → see round-2-invented.md §3–4. Confirmed: the player is the reincarnated Law Giver; the reveal is a drip-fed narrative device (fragments from Act II, full recall at rank 4+, outright confirmation only in Ending 1's script).
+4. **Reincarnation vs heirs:** `INVENTED (D-018)` → see round-2-invented.md §3–4. Rides D-003's imported heir system unchanged; no rebirth mechanic built.
+5. **The homeland:** `INVENTED (D-018)` → see round-2-invented.md §5. The Land of Kaldun, the Kaldunai people — full dossier in `db/canon/world_lore.csv:homeland_kaldun`.
+6. **Backgrounds:** confirmed by D-009 already (single fixed prisoner start); nothing new invented here.
+7. **City identities:** `INVENTED (D-018)` → see round-2-invented.md §7. Six of eight cities paired to real Sumerian sites (Akkad, Kutha, Uruk, Nippur, Larsa, Eridu; Ur for City of the Moon confirmed from the notes' own text); City of the Warrior Spirit stays unpaired (Taurissian, not Sumerian). *e-ab-kur-irkalla-ki* = City of the Dead confirmed as one city, not two.
+8. **The two ancient peoples:** confirmed — the origin myth's southern boat-folk and northern settlers (world-bible §3) are the two peoples of the opening line. No invention needed; the notes already answer it.
+9. **The Empire as "Great King":** `INVENTED (D-018)` → see round-2-invented.md §9 (doc-only ruling; `factions.csv:the_empire` stays CANON, untouched). Confirmed bound to the Emperor; no standing treaties with the Rebellion or Barbarians, local truces possible.
+10. **Rank ladder labels:** resolved at D-015 (round 1) — closed.
+11. **The cosmology:** literal-vs-ambiguous core question stays `OPEN` — locked by D-004, which D-018 does not override. `INVENTED (D-018)` resolves only the "empire of the bull" identity → Gugalanna, the Bull of Heaven (round-2-invented.md §11).
+12. **The hidden ending's sequence:** `INVENTED (D-018)` → see round-2-invented.md §12 and `db/canon/endings.csv:ending_4_brotherhood`. Five silent steps, no markers.
+13. **Endings 1–3:** `INVENTED (D-018)` → see round-2-invented.md §13 and `db/canon/endings.csv`. Unlock conditions filled; founding sites loosely defined where the notes don't fix them.
+14. **The act boundaries:** confirmed as final (story.csv's arrangement was already the working answer) — closed, not still a proposal.
+15. **The clock:** `INVENTED (D-018)` → see round-2-invented.md §15. Local outcomes only; the great reset itself is not stoppable.
+16. **The Empire's tribute:** `INVENTED (D-018)` → see round-2-invented.md §16 (doc-only ruling). Confirmed: runs on the *ilku*/land-grant mechanic, anchored by the Éren/Gigir rank tiers and the D-016 tribute items.
+17. **The wider world:** `INVENTED (D-018)` → see round-2-invented.md §17. Lore only for v1; `db/canon/world_lore.csv:wider_world_scope`.
+18. **Directions:** `INVENTED (D-018)` → see round-2-invented.md §18 and `db/canon/regions.csv` (`in_force_ruling`). Scheme A in force everywhere; Plan 1 for West/North/East, Plan 2 for South; Taurus D/Tree-of-Life/Pentagram stay lore, never a mechanic.
+19. **Deity data:** `INVENTED (D-018)` → see round-2-invented.md §19. The 8 medicine deities (Gula, Ninisina, Ninkarrak, Nintinugga, Damu, Ninazu, Baba, Meme) and the Sun/Saturn power-lists are written; full per-god domains/festivals beyond that stay downstream content-storm scope, not resolved here.
+20. **NPC voices:** `OPEN` — a production-budget call, not a lore gap; left for the designer.
 
 ## 12. The notes, covered
 
