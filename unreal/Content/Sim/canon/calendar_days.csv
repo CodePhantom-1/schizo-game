@@ -1,0 +1,9 @@
+id,day_of_month,name,omen,deity,tag,source_ref
+new_crescent,1,Day of the New Crescent (eššešu of Nanna),favourable,nanna,A,"Ur III eššešu festival days 1/7/15 of the moon god at Ur (W. Sallaberger, Der kultische Kalender der Ur III-Zeit, 1993); the moon month begins at first visibility of the crescent"
+seventh_day,7,Seventh-Day eššešu,unfavourable,nanna,A,"eššešu on day 7 (Sallaberger 1993); day 7 among the unfavourable days of the hemerologies (A. Livingstone, Hemerologies of Assyrian and Babylonian Scholars, 2013)"
+fourteenth_day,14,Fourteenth Day,unfavourable,,A,"hemerologies: days 7/14/19/21/28 unfavourable (Livingstone 2013)"
+sapattu,15,Šapattu (the full moon's rest and eššešu),favourable,nanna,A,"šapattu = the 15th, the full-moon day (CAD Š/1 s.v. šapattu); eššešu on day 15 (Sallaberger 1993)"
+ibbu,19,Ibbû (the day of wrath),unfavourable,,A,"the 19th = 49th day from the previous new moon, the ibbû day of wrath (Livingstone 2013)"
+twenty_first_day,21,Twenty-First Day,unfavourable,,A,"hemerologies: days 7/14/19/21/28 unfavourable (Livingstone 2013)"
+twenty_eighth_day,28,Twenty-Eighth Day,unfavourable,,A,"hemerologies: days 7/14/19/21/28 unfavourable (Livingstone 2013)"
+bubbulum,30,Bubbulum (the moon's disappearance),unfavourable,nanna,A,"bubbulum/ūm bubbuli, the day of the moon's invisibility at month's end (CAD B s.v. bubbulu)"

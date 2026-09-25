@@ -4,6 +4,8 @@
 
 #include "sim/Test.hpp"
 
+#include <filesystem>
+
 using namespace sim;
 
 static bool test_init_seeds_the_world() {
@@ -101,7 +103,37 @@ static bool test_ten_years_are_deterministic() {
     return true;
 }
 
-SIM_MAIN(test_init_seeds_the_world,
+static bool test_world_calendar_from_canon() {
+    WorldState w;
+    w.init("../db/canon", 7);
+    SIM_CHECK_EQ(w.cal.month_name(w.cal.to_date(1)), "Rains-Coming");
+    SIM_CHECK_EQ(w.cal.month_name(w.cal.to_date(360)), "Dead-Fires");
+    SIM_CHECK(w.cal.month_day(1) != nullptr);
+    SIM_CHECK_EQ(w.cal.month_day(1)->deity, "nanna");
+    SIM_CHECK_EQ(w.cal.month_day(19)->omen, "unfavourable");
+    SIM_CHECK(w.cal.month_day(2) == nullptr);
+    return true;
+}
+
+static bool test_world_without_calendar_tables() {
+    namespace fs = std::filesystem;
+    const fs::path dir = fs::temp_directory_path() / "sim_canon_no_calendar";
+    fs::remove_all(dir);
+    fs::copy("../db/canon", dir);
+    fs::remove(dir / "months.csv");
+    fs::remove(dir / "calendar_days.csv");
+    WorldState w;
+    w.init(dir.string(), 7);  // must not throw
+    SIM_CHECK(w.cal.month_name(w.cal.to_date(1)).empty());
+    SIM_CHECK(w.cal.month_day(1) == nullptr);
+    w.advance_days(2);
+    fs::remove_all(dir);
+    return true;
+}
+
+SIM_MAIN(test_world_calendar_from_canon,
+         test_world_without_calendar_tables,
+         test_init_seeds_the_world,
          test_prices_move_with_the_drought,
          test_a_rumour_crosses_the_city,
          test_rites_refuse_the_unknowing,

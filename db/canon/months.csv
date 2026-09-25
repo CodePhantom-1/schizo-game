@@ -1,0 +1,13 @@
+id,number,name,tag,source_ref
+rains_coming,1,Rains-Coming,INVENTED,"D-018; calendar.csv:month_names (machine-readable form, D-024 §7)"
+waters_rising,2,Waters-Rising,INVENTED,"D-018; calendar.csv:month_names (machine-readable form, D-024 §7)"
+silt_settling,3,Silt-Settling,INVENTED,"D-018; calendar.csv:month_names (machine-readable form, D-024 §7)"
+barley_sown,4,Barley-Sown,INVENTED,"D-018; calendar.csv:month_names (machine-readable form, D-024 §7)"
+wheat_sown,5,Wheat-Sown,INVENTED,"D-018; calendar.csv:month_names (machine-readable form, D-024 §7)"
+green_furrow,6,Green-Furrow,INVENTED,"D-018; calendar.csv:month_names (machine-readable form, D-024 §7)"
+first_cutting,7,First-Cutting,INVENTED,"D-018; calendar.csv:month_names (machine-readable form, D-024 §7)"
+grain_home,8,Grain-Home,INVENTED,"D-018; calendar.csv:month_names (machine-readable form, D-024 §7)"
+threshing,9,Threshing,INVENTED,"D-018; calendar.csv:month_names (machine-readable form, D-024 §7)"
+ishtars_torch_month,10,Ishtar's-Torch,INVENTED,"D-018; calendar.csv:month_names (machine-readable form, D-024 §7)"
+press_moon,11,Press-Moon,INVENTED,"D-018; calendar.csv:month_names (machine-readable form, D-024 §7)"
+dead_fires,12,Dead-Fires,INVENTED,"D-018; calendar.csv:month_names (machine-readable form, D-024 §7)"

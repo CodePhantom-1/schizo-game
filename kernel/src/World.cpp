@@ -19,7 +19,7 @@ void WorldState::init(const std::string& canon_dir, std::uint64_t world_seed) {
     // The calendar's shape is ratified machinery; its seasons are canon data
     // (seasons.csv, D-015); its yearly festivals are festivals.csv (K-2 — the
     // machine-readable form of calendar.csv's INVENTED festival_days row,
-    // D-018). Months stay unnamed in the kernel (month names are not wired).
+    // D-018). Month names are months.csv; named days of the month are calendar_days.csv (A14).
     CalendarConfig cfg;
     for (const Row& r : db.rows("seasons")) {
         if (r.get("tag") == "OPEN") continue;
@@ -35,6 +35,31 @@ void WorldState::init(const std::string& canon_dir, std::uint64_t world_seed) {
         f.name = r.get("name");
         f.day_of_year = std::strtol(r.get("day_of_year", "0").c_str(), nullptr, 10);
         cfg.festivals.push_back(f);  // Calendar validates range + one-per-day
+    }
+    // months.csv: all 12 non-OPEN rows by number, or none (a partial list
+    // would misname the year, so the months then stay unnamed numbers).
+    {
+        std::vector<std::string> names(static_cast<std::size_t>(cfg.months_per_year));
+        int named = 0;
+        for (const Row& r : db.rows("months")) {
+            if (r.get("tag") == "OPEN") continue;
+            const long n = std::strtol(r.get("number", "0").c_str(), nullptr, 10);
+            if (n >= 1 && n <= cfg.months_per_year && names[static_cast<std::size_t>(n - 1)].empty()) {
+                names[static_cast<std::size_t>(n - 1)] = r.get("name");
+                ++named;
+            }
+        }
+        if (named == cfg.months_per_year) cfg.month_names = names;
+    }
+    for (const Row& r : db.rows("calendar_days")) {
+        if (r.get("tag") == "OPEN") continue;
+        CalendarDayDef d;
+        d.id = r.at("id");
+        d.name = r.get("name");
+        d.day_of_month = static_cast<int>(std::strtol(r.get("day_of_month", "0").c_str(), nullptr, 10));
+        d.omen = r.get("omen");
+        d.deity = r.get("deity");
+        cfg.month_days.push_back(d);  // Calendar validates range + one-per-day
     }
     cal = Calendar{cfg};
     facts = WorldFacts{};
