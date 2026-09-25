@@ -47,6 +47,8 @@ EXPECTED_DIMS = {
     "SM_WallWindow": (kc.GRID, kc.WALL_THICK, kc.WALL_HEIGHT),
     "SM_Corner": (kc.GRID, kc.GRID, kc.WALL_HEIGHT),
     "SM_RoofSlab": (kc.GRID, kc.GRID, kc.ROOF_THICK + kc.PARAPET_H),
+    "SM_RoofSlabFlat": (kc.GRID, kc.GRID, kc.ROOF_THICK),
+    "SM_ParapetRun": (kc.GRID, kc.PARAPET_T, kc.PARAPET_H),
     "SM_RoofAccess": (kc.GRID, kc.GRID, kc.ROOF_THICK),
     "SM_Pilaster": (0.3, 0.15, kc.WALL_HEIGHT),
     "SM_Stair": (kc.GRID, 2 * kc.GRID, kc.WALL_HEIGHT),

@@ -11,7 +11,6 @@ db/canon/cities.csv, docs/world-bible.md) follow real-world Mesopotamian mudbric
 building practice, tag [A] — see kit_common.py header comment for sources.
 """
 import bpy
-import csv
 import os
 import sys
 
@@ -89,6 +88,24 @@ def build_roof_slab(with_parapet=True, name="SM_RoofSlab"):
             mat_index=1,
         )
     return kc.finalize_object(bm, name, ["M_MudPlaster", "M_Mudbrick"])
+
+
+def build_roof_slab_flat():
+    """The parapet-free roof tile as its own exported piece: the UE street
+    builder (unreal/Source/.../SimStreetBuilder.cpp) tiles whole roofs with
+    flat slabs and wraps the edge in SM_ParapetRun instances, matching
+    assemble_house.py's build_flat_roof + build_parapet_ring look."""
+    return build_roof_slab(with_parapet=False, name="SM_RoofSlabFlat")
+
+
+def build_parapet_run():
+    """One metre of continuous mudbrick parapet (the runtime-instanced
+    counterpart of assemble_house.py's build_parapet_ring): the street
+    builder scales it along X per roof side — invisible with flat-colour
+    materials (D-023), so no partial-tile remainder pieces are needed."""
+    bm = kc.new_bmesh()
+    kc.add_box(bm, (0, 0, 0), (kc.GRID, kc.PARAPET_T, kc.PARAPET_H), mat_index=0)
+    return kc.finalize_object(bm, "SM_ParapetRun", ["M_Mudbrick"])
 
 
 def build_roof_access():
@@ -175,6 +192,8 @@ PIECES = [
     ("wall_window", build_wall_window),
     ("corner", build_corner),
     ("roof_slab", build_roof_slab),
+    ("roof_slab_flat", build_roof_slab_flat),
+    ("parapet_run", build_parapet_run),
     ("roof_access", build_roof_access),
     ("pilaster", build_pilaster),
     ("stair", build_stair),
@@ -182,18 +201,6 @@ PIECES = [
     ("courtyard_tile", build_courtyard_tile),
     ("awning", build_awning),
 ]
-
-
-def write_manifest_rows(rows):
-    path = os.path.join(REPO_ROOT, "art", "assets.csv")
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    is_new = not os.path.exists(path)
-    with open(path, "a", newline="") as f:
-        w = csv.writer(f)
-        if is_new:
-            w.writerow(["id", "file", "kind", "license", "source_ref", "tag"])
-        for r in rows:
-            w.writerow(r)
 
 
 def main():
@@ -221,7 +228,7 @@ def main():
                 "A",
             ]
         )
-    write_manifest_rows(manifest_rows)
+    kc.write_manifest_rows(manifest_rows)
     print(f"House kit: {len(PIECES)} pieces exported to {out_dir}")
 
 
