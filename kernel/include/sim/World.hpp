@@ -14,6 +14,8 @@
 #include "sim/Wild.hpp"
 // W4-B: combat
 #include "sim/Combat.hpp"
+// W5: divine wrath (per-offender, per-deity wrath with the gods).
+#include "sim/Divine.hpp"
 
 namespace sim {
 
@@ -64,6 +66,15 @@ struct WorldState {
     // prisoners, duels, deaths. Written by sim/Combat.hpp and its caller layer
     // sim/CombatActions.hpp; healed once a day by advance_days.
     CombatState combat;
+
+    // --- W5: divine wrath (sim/Divine.hpp). Per-offender, per-deity wrath
+    // with the gods, accrued by the one-line hooks in Faction.cpp
+    // (break_oath), Rites.cpp (perform_rite_in_world: impure/failed rites and
+    // the atonement rite) and Justice.cpp (hold_hearing: divine-offence
+    // convictions); decayed and applied once a day by advance_days through
+    // tick_divine. Saved as the trailing DIVINE_* snapshot sections.
+    DivineState divine;
+    // --- end W5
 
     // Loads canon from canon_dir, seeds markets and people, prepares the calendar.
     void init(const std::string& canon_dir, std::uint64_t world_seed);

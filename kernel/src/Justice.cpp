@@ -6,8 +6,10 @@
 //    the pipeline needs no draws (verdict selection reads canon in row order;
 //    open crimes are processed in report order), so state bytes depend only on
 //    the sequence of calls. ctx.rng is left untouched on purpose.
-//  - writes ONLY JusticeState; the world is read through the const
-//    WorldContext (canon via sim::Db only).
+//  - writes ONLY JusticeState — with one W5 exception: when hold_hearing is
+//    handed a DivineState* (defaulted, additive), a divine-offence conviction
+//    also notes wrath through sim/Divine.hpp's own accrual path. The world is
+//    otherwise read through the const WorldContext (canon via sim::Db only).
 //
 // Scope note: alarm → pursuit → detention are the guards'/pursuit layer's
 // stages (mechanics.md row 12); the frozen API and JusticeState carry no
@@ -16,6 +18,7 @@
 #include "sim/Justice.hpp"
 
 #include "sim/Context.hpp"
+#include "sim/Divine.hpp"  // W5: note_divine_conviction — the gods keep books
 
 #include <algorithm>
 #include <optional>
@@ -88,7 +91,8 @@ Crime& report_crime(JusticeState& state, const Id& criminal, const Id& law_row,
     return state.open_crimes.back();
 }
 
-Hearing hold_hearing(const WorldContext& ctx, JusticeState& state, const Id& crime_id) {
+Hearing hold_hearing(const WorldContext& ctx, JusticeState& state, const Id& crime_id,
+                     DivineState* divine) {
     const auto it = find_open(state, crime_id);
     if (it == state.open_crimes.end()) {
         // Nothing on the docket (unknown id, or already heard and sealed): the
@@ -110,6 +114,13 @@ Hearing hold_hearing(const WorldContext& ctx, JusticeState& state, const Id& cri
 
     const Hearing hearing{it->id, ctx.day, verdict};
     state.verdicts.push_back(hearing);
+    // W5 hook: a conviction for an offence against the gods (sacrilege, tomb
+    // robbery, oath-breaking) adds divine wrath — the gods honour the sealed
+    // tablet (mechanics.md row 12; sim/Divine.hpp). An acquittal offends
+    // nobody; the fields are read before the docket entry is erased.
+    if (divine != nullptr && hearing.verdict != "dismissed")
+        note_divine_conviction(*divine, ctx.db, it->criminal, it->law_row, it->crime_kind,
+                               it->place_city);
     state.open_crimes.erase(it);
     return hearing;
 }

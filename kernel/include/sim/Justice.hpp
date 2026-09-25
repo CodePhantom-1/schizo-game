@@ -18,6 +18,7 @@
 namespace sim {
 
 struct WorldContext;  // defined in sim/Context.hpp (the seam — never included by module headers)
+struct DivineState;   // defined in sim/Divine.hpp (W5: divine wrath)
 
 struct Crime {
     Id id;              // "crime_<n>" in sequence
@@ -70,7 +71,11 @@ Crime& report_crime(JusticeState& state, const Id& criminal, const Id& law_row,
 
 // Holds the hearing for a crime and moves it to verdicts. Uses laws.csv when
 // the row exists, else the compensation fallback.
-Hearing hold_hearing(const WorldContext& ctx, JusticeState& state, const Id& crime_id);
+// W5 (additive, defaulted): when `divine` is given, a conviction (verdict !=
+// dismissed) for an offence against the gods also adds divine wrath
+// (sim/Divine.hpp note_divine_conviction). Null keeps the Wave-1 behaviour.
+Hearing hold_hearing(const WorldContext& ctx, JusticeState& state, const Id& crime_id,
+                     DivineState* divine = nullptr);
 
 const Crime* find_crime(const JusticeState& state, const Id& crime_id);
 

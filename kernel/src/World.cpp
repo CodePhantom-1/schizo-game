@@ -54,6 +54,7 @@ void WorldState::init(const std::string& canon_dir, std::uint64_t world_seed) {
     inventories["player"] = Inventory{};  // the prisoner start (D-009): empty-handed
     rite_effects = RiteEffectsState{};    // K-1: no ward laid, no omen read
     combat = CombatState{};               // W4-B: nobody hurt yet
+    divine = DivineState{};               // W5: the gods hold no grudge yet
 
     WorldContext ctx = context();
     for (const Row& city : db.rows("cities"))
@@ -97,6 +98,9 @@ void WorldState::advance_days(int days) {
         // W4-B: wounds heal (or bleed out) once a day; deaths reach
         // Population and Events through the caller layer.
         tick_combat_world(*this);
+        // W5: the gods' morning — banked favour penalties land on the
+        // performer, wrath decays (a curse holds; only atonement lifts it).
+        tick_divine(*this);
         ++day;
     }
 }

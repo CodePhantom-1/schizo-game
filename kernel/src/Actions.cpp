@@ -132,7 +132,9 @@ Hearing hold_crime_hearing(WorldState& w, const Id& crime_id, const Id& victim,
     criminal = c->criminal;
 
     const WorldContext ctx = w.context();
-    (void)hold_hearing(ctx, w.justice, crime_id);  // seals into w.justice.verdicts
+    // W5: &w.divine — a conviction for an offence against the gods adds
+    // divine wrath (Justice::hold_hearing's optional hook, sim/Divine.hpp).
+    (void)hold_hearing(ctx, w.justice, crime_id, &w.divine);  // seals into w.justice.verdicts
     Hearing& sealed = w.justice.verdicts.back();
     sealed.tablet_id = "verdict_tablet_" + crime_id;
 

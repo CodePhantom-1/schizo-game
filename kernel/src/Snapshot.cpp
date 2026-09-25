@@ -414,6 +414,30 @@ std::string save_world(const WorldState& w) {
         wr.line({"COMBAT_SEQ", u64(w.combat.seq)});
     }
 
+    // --- W5 DIVINE (additive trailing sections; optional on load, recognised
+    // by tag, so a save written before W5 still loads: no wrath, no curse).
+    // Self-contained block — keep it delimited if you edit nearby.
+    {
+        std::int64_t entries = 0;
+        for (const auto& [offender, per_deity] : w.divine.wrath_by_offender)
+            entries += static_cast<std::int64_t>(per_deity.size());
+        wr.line({"DIVINE_WRATH", s64(entries)});
+        for (const auto& [offender, per_deity] : w.divine.wrath_by_offender)
+            for (const auto& [deity, value] : per_deity)
+                wr.line({offender, deity, s64(value)});
+
+        wr.line({"DIVINE_CURSE", s64(static_cast<std::int64_t>(w.divine.curse_by_offender.size()))});
+        for (const auto& [offender, deity] : w.divine.curse_by_offender)
+            wr.line({offender, deity});
+
+        wr.line({"DIVINE_PENDING", s64(static_cast<std::int64_t>(w.divine.pending_favour_penalty.size()))});
+        for (const auto& [deity, delta] : w.divine.pending_favour_penalty)
+            wr.line({deity, s64(delta)});
+
+        wr.line({"DIVINE_DECAY_ACC", s64(w.divine.decay_acc)});
+    }
+    // --- end W5
+
     return wr.str();
 }
 
@@ -949,6 +973,33 @@ void load_world(WorldState& out, const std::string& canon_dir, const std::string
             }
             w.combat.seq = Reader::parse_u64(rd.scalar("COMBAT_SEQ"));
         }
+
+        // --- W5 DIVINE — optional: absent in a pre-W5 save, where the fresh
+        // init() state (no wrath, no curse, nothing pending) stands.
+        // Self-contained block — keep it delimited if you edit nearby.
+        w.divine = DivineState{};
+        if (rd.peek_tag() == "DIVINE_WRATH") {
+            std::size_t n = rd.section("DIVINE_WRATH");
+            for (std::size_t i = 0; i < n; ++i) {
+                std::vector<std::string> f = rd.next();
+                if (f.size() != 3) throw std::runtime_error("snapshot: bad wrath row");
+                w.divine.wrath_by_offender[f[0]][f[1]] = static_cast<int>(Reader::parse_i64(f[2]));
+            }
+            n = rd.section("DIVINE_CURSE");
+            for (std::size_t i = 0; i < n; ++i) {
+                std::vector<std::string> f = rd.next();
+                if (f.size() != 2) throw std::runtime_error("snapshot: bad curse row");
+                w.divine.curse_by_offender[f[0]] = f[1];
+            }
+            n = rd.section("DIVINE_PENDING");
+            for (std::size_t i = 0; i < n; ++i) {
+                std::vector<std::string> f = rd.next();
+                if (f.size() != 2) throw std::runtime_error("snapshot: bad pending-favour row");
+                w.divine.pending_favour_penalty[f[0]] = static_cast<int>(Reader::parse_i64(f[1]));
+            }
+            w.divine.decay_acc = static_cast<int>(Reader::parse_i64(rd.scalar("DIVINE_DECAY_ACC")));
+        }
+        // --- end W5
 
         out = std::move(w);  // atomic: only reached once parsing fully succeeded
     } catch (const std::runtime_error&) {

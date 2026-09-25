@@ -458,3 +458,7 @@ int sim_world_death_count(const SimWorld* world);
 // --- W4-C: the wild lands (places, travel, camps, raids) -----------------------
 #include "sim/CApiWild.h"
 // --- end W4-C
+
+// --- W5: divine wrath (wrath queries, the curse, the oath-break verb) ----------
+#include "sim/CApiDivine.h"
+// --- end W5
