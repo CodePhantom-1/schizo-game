@@ -80,14 +80,11 @@ void USimWorldSubsystem::Tick(float DeltaTime)
 			sim_world_day(SimHandle), *FString(UTF8_TO_TCHAR(Season)));
 	}
 	SecondsSinceLastDay += DeltaTime;
-	const float MinutesPerDay = CVarSimDaysPerRealMinute.GetValueOnGameThread() > 0.f
-		? CVarSimDaysPerRealMinute.GetValueOnGameThread()
-		: SimDaysPerRealMinute;
-	const float SecondsPerDay = MinutesPerDay * 60.0f;
-	while (SecondsSinceLastDay >= SecondsPerDay)
+	const float DaySeconds = SecondsPerDay();
+	while (SecondsSinceLastDay >= DaySeconds)
 	{
 		sim_world_advance_days(SimHandle, 1);
-		SecondsSinceLastDay -= SecondsPerDay;
+		SecondsSinceLastDay -= DaySeconds;
 		UE_LOG(LogSimRuntime, Log, TEXT("Sim day %lld."), sim_world_day(SimHandle));
 	}
 }
@@ -111,6 +108,24 @@ void USimWorldSubsystem::AdvanceSimDays(int32 Days)
 		sim_world_advance_days(Sim->SimHandle, Days);
 		UE_LOG(LogSimRuntime, Log, TEXT("Debug advance: %d days — now day %lld."), Days, sim_world_day(Sim->SimHandle));
 	}
+}
+
+float USimWorldSubsystem::SecondsPerDay() const
+{
+	const float MinutesPerDay = CVarSimDaysPerRealMinute.GetValueOnGameThread() > 0.f
+		? CVarSimDaysPerRealMinute.GetValueOnGameThread()
+		: SimDaysPerRealMinute;
+	return FMath::Max(MinutesPerDay, 0.01f) * 60.0f;
+}
+
+float USimWorldSubsystem::GetSimHour()
+{
+	const USimWorldSubsystem* Sim = GetSim(GEngine ? GEngine->GetCurrentPlayWorld() : nullptr);
+	if (Sim == nullptr || Sim->SimHandle == nullptr)
+	{
+		return -1.f;
+	}
+	return FMath::Clamp(static_cast<float>(24.0 * Sim->SecondsSinceLastDay / Sim->SecondsPerDay()), 0.f, 23.999f);
 }
 
 SimWorld* USimWorldSubsystem::GetSimHandle()

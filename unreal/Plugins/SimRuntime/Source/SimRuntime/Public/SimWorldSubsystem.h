@@ -64,6 +64,14 @@ public:
 	 */
 	static struct SimWorld* GetSimHandle();
 
+	/**
+	 * Hour of the current sim day, 0.0 (midnight) .. <24.0, from the engine
+	 * time elapsed since the last day tick. The engine owns the sub-day clock;
+	 * NPC schedules, needs and the sun read this. -1 before the world exists.
+	 */
+	UFUNCTION(BlueprintPure, Category = "Sim")
+	static float GetSimHour();
+
 	/** Debug/act-scripting: advance the world N days immediately. */
 	UFUNCTION(BlueprintCallable, Category = "Sim")
 	static void AdvanceSimDays(int32 Days);
@@ -73,4 +81,5 @@ private:
 	struct SimWorld* SimHandle = nullptr;
 	bool bCanonFailed = false;  // one-shot: canon missing — stop retrying creation
 	double SecondsSinceLastDay = 0.0;
+	float SecondsPerDay() const;
 };
