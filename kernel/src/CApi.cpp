@@ -5,6 +5,7 @@
 #include "sim/World.hpp"
 #include "sim/Snapshot.hpp"
 #include "sim/Schedule.hpp"
+#include "sim/Rites.hpp"
 
 #include <cstring>
 #include <fstream>
@@ -257,4 +258,114 @@ int sim_world_task_at(const SimWorld* world, const char* role, int hour, char* o
         task_at(world->world.db, world->world.cal, role, world->world.day, hour);
     if (!t) return -1;
     return write_str(out, cap, t->task);
+}
+
+// Rites (K-1) ----------------------------------------------------------------
+namespace {
+std::string join_ids(const std::vector<Id>& ids) {
+    std::string out;
+    for (std::size_t i = 0; i < ids.size(); ++i) {
+        if (i != 0) out += ';';
+        out += ids[i];
+    }
+    return out;
+}
+
+int learn_code(const RiteLearnResult& r) {
+    if (r.learned) return 0;
+    const std::string& why = r.refusal_reason;
+    if (why == "already_known") return 1;
+    if (why == "unknown_rite") return -2;
+    if (why == "unknown_teacher") return -3;
+    if (why == "not_taught_by_teacher" || why == "not_taught_in_text") return -4;
+    if (why == "text_not_held") return -5;
+    return -1;
+}
+}  // namespace
+
+int sim_world_knows_rite(const SimWorld* world, const char* rite) {
+    if (world == nullptr || rite == nullptr) return -1;
+    return knows_rite(world->world.magic, Id(rite)) ? 1 : 0;
+}
+
+int sim_world_known_rites(const SimWorld* world, char* out, int cap) {
+    if (world == nullptr) return -1;
+    const std::set<Id>& known = world->world.magic.known_rites;
+    return write_str(out, cap, join_ids(std::vector<Id>(known.begin(), known.end())));
+}
+
+int sim_world_learn_rite_from_teacher(SimWorld* world, const char* rite, const char* teacher) {
+    if (world == nullptr || rite == nullptr || teacher == nullptr) return -1;
+    return learn_code(learn_rite_from_teacher(world->world, Id(rite), Id(teacher)));
+}
+
+int sim_world_learn_rite_from_text(SimWorld* world, const char* rite, const char* item) {
+    if (world == nullptr || rite == nullptr || item == nullptr) return -1;
+    return learn_code(learn_rite_from_text(world->world, Id(rite), Id(item)));
+}
+
+int sim_world_rites_taught_by(const SimWorld* world, const char* teacher, char* out, int cap) {
+    if (world == nullptr || teacher == nullptr) return -1;
+    return write_str(out, cap, join_ids(rites_taught_by(world->world, Id(teacher))));
+}
+
+int sim_world_rites_taught_in(const SimWorld* world, const char* item, char* out, int cap) {
+    if (world == nullptr || item == nullptr) return -1;
+    return write_str(out, cap, join_ids(rites_taught_in(world->world.db, Id(item))));
+}
+
+void sim_world_set_rite_place(SimWorld* world, const char* place) {
+    if (world != nullptr && place != nullptr) world->world.magic.place = place;
+}
+
+int sim_world_rite_place(const SimWorld* world, char* out, int cap) {
+    if (world == nullptr) return -1;
+    return write_str(out, cap, world->world.magic.place);
+}
+
+int sim_world_purity(const SimWorld* world) { return world ? world->world.magic.purity : -1; }
+
+void sim_world_set_purity(SimWorld* world, int purity) {
+    if (world == nullptr) return;
+    world->world.magic.purity = purity < 0 ? 0 : (purity > 100 ? 100 : purity);
+}
+
+int sim_world_perform_rite(SimWorld* world, const char* rite, const char* target,
+                           char* effect_out, int cap) {
+    if (world == nullptr || rite == nullptr) return -1;
+    const RiteOutcome o =
+        perform_rite_in_world(world->world, Id(rite), target == nullptr ? Id() : Id(target));
+    if (effect_out != nullptr && cap > 0) write_str(effect_out, cap, o.effect);
+    if (o.rite.performed) return o.rite.succeeded ? 1 : 0;
+    const std::string& why = o.refusal_reason;
+    if (why == "unknown_rite") return -2;
+    if (why == "rite_not_known") return -3;
+    if (why == "no_deity_addressed" || why == "no_place_to_ward") return -4;
+    if (why == "unknown_deity") return -5;
+    return -1;
+}
+
+int64_t sim_world_ward_until(const SimWorld* world, const char* place) {
+    if (world == nullptr || place == nullptr) return -1;
+    const auto& wards = world->world.rite_effects.wards_by_place;
+    const auto it = wards.find(place);
+    return it == wards.end() ? 0 : it->second.until;
+}
+
+int sim_world_warded(const SimWorld* world, const char* place) {
+    if (world == nullptr || place == nullptr) return -1;
+    return ward_holds(world->world.rite_effects, place, world->world.day) ? 1 : 0;
+}
+
+int sim_world_omen_count(const SimWorld* world) {
+    return world ? static_cast<int>(world->world.rite_effects.omens.size()) : -1;
+}
+
+int sim_world_omen(const SimWorld* world, int index, char* out, int cap) {
+    if (world == nullptr) return -1;
+    const auto& omens = world->world.rite_effects.omens;
+    if (index < 0 || static_cast<std::size_t>(index) >= omens.size()) return -1;
+    const Omen& o = omens[static_cast<std::size_t>(index)];
+    return write_str(out, cap, std::to_string(o.day) + ";" + o.rite_id + ";" + o.subject + ";" +
+                                   o.sign + ";" + std::to_string(o.confidence_pct));
 }

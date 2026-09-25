@@ -83,3 +83,63 @@ no existing declaration changed signature or removed behaviour.
   a save -> load -> continue determinism check (file path, plus a buffer
   round-trip) entirely through `extern "C"`.
 - `tests/test_snapshot.cpp`: `test_load_world_is_atomic_on_failure` (new).
+
+# SEAM CHANGELOG — K-1 (rites: knowledge, offerings, effects)
+
+Additive throughout — no existing declaration changed signature or removed
+behaviour; the fixed Magic success formula is untouched.
+
+## Magic.hpp / Magic.cpp
+
+- `MagicState` gains `std::set<Id> known_rites;` (appended last) and two free
+  functions `knows_rite()` / `learn_rite()`. `perform_rite` is unchanged and
+  still writes only MagicState; the caller fills
+  `RiteInputs::performer_knows_rite` from `knows_rite()`.
+
+## World.hpp / World.cpp
+
+- New header `sim/RiteEffects.hpp` (state only: `Ward`, `Omen`,
+  `RiteEffectsState`), included by World.hpp.
+- `WorldState` gains `RiteEffectsState rite_effects;` (reset by `init`). Not
+  part of the daily tick; not in `WorldContext` (Context.hpp untouched).
+
+## Rites.hpp / Rites.cpp (new)
+
+- The caller-side verb layer (like Actions.hpp: a WorldState& file allowed to
+  write MagicState — only through Magic's own free functions —,
+  `inventories` and `rite_effects`): `learn_rite_from_teacher`,
+  `learn_rite_from_text`, `rites_taught_by`, `rites_taught_in`,
+  `perform_rite_in_world`, `ward_holds`. See module_Magic.md.
+
+## Db.cpp
+
+- The explicit table list gains `rite_teachings` (new INVENTED canon table,
+  `db/canon/rite_teachings.csv`, schema `db/schema/rite_teachings.md`).
+
+## Snapshot.cpp
+
+- Three trailing sections after `INVENTORIES`: `MAGIC_KNOWN\t<n>` (rite ids),
+  `RITE_WARDS\t<n>` (`place\trite\tlaid\tuntil`), `RITE_OMENS\t<n>`
+  (`day\trite\tsubject\tsign\tconfidence_pct`). Optional on load: a save that
+  ends after `INVENTORIES` (written before K-1) loads with nothing known, no
+  ward and no omen. A save cut inside the new sections still throws. No
+  version bump (`SIMSAVE 2`).
+
+## CApi.h / CApi.cpp (additive)
+
+- Rite knowledge: `sim_world_knows_rite`, `sim_world_known_rites`,
+  `sim_world_learn_rite_from_teacher`, `sim_world_learn_rite_from_text`,
+  `sim_world_rites_taught_by`, `sim_world_rites_taught_in`.
+- Performer: `sim_world_set_rite_place`, `sim_world_rite_place`,
+  `sim_world_purity`, `sim_world_set_purity` (clamps 0..100).
+- The rite: `sim_world_perform_rite(world, rite, target, effect_out, cap)` —
+  1 succeeded / 0 failed / negative refusal codes (documented in CApi.h).
+- Effects: `sim_world_ward_until`, `sim_world_warded`,
+  `sim_world_omen_count`, `sim_world_omen`.
+
+## Tests
+
+- test_magic `test_rite_knowledge_state`; test_scenario_rite `test_k1_*` (6);
+  test_snapshot `test_k1_rite_state_round_trips` (+3 cases in the
+  every-module guard); test_capi `test_rites_through_c` (listed first so it
+  runs ahead of the path-dependent save test).
