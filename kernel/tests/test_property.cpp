@@ -344,6 +344,25 @@ static bool test_soak_invariants_hold() {
 
 }  // namespace
 
+
+static bool test_purse_credits_income_per_owner_and_takes_clamp() {
+    Rig rig;
+    (void)buy_asset(rig.property, Id{"workshop"}, Id{"player"}, Id{"city_of_the_moon"}, 5, true);
+    (void)buy_asset(rig.property, Id{"field"}, Id{"npc_steward"}, Id{"city_of_the_moon"}, 2, false);
+    SIM_CHECK_EQ(purse(rig.property, Id{"player"}), Silver{0});
+    tick_property(rig.ctx, rig.property, 3);
+    // income credits per owner: the player 5/day, the npc 2/day
+    SIM_CHECK_EQ(purse(rig.property, Id{"player"}), Silver{15});
+    SIM_CHECK_EQ(purse(rig.property, Id{"npc_steward"}), Silver{6});
+    credit_purse(rig.property, Id{"player"}, 10);
+    SIM_CHECK_EQ(purse(rig.property, Id{"player"}), Silver{25});
+    SIM_CHECK(!take_from_purse(rig.property, Id{"player"}, 30));  // clamped when short
+    SIM_CHECK_EQ(purse(rig.property, Id{"player"}), Silver{25});
+    SIM_CHECK(take_from_purse(rig.property, Id{"player"}, 25));
+    SIM_CHECK_EQ(purse(rig.property, Id{"player"}), Silver{0});
+    return true;
+}
+
 SIM_MAIN(test_buy_asset_ids_and_deeds,
          test_issue_loan_records_terms_and_shares_the_counter,
          test_find_asset_and_find_loan,

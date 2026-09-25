@@ -85,10 +85,15 @@ void tick_property(const WorldContext& ctx, PropertyState& state, int days) {
             if (loan.due > 0 && day > loan.due) ++overdue;
         }
 
-        // The day's income: one dose per asset. PropertyState has no purse to
-        // credit, so the accrual is reported (see the header comment).
+        // The day's income: one dose per asset, credited to the owner's purse
+        // (D-017 — income has a wallet to land in), and reported on the tablet.
+        std::map<Id, Silver> income_by_owner;
+        for (const Asset& asset : state.assets) income_by_owner[asset.owner] += asset.income_per_day;
         Silver income_today = 0;
-        for (const Asset& asset : state.assets) income_today += asset.income_per_day;
+        for (const auto& [owner, income] : income_by_owner) {
+            state.purse_by_owner[owner] += income;
+            income_today += income;
+        }
 
         // One steward tablet per ticked day, newest last, while there is
         // anything to steward: a steward with no assets and no loans writes
@@ -173,3 +178,21 @@ const Loan* find_loan(const PropertyState& state, const Id& loan_id) {
 }
 
 }  // namespace sim
+
+// Purse access (D-017): clamped at zero; credit never negative.
+Silver purse(const PropertyState& state, const Id& owner) {
+    const auto it = state.purse_by_owner.find(owner);
+    return it == state.purse_by_owner.end() ? Silver{0} : it->second;
+}
+
+void credit_purse(PropertyState& state, const Id& owner, Silver amount) {
+    if (amount > 0) state.purse_by_owner[owner] += amount;
+}
+
+bool take_from_purse(PropertyState& state, const Id& owner, Silver amount) {
+    if (amount < 0) return false;
+    const Silver current = purse(state, owner);
+    if (amount > current) return false;
+    state.purse_by_owner[owner] = current - amount;
+    return true;
+}

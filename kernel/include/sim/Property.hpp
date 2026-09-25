@@ -45,6 +45,9 @@ struct Loan {
 struct PropertyState {
     std::vector<Asset> assets;
     std::vector<Loan> loans;
+    // The purse: income credited per tick, by owner (npc id or "player").
+    // D-017 closes the D-011 deferral — income has a wallet to land in.
+    std::map<Id, Silver> purse_by_owner;
     std::vector<std::string> steward_reports;  // diegetic tablet lines, newest last
     int next_id = 1;
 };
@@ -56,6 +59,12 @@ Asset& buy_asset(PropertyState& state, const Id& kind, const Id& owner,
 Loan& issue_loan(PropertyState& state, const Id& debtor, const Id& creditor,
                  Silver principal, int rate_pct, DayNumber day, int term_days);
 bool repay_loan(PropertyState& state, const Id& loan_id, Silver amount);
+
+// Purse access: income lands here per tick; the engine reads it as the
+// owner's silver-on-hand. take_from_purse is clamped (false when short).
+Silver purse(const PropertyState& state, const Id& owner);
+void credit_purse(PropertyState& state, const Id& owner, Silver amount);
+bool take_from_purse(PropertyState& state, const Id& owner, Silver amount);
 
 const Asset* find_asset(const PropertyState& state, const Id& asset_id);
 const Loan* find_loan(const PropertyState& state, const Id& loan_id);
