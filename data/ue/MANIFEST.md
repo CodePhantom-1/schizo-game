@@ -7,7 +7,7 @@ Run `python3 tools/export_datatables.py` to regenerate from db/canon.
 - endings: 4 rows
 - events: 16 rows
 - factions: 10 rows
-- items: 27 rows
+- items: 35 rows
 - laws: 10 rows
 - names: 45 rows
 - pantheons: 6 rows
