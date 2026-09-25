@@ -15,7 +15,7 @@
  *  - readers (player, NPCs, UI) call the getters; NOTHING writes module state
  *    except the kernel's own tick — the kernel's rule is the engine's rule.
  */
-UCLASS()
+UCLASS(Config = Engine)
 class SIMRUNTIME_API USimWorldSubsystem : public UTickableWorldSubsystem
 {
 	GENERATED_BODY()

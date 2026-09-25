@@ -9,13 +9,18 @@ public class SimRuntime : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
-		PublicIncludePaths.Add("../../kernel/include");
+		// The kernel headers (repo root is five levels up from the module dir).
+		PublicIncludePaths.Add(System.IO.Path.Combine(
+			ModuleDirectory, "..", "..", "..", "..", "..", "kernel", "include"));
 
 		// The CMake-built kernel static library (Release). Built by:
 		//   cmake -S kernel -B kernel/build -DCMAKE_BUILD_TYPE=Release && cmake --build kernel/build
 		// TODO(Phase 3 bring-up): verify the artifact name/path per configuration,
 		// and decide static-link vs shared once the editor's module lifetime is known.
-		AdditionalLibraries.Add("../../../kernel/build/libsim_core.a");
+		// Fully qualified: UBT warns (slow deps) on unresolvable relative library paths.
+		PublicAdditionalLibraries.Add(System.IO.Path.Combine(
+			ModuleDirectory, "..", "..", "..", "..", "..", "kernel", "build-ue", "libsim_core.a"));
+
 
 		PublicDependencyModuleNames.AddRange(new string[]
 		{
