@@ -63,9 +63,11 @@
 //     empty in all canon rows today; calendar.csv festival_days is an OPEN
 //     row). Otherwise time is acceptable.
 //
-//  8. Purity requirement (score weight 0.20, Magic.hpp:10): rites.csv carries
-//     no purity column (db/schema/rites.md lists the full header), so the
-//     header's "default 0" applies and purity >= 0 always holds.
+//  8. Purity requirement (score weight 0.20, Magic.hpp:10): read from the
+//     rite's rites.csv `purity_required` column (D-012). A blank cell (every
+//     canon row today) is the header's "default 0", so purity >= 0 holds; a
+//     cell that is not a plain non-negative integer is read as that default
+//     too. A value above 100 can never be met (purity is 0..100).
 //
 //  9. Consumption of materials is the CALLER's outcome to apply (Magic.hpp:22
 //     -23: "no effect application here — the caller reads RiteResult and
@@ -78,11 +80,13 @@
 
 #include "sim/Context.hpp"
 
+#include <algorithm>
+
 namespace sim {
 namespace {
 
 constexpr int kNeutralFavour = 50;  // Magic.hpp:37 "50 neutral birth"
-constexpr int kPurityRequirement = 0;  // Magic.hpp:10 "default 0" (no purity column in rites.csv)
+constexpr int kDefaultPurityRequirement = 0;  // Magic.hpp:10 "default 0"
 
 char ascii_lower(char c) {
     return (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c;
@@ -187,6 +191,20 @@ bool time_acceptable(const Row& rite, const WorldContext& ctx) {
     return ctx.cal.is_festival(ctx.day);
 }
 
+// Magic.hpp:10 — the rite's purity requirement from rites.csv purity_required.
+// Blank (every canon row today) is the default 0. A cell that is not a plain
+// non-negative integer is also read as the default (reading 8).
+int purity_requirement(const Row& rite) {
+    const std::string cell = trimmed(rite.get("purity_required"));
+    if (cell.empty() || cell.size() > 9) return kDefaultPurityRequirement;
+    int value = 0;
+    for (const char c : cell) {
+        if (c < '0' || c > '9') return kDefaultPurityRequirement;
+        value = value * 10 + (c - '0');
+    }
+    return value;
+}
+
 bool is_a_specific_deity(const Id& deity) {
     return !deity.empty() && deity != "any";
 }
@@ -197,10 +215,10 @@ void add_favour(MagicState& state, const Id& deity, int delta) {
     int current = kNeutralFavour;
     const auto it = state.favour_by_deity.find(deity);
     if (it != state.favour_by_deity.end()) current = it->second;
-    current += delta;
-    if (current < 0) current = 0;
-    if (current > 100) current = 100;
-    state.favour_by_deity[deity] = current;
+    // Widened: current + INT_MAX (the C API passes the engine's int through)
+    // must saturate, not overflow (same fix as Faction add_standing).
+    state.favour_by_deity[deity] =
+        static_cast<int>(std::clamp<long long>(static_cast<long long>(current) + delta, 0, 100));
 }
 
 int favour(const MagicState& state, const Id& deity) {
@@ -240,7 +258,7 @@ RiteResult perform_rite(const WorldContext& ctx, MagicState& state,
     const double score =
         favour_component +
         0.20 * (has_all_materials(*rite, inputs) ? 1.0 : 0.0) +
-        0.20 * (state.purity >= kPurityRequirement ? 1.0 : 0.0) +
+        0.20 * (state.purity >= purity_requirement(*rite) ? 1.0 : 0.0) +
         0.10 * (place_acceptable(state.place, rite->get("place")) ? 1.0 : 0.0) +
         0.10 * (time_acceptable(*rite, ctx) ? 1.0 : 0.0);
 

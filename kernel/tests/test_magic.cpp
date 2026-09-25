@@ -16,6 +16,7 @@
 
 #include "sim/Test.hpp"
 
+#include <climits>
 #include <cmath>
 #include <cstdint>
 #include <filesystem>
@@ -355,8 +356,8 @@ static bool test_festival_time_window() {
     return true;
 }
 
-// Magic.hpp:10 — the rite's purity requirement defaults to 0 (rites.csv carries
-// no purity column), so even a purely impure performer keeps the 0.20.
+// Magic.hpp:10 — the rite's purity requirement defaults to 0 (this canon row's
+// purity_required is blank), so even a purely impure performer keeps the 0.20.
 static bool test_purity_requirement_defaults_to_zero() {
     World w{1, 5, "../db/canon"};
     w.magic.purity = 0;
@@ -394,6 +395,54 @@ static bool test_determinism_same_seed_same_state_bytes() {
     // The draw came from a fork: the world rng stands exactly where it started.
     Rng probe{11};
     SIM_CHECK_EQ(a.rng.next(), probe.next());
+    return true;
+}
+
+// Follow-up review 2026-09-25: add_favour widens before clamping, so an
+// extreme delta (the C API passes the engine's int through) saturates instead
+// of overflowing int. 50 + INT_MAX used to wrap negative and clamp to 0.
+static bool test_add_favour_extreme_delta_saturates() {
+    MagicState state;
+    add_favour(state, "inanna", INT_MAX);
+    SIM_CHECK_EQ(favour(state, "inanna"), 100);
+    add_favour(state, "inanna", INT_MAX);  // already 100: stays 100
+    SIM_CHECK_EQ(favour(state, "inanna"), 100);
+    add_favour(state, "enki", INT_MIN);
+    SIM_CHECK_EQ(favour(state, "enki"), 0);
+    add_favour(state, "enki", INT_MIN);  // already 0: stays 0
+    SIM_CHECK_EQ(favour(state, "enki"), 0);
+    return true;
+}
+
+// Follow-up review 2026-09-25: the purity term reads rites.csv's
+// purity_required column (Magic.hpp:10 "purity >= rite's purity requirement,
+// default 0"); a blank cell is the default 0. Fixture rows are scaffolding.
+static bool test_purity_required_column_gates_the_purity_term() {
+    const std::filesystem::path dir =
+        std::filesystem::temp_directory_path() / "sim_test_magic_purity_required";
+    std::filesystem::remove_all(dir);
+    std::filesystem::create_directories(dir);
+    {
+        std::ofstream out(dir / "rites.csv");
+        out << "id,name,tradition,deity,materials,place,time_window,purity_required,"
+               "effect_family,effect_tag,tag,source_ref\n"
+            << "pure_rite_fixture,Fixture rite (test scaffolding),fixture,inanna,,,,60,"
+               "blessing (fixture),INVENTED: EFFECT,CANON,tests/test_magic.cpp\n"
+            << "blank_rite_fixture,Fixture rite (test scaffolding),fixture,inanna,,,,,"
+               "blessing (fixture),INVENTED: EFFECT,CANON,tests/test_magic.cpp\n";
+    }
+    // No materials/place/time demands: 0.40*0.50 + 0.20 + [purity 0.20] + 0.10 + 0.10.
+    const auto score_at = [&](const char* rite, int purity) {
+        World w{1, 5, dir.string()};
+        w.magic.purity = purity;
+        return perform_rite(w.ctx, w.magic, rite, known_with_nothing()).score;
+    };
+    SIM_CHECK(close(score_at("pure_rite_fixture", 59), 0.60));   // below 60: the term is lost
+    SIM_CHECK(close(score_at("pure_rite_fixture", 60), 0.80));   // at the requirement: kept
+    SIM_CHECK(close(score_at("pure_rite_fixture", 100), 0.80));
+    SIM_CHECK(close(score_at("blank_rite_fixture", 0), 0.80));   // blank = default 0
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
     return true;
 }
 
@@ -437,4 +486,6 @@ SIM_MAIN(test_favour_defaults_and_clamps,
          test_festival_time_window,
          test_purity_requirement_defaults_to_zero,
          test_determinism_same_seed_same_state_bytes,
-         test_rite_knowledge_state)
+         test_rite_knowledge_state,
+         test_add_favour_extreme_delta_saturates,
+         test_purity_required_column_gates_the_purity_term)

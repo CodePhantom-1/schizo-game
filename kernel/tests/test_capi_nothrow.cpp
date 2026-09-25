@@ -10,6 +10,7 @@
 
 #include <cstdlib>
 #include <new>
+#include <string>
 
 namespace {
 bool g_fail_alloc = false;
@@ -83,4 +84,65 @@ static bool test_no_exception_escapes_the_c_boundary() {
     return true;
 }
 
-SIM_MAIN(test_no_exception_escapes_the_c_boundary)
+// Follow-up review: the K-1 (rites) and K-2 (festivals, people) entry points
+// were merged after the guard pass. A representative subset, each building an
+// Id or a std::string key from kLong while allocation fails: each must return
+// -1 (or no-op, for the void setters) instead of throwing.
+static bool test_k1_k2_entry_points_do_not_throw() {
+    SimWorld* w = sim_world_create("../db/canon", 42);
+    SIM_CHECK(w != nullptr);
+    char buf[256];
+    char place_before[256];
+    SIM_CHECK(sim_world_rite_place(w, place_before, sizeof(place_before)) >= 0);
+
+    g_fail_alloc = true;
+    const int knows = sim_world_knows_rite(w, kLong);
+    const int learn_teacher = sim_world_learn_rite_from_teacher(w, kLong, kLong);
+    const int learn_text = sim_world_learn_rite_from_text(w, kLong, kLong);
+    const int taught_by = sim_world_rites_taught_by(w, kLong, buf, sizeof(buf));
+    const int taught_in = sim_world_rites_taught_in(w, kLong, buf, sizeof(buf));
+    sim_world_set_rite_place(w, kLong);
+    const int perform = sim_world_perform_rite(w, kLong, kLong, buf, sizeof(buf));
+    const int64_t ward_until = sim_world_ward_until(w, kLong);
+    const int warded = sim_world_warded(w, kLong);
+    const int npc_task = sim_world_npc_task_at(w, kLong, 6, buf, sizeof(buf));
+    const int npc_place = sim_world_npc_place_at(w, kLong, 6, buf, sizeof(buf));
+    const int npc_schedule = sim_world_npc_schedule_at(w, kLong, 6, buf, sizeof(buf));
+    // Day 1 is New Waters (festivals.csv): the market lookup reads its row.
+    const int market = sim_world_market_open(w);
+    // No allocation on these paths today; called so a future one cannot throw.
+    sim_world_set_purity(w, 50);
+    const int purity = sim_world_purity(w);
+    const int omens = sim_world_omen_count(w);
+    const int omen = sim_world_omen(w, 0, buf, sizeof(buf));
+    const int festival = sim_world_is_festival(w);
+    sim_world_destroy(nullptr);
+    g_fail_alloc = false;
+
+    SIM_CHECK_EQ(knows, -1);
+    SIM_CHECK_EQ(learn_teacher, -1);
+    SIM_CHECK_EQ(learn_text, -1);
+    SIM_CHECK_EQ(taught_by, -1);
+    SIM_CHECK_EQ(taught_in, -1);
+    SIM_CHECK_EQ(perform, -1);
+    SIM_CHECK_EQ(ward_until, int64_t{-1});
+    SIM_CHECK_EQ(warded, -1);
+    SIM_CHECK_EQ(npc_task, -1);
+    SIM_CHECK_EQ(npc_place, -1);
+    SIM_CHECK_EQ(npc_schedule, -1);
+    SIM_CHECK_EQ(market, -1);
+    SIM_CHECK_EQ(purity, 50);
+    SIM_CHECK_EQ(omens, 0);
+    SIM_CHECK_EQ(omen, -1);  // no omen at index 0
+    SIM_CHECK_EQ(festival, 1);
+
+    // The failed setter left the rite place as it was, and the world still works.
+    char place_after[256];
+    SIM_CHECK(sim_world_rite_place(w, place_after, sizeof(place_after)) >= 0);
+    SIM_CHECK_EQ(std::string(place_after), std::string(place_before));
+    SIM_CHECK_EQ(sim_world_knows_rite(w, kLong), 0);
+    sim_world_destroy(w);
+    return true;
+}
+
+SIM_MAIN(test_no_exception_escapes_the_c_boundary, test_k1_k2_entry_points_do_not_throw)
