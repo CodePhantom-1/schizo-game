@@ -430,16 +430,22 @@ static bool test_seed_wires_same_role_same_city_and_neighbour_links() {
     const auto& far = w.population.knows["res_far_baker"];
     SIM_CHECK(std::find(far.begin(), far.end(), Id("res_baker_1")) == far.end());
 
-    // Neighbours: every resident (any role) in the same city is chained by
-    // sorted id — res_baker_1 and res_watch_1 are consecutive in that order,
-    // so they know each other even though their roles differ.
-    std::vector<Id> moon_residents = {"named_leader", "res_baker_1", "res_baker_2",
-                                       "res_no_role_match", "res_watch_1"};
+    // Neighbours: role-bearing residents (the ones the street link-wiring
+    // pass operates on) of the same city are chained by sorted id —
+    // res_baker_1 and res_watch_1 are consecutive in that order despite
+    // differing roles, since the chain sorts by id, not role.
+    std::vector<Id> moon_residents = {"res_baker_1", "res_baker_2", "res_watch_1"};
     std::sort(moon_residents.begin(), moon_residents.end());
     for (std::size_t i = 1; i < moon_residents.size(); ++i) {
         const auto& edges = w.population.knows[moon_residents[i - 1]];
         SIM_CHECK(std::find(edges.begin(), edges.end(), moon_residents[i]) != edges.end());
     }
+
+    // A narrative leader and a resident whose role names no schedule get no
+    // links at all: the link-wiring pass only ever touches role-bearing
+    // (schedule-matching) residents.
+    SIM_CHECK(w.population.knows.find("named_leader") == w.population.knows.end());
+    SIM_CHECK(w.population.knows.find("res_no_role_match") == w.population.knows.end());
 
     // No self-loop, no dangling edge to res_open (it was never seeded).
     for (const auto& [id, edges] : w.population.knows) {

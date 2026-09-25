@@ -101,7 +101,9 @@ std::vector<DialogueLine> eligible_lines(const Db& db, const std::string& speake
     std::vector<DialogueLine> out;
     for (const Row& row : db.rows("dialogues")) {
         if (is_open(row)) continue;
-        if (normalize_speaker(row.get("speaker")) != wanted) continue;
+        const std::string& speaker_text = row.get("speaker");
+        if (wanted != normalize_full(speaker_text) && wanted != normalize_stripped(speaker_text))
+            continue;
         const int rank = story_act_rank(row.get("source_ref"));
         if (rank >= 0 && rank > player_rank) continue;  // the player hasn't reached this act
 
