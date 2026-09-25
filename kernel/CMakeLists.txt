@@ -4,6 +4,10 @@ project(sim_kernel CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+# UE links this static lib into a plugin .so (SimRuntime); a non-PIC archive
+# fails that link with ld.lld "relocation ... recompile with -fPIC". PIC has
+# no effect on the standalone ctest executables below.
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 file(GLOB SIM_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
 add_library(sim_core STATIC ${SIM_SOURCES})

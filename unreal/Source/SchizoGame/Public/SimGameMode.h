@@ -20,9 +20,6 @@ public:
 	virtual AActor* FindPlayerStart_Implementation(AController* Player, const FString& IncomingName = TEXT("")) override;
 
 protected:
-	/** Spawns one scaled engine cube (grey-box stone). */
-	void SpawnBox(const FVector& Location, const FVector& Scale, const FLinearColor& Color);
-
 	/** The sim day the clock shows (to avoid re-reading the C API every line). */
 	int64 LastShownDay = -1;
 

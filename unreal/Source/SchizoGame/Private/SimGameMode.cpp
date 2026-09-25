@@ -1,6 +1,7 @@
-// SimGameMode.cpp — the grey-box street, built in code (PLACEHOLDER: content
-// kits and authored maps replace this at the slice's content pass).
+// SimGameMode.cpp — builds the Moon Gate Quarter (ASimStreetBuilder, from
+// the mudbrick kit + db/canon/places.csv) and places the pawn at the gate.
 #include "SimGameMode.h"
+#include "SimStreetBuilder.h"
 #include "SimWorldSubsystem.h"
 
 // The kernel's C API through SimRuntime's public include path.
@@ -8,7 +9,6 @@
 #include "SimTablet.h"
 #include "sim/CApi.h"
 
-#include "Engine/StaticMeshActor.h"
 #include "Engine/World.h"
 #include "Components/DirectionalLightComponent.h"
 #include "Engine/DirectionalLight.h"
@@ -28,32 +28,6 @@ ASimGameMode::ASimGameMode()
 	PrimaryActorTick.bCanEverTick = true;
 }
 
-void ASimGameMode::SpawnBox(const FVector& Location, const FVector& Scale, const FLinearColor& Color)
-{
-	UWorld* World = GetWorld();
-	if (World == nullptr)
-	{
-		return;
-	}
-	AStaticMeshActor* Box = World->SpawnActor<AStaticMeshActor>(Location, FRotator::ZeroRotator);
-	if (Box == nullptr)
-	{
-		return;
-	}
-	Box->SetMobility(EComponentMobility::Movable);
-	if (UStaticMeshComponent* Mesh = Box->GetStaticMeshComponent())
-	{
-		// Runtime load (ConstructorHelpers only works inside constructors).
-		if (UStaticMesh* Cube = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube")))
-		{
-			Mesh->SetStaticMesh(Cube);
-		}
-		Mesh->SetWorldScale3D(Scale);
-		Mesh->SetMobility(EComponentMobility::Movable);
-	}
-	Box->SetActorLabel(FString::Printf(TEXT("GreyBox_%s"), *Color.ToString()));
-}
-
 void ASimGameMode::StartPlay()
 {
 	UWorld* World = GetWorld();
@@ -64,23 +38,32 @@ void ASimGameMode::StartPlay()
 
 	// The street is built BEFORE Super::StartPlay(): the pawn spawns there,
 	// and it must find the PlayerStart, not the engine's fallback.
-	// The street: a floor, the moon-gate walls, a lintel. Grey-box stone.
-	SpawnBox(FVector(0, 0, -50), FVector(40, 12, 1), FLinearColor::Gray);      // the street floor
-	SpawnBox(FVector(0, -600, 150), FVector(2, 1, 12), FLinearColor::White);   // gate wall, west
-	SpawnBox(FVector(0, 600, 150), FVector(2, 1, 12), FLinearColor::White);    // gate wall, east
-	SpawnBox(FVector(0, 0, 500), FVector(4, 14, 1), FLinearColor::White);      // the lintel over the gate
-	SpawnBox(FVector(2500, 0, -50), FVector(40, 12, 1), FLinearColor::Gray);   // the street continues
+	ASimStreetBuilder* Street = World->SpawnActor<ASimStreetBuilder>(FVector::ZeroVector, FRotator::ZeroRotator);
+	FVector GateLoc = FVector::ZeroVector;
+	if (Street != nullptr)
+	{
+		GateLoc = Street->Build();
+		UE_LOG(LogSimGameMode, Log, TEXT("Street built: %d buildings, %d door slots."), Street->NumBuildingsBuilt, Street->NumDoorSlots);
+	}
+	else
+	{
+		UE_LOG(LogSimGameMode, Warning, TEXT("ASimStreetBuilder spawn failed — no street."));
+	}
 
-	// The first readable thing: a clay tablet by the street's start (notes L198).
-	if (World->SpawnActor<ASimTablet>(FVector(1300, 0, 140), FRotator(0, 90, 0)) == nullptr)
+	// The first readable thing: a clay tablet just inside the gate (notes L198).
+	const FVector TabletLoc = GateLoc + FVector(300.f, 0.f, 140.f);
+	if (World->SpawnActor<ASimTablet>(TabletLoc, FRotator(0, 90, 0)) == nullptr)
 	{
 		UE_LOG(LogSimGameMode, Warning, TEXT("tablet spawn failed"));
 	}
 
 	// Light and sky: the Entry map ships dark — without these the street is
-	// a black screen. The sun sits low, like a drought sky.
+	// a black screen. The sun sits low, like a drought sky. Tagged SimSun so
+	// the NPC/time agent (and ASimStreetBuilder's own duplicate-sun guard)
+	// can find it (docs/plan.md UE-3 track item 5).
 	if (ADirectionalLight* Sun = World->SpawnActor<ADirectionalLight>(FVector(0, 0, 2000), FRotator(-35, 20, 0)))
 	{
+		Sun->Tags.Add(FName(TEXT("SimSun")));
 		if (UDirectionalLightComponent* Light = Cast<UDirectionalLightComponent>(Sun->GetLightComponent()))
 		{
 			Light->SetMobility(EComponentMobility::Movable);
@@ -98,15 +81,15 @@ void ASimGameMode::StartPlay()
 		}
 	}
 
-	// A PlayerStart so the pawn has somewhere to be: facing the gate — and the
-	// tablet, which sits ahead of the spawn.
-	StreetStart = World->SpawnActor<APlayerStart>(FVector(1500, 0, 100), FRotator(0, 180, 0));
+	// A PlayerStart so the pawn has somewhere to be: facing in from the gate,
+	// the tablet just ahead of the spawn.
+	StreetStart = World->SpawnActor<APlayerStart>(GateLoc + FVector(500.f, 0.f, 50.f), FRotator(0, 180, 0));
 	if (StreetStart == nullptr)
 	{
 		UE_LOG(LogSimGameMode, Warning, TEXT("PlayerStart spawn failed — the pawn will start at the default."));
 	}
 
-	UE_LOG(LogSimGameMode, Log, TEXT("The grey-box street stands (v2)."));
+	UE_LOG(LogSimGameMode, Log, TEXT("The Moon Gate Quarter stands."));
 
 	// The pawn spawned during Login, before any PlayerStart stood — restart
 	// it so FindPlayerStart places it at ours, facing the gate.
