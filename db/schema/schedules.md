@@ -1,6 +1,6 @@
 # schedules
 
-**Rows:** 36 · **Source:** canon rows authored from the designer's notes ([world-bible](../../docs/world-bible.md)), researched real-world rows, or reserved for later phases.
+**Rows:** 37 · **Source:** canon rows authored from the designer's notes ([world-bible](../../docs/world-bible.md)), researched real-world rows, or reserved for later phases.
 
 ## Fields
 
