@@ -1,5 +1,9 @@
-// SimRuntime.Build.cs — PLACEHOLDER (authored pre-editor; bring-up fixes expected).
-// Consumes the kernel built by CMake: kernel/build/libsim_core.a + kernel/include.
+// SimRuntime.Build.cs — binds the world kernel to Unreal.
+// Consumes the kernel built by CMake with UE's own toolchain:
+//   kernel/build-ue/libsim_core.a (Linux/Mac) or kernel/build-ue/sim_core.lib (Win64)
+//   + kernel/include (the C API, sim/CApi.h).
+// How to build kernel/build-ue: docs/kernel-build-for-ue.md
+// (Linux: tools/build_kernel_for_ue.sh — UE's bundled clang, libc++, -fPIC).
 // The kernel is the product's deterministic core (plan v2 §5); the engine renders it.
 using UnrealBuildTool;
 
@@ -13,22 +17,25 @@ public class SimRuntime : ModuleRules
 		PublicIncludePaths.Add(System.IO.Path.Combine(
 			ModuleDirectory, "..", "..", "..", "..", "..", "kernel", "include"));
 
-		// The CMake-built kernel static library (Release). Built by:
-		//   cmake -S kernel -B kernel/build -DCMAKE_BUILD_TYPE=Release && cmake --build kernel/build
-		// TODO(Phase 3 bring-up): verify the artifact name/path per configuration,
-		// and decide static-link vs shared once the editor's module lifetime is known.
-		// Fully qualified: UBT warns (slow deps) on unresolvable relative library paths.
-		PublicAdditionalLibraries.Add(System.IO.Path.Combine(
-			ModuleDirectory, "..", "..", "..", "..", "..", "kernel", "build-ue", "libsim_core.a"));
+		// The CMake-built kernel static library (Release), built with UE's
+		// toolchain — see docs/kernel-build-for-ue.md. Fully qualified: UBT warns
+		// (slow deps) on unresolvable relative library paths.
+		string KernelLib = Target.Platform == UnrealTargetPlatform.Win64 ? "sim_core.lib" : "libsim_core.a";
+		string KernelPath = System.IO.Path.GetFullPath(System.IO.Path.Combine(
+			ModuleDirectory, "..", "..", "..", "..", "..", "kernel", "build-ue", KernelLib));
+		if (!System.IO.File.Exists(KernelPath))
+		{
+			// Not thrown: UBT also runs this file while generating project files,
+			// before the kernel may exist. The link step fails on the path below.
+			System.Console.WriteLine("SimRuntime: warning: kernel library missing at " + KernelPath +
+				" - build it with UE's toolchain (docs/kernel-build-for-ue.md).");
+		}
+		PublicAdditionalLibraries.Add(KernelPath);
 
-
+		// Engine types appear in the public headers (world/game-instance subsystems).
 		PublicDependencyModuleNames.AddRange(new string[]
 		{
-			"Core"
-		});
-
-		PrivateDependencyModuleNames.AddRange(new string[]
-		{
+			"Core",
 			"CoreUObject",
 			"Engine"
 		});
