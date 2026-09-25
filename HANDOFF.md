@@ -16,8 +16,20 @@ To consolidate, `main` on GitHub and on this machine was fast-forwarded to Sessi
 | `wip/ue-2-player-verbs` | Doors, well, bed, pickup, eat/drink, needs over time, HUD | Unfinished, never compiled. Good spec for the next Unreal wave. |
 | `wip/ue-3-street-from-kit` | House kit → UE import, Moon Gate Quarter built from `places.csv`, door slots, place registry | Unfinished. Good spec for the next Unreal wave. |
 | `wip/ue-4-townspeople-daynight` | NPC actors walking their schedules, director, day/night sun | Unfinished. Good spec for the next Unreal wave. |
+| `archive/session-a-wave2-kernel-wip` | Session A's stopped wave-2 follow-on (kernel test WIP) | Archived; superseded by later waves |
+| `archive/session-a-texture-tools` | Session A's realistic-texture pipeline (dropped per D-023) | Archived; do not build on it |
 
 Session A's K-2 and A-1 (realistic PBR textures) were dropped. K-2 is done in B, and A-1 contradicts D-023 (low-poly, Valheim-like).
+
+`claude/admiring-babbage-c0jyzr` on GitHub is fully contained in `main` — delete it once you are sure that session is closed.
+
+## Audit after consolidation (2026-09-25, later session)
+- `main` local == `origin/main`; the combined tree **builds clean and passes 37/37 kernel tests**.
+- Salvaged from `backup-local-session`: the Entry-map default in `unreal/Config/DefaultEngine.ini` (editor/`-game` froze on the OpenWorld template; the tiny engine Entry map fixes it — "the black screen").
+- Deleted: the stale untracked `unreal/SchizoGame/` tree (an old canon staging from before wave 4; the tracked `unreal/Content/Sim/canon` is current per `stage_canon_for_ue.py --check`), all 22 agent worktrees, and every dead local branch. Local repo is `main` only.
+- **Lost with the accidentally-resumed session and must be redone** (no trace in any commit, branch, or worktree):
+  1. **Divine wrath** — the kernel module and its C API block were built but never committed.
+  2. **Faction politics deciding raids** — `kernel/src/Faction.cpp` exists (wave 2, bug-reviewed) but nothing consults it; the wild-lands raid formula does not use factions, and Faction is not exposed in the C API.
 
 ## How to proceed
 1. **One coordinator only.** Continue in Session B (or a fresh session that reads this file). Don't run two coordinators on this repo.
@@ -33,4 +45,4 @@ Session A's K-2 and A-1 (realistic PBR textures) were dropped. K-2 is done in B,
    ~/UnrealEngine/Engine/Build/BatchFiles/Linux/Build.sh SchizoGameEditor Linux Development -Project="$PWD/unreal/SchizoGame.uproject"
    ~/UnrealEngine/Engine/Binaries/Linux/UnrealEditor "$PWD/unreal/SchizoGame.uproject" -game
    ```
-6. **Housekeeping:** Session A's agent worktrees under `.claude/worktrees/` on this machine are no longer needed. Remove them with `git worktree list`, then `git worktree remove --force <path>` for each, and `git worktree prune`.
+6. **Housekeeping:** done in the audit above — worktrees and dead branches are removed; `main` is the only local branch.
