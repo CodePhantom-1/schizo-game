@@ -26,3 +26,48 @@ Presentation-layer inventions for building the quarter in UE (all INVENTED, veto
 - The door slot is an APPROACH point (1 m outside the wall, ground z, yaw facing the street); doors hang on the wall face (see SimVerbSpawner), the gate's leaf quarter-turned and doubled to fill the opening.
 - Runtime colour palette by FBX slot name (M_MudPlaster/M_Mudbrick/M_Timber/M_Reed from kit_common.py MAT_DEFS) on the engine's parameter material — no authored materials until the content pass.
 - Kit import: cut pieces (SM_WallDoor/SM_WallWindow/SM_RoofAccess/SM_Awning) carry NO auto collision (a convex hull of a cut piece is the solid slab — doorways would be unenterable); solid pieces keep theirs.
+
+## W6-B environment materials pass (2026-09-25, art1-kit)
+
+The street's surfaces move from flat runtime colours to the CC0 ambientCG
+maps (all INVENTED presentation choices, vetoable; data stays canon):
+
+- **UV strategy (the load-bearing choice).** `smart_project` for UV0
+  renormalised every piece into the 0-1 square independently, so texel
+  density was arbitrary and inconsistent (measured: the 1x2.6 m wall face
+  sampled one texture repeat per ~31x2.5 m; a floor tile per ~22x2.8 m).
+  UV0 is now an exact planar projection in metres / tile_m
+  (`kit_common.planar_uv0`), baked per piece from its slots' TEX_DEFS tile
+  (all current pieces mix only same-tile materials: walls 2 m
+  plaster+brick, awning 1 m timber+reed). Verified by FBX round-trip: the
+  exported wall's big face spans UV 0.485x1.217 over 0.97x2.435 m = exactly
+  2.000 m per texture repeat on both axes. The density is baked into the
+  UVs (not a Blender Mapping node) because FBX cannot carry the node graph
+  and UE rebuilds the slot material as a bare TextureSample on UV0.
+- **Tile sizes** (metres per texture repeat, 2K maps = 1024 px/m at 2 m):
+  mudbrick/plaster 2 m, timber/reed 1 m (finer for weave/grain), plinth
+  rock 2 m, ground 3 m — as documented in `fetch_textures.py` TEX_DEFS.
+- **FBX embedded maps.** Blender 4.5 embeds BOTH the colour and roughness
+  jpg per material (binary-probed: 4 JPEG SOI markers in SM_WallPlain.fbx,
+  file size == sum of embedded jpg bytes). UE imports them with
+  `import_materials`/`import_textures`; whether the importer wires the
+  roughness jpg is suffix-dependent, so `ue_import_kit.py` also pins a
+  matte 0.95 roughness constant on every imported slot material
+  (overriding the map with the same value MAT_DEFS always documented).
+- **M_Ground** (Ground109, TextureCoordinate tiling 30x30, roughness
+  0.95): the street's single ground cube spans ~200 m with engine-cube 0-1
+  UVs per face, so 30 repeats land near the documented 3 m tile at street
+  scale (slightly coarser and non-square in world terms — the cube is not
+  square; accepted). LoadObject'd by `SimStreetBuilder` for the ground
+  mesh, flat MIC kept as fallback.
+- **M_PlasterWall** (Ground087, tiling 8x8, roughness 0.95): authored as a
+  spare for flat-coloured fallback surfaces (door leafs etc.) — nothing
+  references it yet this wave.
+- **Runtime slot colours demoted to fallback.** `LoadKitMeshes` paints the
+  flat MICs only onto slots whose material interface is null, so imported
+  textured materials win; the ground cube prefers M_Ground over its MIC.
+  Door leafs keep flat colours this wave.
+- **Known stretch artifact:** runtime X-scaled instances (SM_ParapetRun
+  roof runs, the gate's 2.5x wall pillars) now visibly stretch their
+  texture where flat colours hid the stretch; accepted at this scale,
+  world-aligned UVs would fix it.

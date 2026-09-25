@@ -129,9 +129,11 @@ ASimStreetBuilder::ASimStreetBuilder()
 
 void ASimStreetBuilder::LoadKitMeshes()
 {
-	// D-023 flat colours by FBX slot name (the kit's own material palette,
-	// tools/art/kit_common.py MAT_DEFS): the engine's parameter material
-	// carries them per slot until a content pass authors real materials.
+	// Kit FBX slots now carry real imported materials (the CC0 ambientCG
+	// surface maps, ue_import_kit.py import_materials/import_textures). The
+	// flat runtime MIC colours below are the FALLBACK, painted only onto
+	// slots whose material interface is null (kit not imported yet, or the
+	// material failed to import).
 	const TMap<FName, FColor> SlotColors = {
 		{TEXT("M_MudPlaster"), FColor(194, 158, 107)},
 		{TEXT("M_Mudbrick"),   FColor(140, 102,  69)},
@@ -155,6 +157,10 @@ void ASimStreetBuilder::LoadKitMeshes()
 			const TArray<FStaticMaterial>& Slots = Mesh->GetStaticMaterials();
 			for (int32 Slot = 0; Slot < Slots.Num() && Base != nullptr; ++Slot)
 			{
+				if (Slots[Slot].MaterialInterface != nullptr)
+				{
+					continue;  // imported material (CC0 surface maps) wins
+				}
 				const FColor* const Color = SlotColors.Find(Slots[Slot].MaterialSlotName);
 				if (Color == nullptr)
 				{
@@ -404,9 +410,14 @@ void ASimStreetBuilder::BuildGroundAndLighting(const FVector2D& BoundsMin, const
 				Mesh->SetWorldScale3D(Scale);
 				Mesh->SetMobility(EComponentMobility::Movable);
 				Mesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-				// Packed earth, not the engine's checkerboard — without this
-				// the whole quarter floats on a grid texture.
-				if (UMaterial* Base = LoadObject<UMaterial>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial")))
+				// Packed earth, not the engine's checkerboard: the authored
+				// M_Ground (CC0 Ground109, tiled — ue_import_kit.py) when the
+				// art import ran; the flat colour MIC as fallback otherwise.
+				if (UMaterial* GroundMat = LoadObject<UMaterial>(nullptr, TEXT("/Game/Art/Kit/Materials/M_Ground.M_Ground")))
+				{
+					Mesh->SetMaterial(0, GroundMat);
+				}
+				else if (UMaterial* Base = LoadObject<UMaterial>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial")))
 				{
 					if (UMaterialInstanceDynamic* GroundMic = Mesh->CreateDynamicMaterialInstance(0, Base))
 					{

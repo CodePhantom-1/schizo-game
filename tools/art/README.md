@@ -17,6 +17,7 @@ tar xf ~/opt/blender/blender.tar.xz -C ~/opt/blender --strip-components=1
 ## Commands (run from the repo root)
 
 ```
+python3 tools/art/fetch_textures.py                                           # once per machine (CC0 maps -> art/source/, ~167 MB, gitignored)
 ~/opt/blender/blender -b --factory-startup -P tools/art/house_kit.py     -- --out art/generated
 ~/opt/blender/blender -b --factory-startup -P tools/art/assemble_house.py -- --out art/generated
 ~/opt/blender/blender -b --factory-startup -P tools/art/thumbs.py         -- --out art/generated
@@ -40,10 +41,23 @@ compiled; `SimStreetBuilder.cpp` falls back to engine cubes until then):
 ```
 
 Imports every `mesh_kit_piece` row of `art/assets.csv` to
-`/Game/Art/Kit/Meshes` and creates the four flat-colour materials
-(`M_MudPlaster`, `M_Mudbrick`, `M_Timber`, `M_Reed`) in
-`/Game/Art/Kit/Materials`, assigned onto the meshes' material slots by name
-(D-023: flat colours, no PBR textures).
+`/Game/Art/Kit/Meshes` WITH the CC0 surface maps embedded in the FBXs
+(`import_materials`/`import_textures` on — the rebuilt per-slot materials
+wear the colour maps, and get a matte roughness constant pinned on them
+because the FBX cannot carry Blender's roughness wiring). It also authors
+two tiled materials as real assets in `/Game/Art/Kit/Materials` via
+`MaterialEditingLibrary` (idempotent — existing assets are reused):
+
+- **M_Ground** — Ground109 colour map, TextureCoordinate tiling 30x30,
+  roughness 0.95. Worn by the street's ground cube
+  (`SimStreetBuilder::BuildGroundAndLighting` LoadObjects it; the flat MIC
+  stays as fallback).
+- **M_PlasterWall** — Ground087, tiling 8x8, roughness 0.95 — spare for
+  runtime-coloured fallback surfaces (door leafs stay flat this wave).
+
+The runtime slot colours in `SimStreetBuilder::LoadKitMeshes` are now a
+FALLBACK: they are painted only onto slots whose material interface is
+null (kit not imported), so the imported textured materials win.
 
 ## What's in the kit
 
@@ -74,15 +88,20 @@ and standard treatments of Mesopotamian vernacular building).
 | SM_CourtyardTile | 150 | floor tile |
 | SM_Awning | 450 | reed mat on two timber poles |
 
-Named material slots: `M_MudPlaster`, `M_Mudbrick`, `M_Timber`, `M_Reed`
-(flat colours, no textures — see `docs/art-pipeline-research.md` for the
-follow-up plan to add ambientCG PBR materials). UV0 = texturing unwrap
-(`smart_project`), UV1 = a second, more-padded non-overlapping projection
-used as the lightmap UV (`ponytail:` this reuses `smart_project`'s
-non-overlapping-island property instead of the dedicated `lightmap_pack`
-operator, which needs a live 3D-view context that doesn't exist in
-background mode — upgrade to `lightmap_pack` if baked lighting seams show
-up in-engine).
+Named material slots: `M_MudPlaster`, `M_Mudbrick`, `M_Timber`, `M_Reed`,
+wearing the CC0 ambientCG surface maps from `fetch_textures.py`
+(albedo + roughness per `tools/art/fetch_textures.py` TEX_DEFS; no normal
+map — the bevelled geometry carries the relief, per D-023's low-fi lean).
+UV0 = exact planar projection in metres / tile_m (`kit_common.planar_uv0`),
+so texel density is uniform across every piece — a 1x2.6 m wall face samples
+exactly tile_m's worth of texture (2 m for plaster/brick, 1 m for
+timber/reed), and the UE-side FBX material rebuild (a bare TextureSample on
+UV0, since FBX cannot carry Blender's Mapping node) sees the same density.
+UV1 = a more-padded non-overlapping `smart_project` used as the lightmap UV
+(`ponytail:` this reuses smart_project's non-overlapping-island property
+instead of the dedicated `lightmap_pack` operator, which needs a live
+3D-view context that doesn't exist in background mode — upgrade to
+`lightmap_pack` if baked lighting seams show up in-engine).
 
 ## Assembly
 
@@ -107,8 +126,14 @@ the build: see the piece-by-piece bounding-box check in `check_kit.py`).
 
 ## Known weaknesses
 
-- Flat colours only, no PBR textures — next step is ambientCG materials
-  per `docs/art-pipeline-research.md`.
+- No normal maps on the kit surfaces (deliberate, D-023 lean — bevelled
+  geometry carries the relief); roughness reaches UE as a pinned matte
+  constant, not the map, when the importer does not wire the embedded
+  roughness jpg by filename suffix.
+- Runtime X-scaled instances (`SM_ParapetRun` roof runs, the gate's 2.5x
+  wall pillars) now visibly stretch their texture where flat colours hid
+  the stretch — acceptable at this wave's scale; world-aligned UVs would
+  fix it if it reads badly.
 - UV1 is a second `smart_project`, not a true `lightmap_pack` layout
   (background-mode limitation, noted above).
 - The corner piece's parapet-facing logic in `build_flat_roof` gives a
