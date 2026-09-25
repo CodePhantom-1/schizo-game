@@ -5,7 +5,7 @@
 //      initialised from the shipped canon tables (Content/Sim/canon, staged
 //      from db/canon, raw-file read at init).
 //   2. The daily tick advances on the game clock (configurable real-minutes per
-//      day; parent architecture §4.2 default 45 real min) and publishes
+//      day; default 48 real min, D-024 §2) and publishes
 //      prices/facts/weather to the engine-side consumers each morning.
 //   3. Player/NPC/UI modules read the WorldContext; NOTHING writes module state
 //      except its own tick — the kernel's rule is the engine's rule.

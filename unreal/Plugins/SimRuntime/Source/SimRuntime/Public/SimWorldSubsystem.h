@@ -61,15 +61,16 @@ public:
 	static int32 GetSimDrought();
 
 	/**
-	 * REAL MINUTES of engine time per sim day (parent architecture §4.2
-	 * default: 45 — one sim day every 45 real minutes). The name reads
+	 * REAL MINUTES of engine time per sim day (default 48, D-024 §2 — one
+	 * sim day every 48 real minutes, 2 real minutes per game hour; the
+	 * settings menu sets it). The name reads
 	 * backwards; it is kept so existing ini overrides still apply. Overridable
 	 * at runtime by the console variable sim.DaysPerRealMinute (same unit,
 	 * debug pacing; 0 = use this property). Changing the pace mid-day rescales
 	 * the current hour at once (GetSimHour is elapsed / seconds-per-day).
 	 */
 	UPROPERTY(Config, EditAnywhere, Category = "Sim")
-	float SimDaysPerRealMinute = 45.0f;
+	float SimDaysPerRealMinute = 48.0f;
 
 	/** Hour of day 1 at which play begins (the prisoner lands in the morning). 0..<24. */
 	UPROPERTY(Config, EditAnywhere, Category = "Sim")
