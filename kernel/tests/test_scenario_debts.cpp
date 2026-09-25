@@ -165,7 +165,10 @@ static bool test_loan_storyline_part_payment_then_full_repayment() {
 static bool test_deadline_quest_fails_exactly_once_into_the_failed_list() {
     WorldState w;
     w.init(kCanon, 99);
-    SIM_CHECK(w.quests.defs.empty());  // db/canon/quests.csv is header-only at Wave 1
+    // db/canon/quests.csv is live now (Act I data): its defs load in init and
+    // ride alongside the fixture below — accept() resolves by id, so the
+    // fixture (q_dredge_the_canal) is unaffected by canon defs.
+    SIM_CHECK(w.quests.defs.size() >= 12);  // the Act I canon defs loaded
 
     // A deadline quest: the machine takes deadline_days per-accept from the
     // defs the state carries, so a fixture def stands in for the canon row a

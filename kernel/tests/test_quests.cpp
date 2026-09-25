@@ -94,26 +94,29 @@ const QuestDef* find_def(const QuestState& state, const Id& def_id) {
 
 }  // namespace
 
-// --- Wave 1 reality: the canon table is empty ------------------------------
+// --- the canon table is live now (Act I data): loader + machine on real defs -
 
-static bool test_empty_canon_loads_zero_defs_and_machine_still_runs() {
+static bool test_real_canon_defs_load_and_machine_still_runs() {
     World w;
     w.db = Db::load("../db/canon");  // ctest runs from kernel/
-    SIM_CHECK_EQ(w.db.rows("quests").size(), std::size_t{0});
-
     load_defs(w.ctx(), w.quests);
-    SIM_CHECK(w.quests.defs.empty());
+    // Every shippable (non-OPEN) canon row becomes a def; OPEN rows stay out.
+    std::size_t shippable = 0;
+    for (const Row& r : w.db.rows("quests"))
+        if (r.get("tag") != "OPEN") ++shippable;
+    SIM_CHECK(shippable > 0);
+    SIM_CHECK_EQ(w.quests.defs.size(), shippable);
     SIM_CHECK(w.quests.active.empty());
     SIM_CHECK(w.quests.completed.empty());
     SIM_CHECK(w.quests.failed_list.empty());
 
-    // Ticking an empty world moves nothing.
+    // The machine is data-driven: ticking a world with live defs but no
+    // accepted quests moves nothing.
     tick_quests(w.ctx(), w.quests, 30);
     SIM_CHECK(w.quests.active.empty());
     SIM_CHECK(w.quests.failed_list.empty());
 
-    // The machinery is data-driven: with no canon defs at all it still runs,
-    // and an id the canon does not represent gets no invented deadline (0).
+    // An id the canon does not represent still gets no invented deadline (0).
     Quest& q = accept(w.quests, Id{"qtest_absent"}, DayNumber{3});
     SIM_CHECK_EQ(w.quests.active.size(), std::size_t{1});
     SIM_CHECK_EQ(q.accepted, DayNumber{3});
@@ -330,7 +333,7 @@ static bool test_determinism_same_seed_same_state_bytes() {
     return true;
 }
 
-SIM_MAIN(test_empty_canon_loads_zero_defs_and_machine_still_runs,
+SIM_MAIN(test_real_canon_defs_load_and_machine_still_runs,
          test_load_defs_parses_rows_skips_open_and_reloads_clean,
          test_accept_uses_def_deadline_and_returns_live_reference,
          test_deadline_day_is_still_live_the_day_after_fails,

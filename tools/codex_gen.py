@@ -20,7 +20,7 @@ TITLE = {
     "ranks": "Ranks", "regions": "The Four Directions",
     "story": "The Story", "terrain_schemes": "Element-Terrain Schemes",
     "world_lore": "The Wider World", "people": "Personages",
-    "buildings": "Works", "rites": "Rites",
+    "buildings": "Works", "rites": "Rites", "quests": "Quests", "dialogues": "Voices",
 }
 
 
