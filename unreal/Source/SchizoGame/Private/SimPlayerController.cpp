@@ -3,6 +3,7 @@
 // satchel, the body's needs riding the street's clock. Everything the player
 // does that the kernel knows goes through sim/CApi.h.
 #include "SimPlayerController.h"
+#include "SimSaves.h"
 
 #include "SchizoGame.h"
 #include "SimHud.h"
@@ -27,6 +28,16 @@ namespace
 		TEXT("Set to 1 to fire the Use verb on the next controller tick (debug)."));
 }
 
+void ASimPlayerController::OnQuickSave()
+{
+	SimSaves::Save(this, SimSaves::QuickSlot, TEXT("Quicksave"));
+}
+
+void ASimPlayerController::OnQuickLoad()
+{
+	SimSaves::Load(this, SimSaves::QuickSlot);
+}
+
 void ASimPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
@@ -40,6 +51,8 @@ void ASimPlayerController::SetupInputComponent()
 		InputComponent->BindAction("Quaff", IE_Pressed, this, &ASimPlayerController::OnQuaff);
 		InputComponent->BindAction("Inventory", IE_Pressed, this, &ASimPlayerController::OnInventoryPressed);
 		InputComponent->BindAction("Inventory", IE_Released, this, &ASimPlayerController::OnInventoryReleased);
+		InputComponent->BindAction("QuickSave", IE_Pressed, this, &ASimPlayerController::OnQuickSave);
+		InputComponent->BindAction("QuickLoad", IE_Pressed, this, &ASimPlayerController::OnQuickLoad);
 	}
 }
 

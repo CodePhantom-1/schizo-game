@@ -4,6 +4,7 @@
 // SkipSimHoursFor); the controller is told the hours are pre-charged so they
 // are not also taken as awake time.
 #include "SimBed.h"
+#include "SimSaves.h"
 
 #include "SchizoGame.h"
 #include "SimPlayerController.h"
@@ -54,6 +55,10 @@ void ASimBed::Interact(APawn* /*Instigator*/)
 		{
 			SimPC->NotifySimHoursPreCharged(static_cast<double>(SleepHours));
 		}
+	}
+	if (Died != 1)
+	{
+		SimSaves::Save(this, SimSaves::AutoSlot, TEXT("Autosave"));  // A10: every night's sleep
 	}
 	UE_LOG(LogSchizoGame, Log, TEXT("Slept %d hours (rest returned %d); fatigue now %d."),
 		SleepHours, Died, sim_world_fatigue(Handle, "player"));

@@ -43,6 +43,9 @@ public:
 		LastAbsoluteHour += Hours;
 	}
 
+	/** A load moved the clock: forget the last needs reading so nothing is charged for the jump. */
+	void ResetNeedsClock() { LastAbsoluteHour = -1.0; }
+
 protected:
 	/** The Use verb: trace from the camera; interact with what the street offers. */
 	void OnUse();
@@ -56,6 +59,10 @@ protected:
 	/** Tab held/released: the carried-goods overlay. */
 	void OnInventoryPressed();
 	void OnInventoryReleased();
+
+	/** F5 / F9 (A10): the quicksave slot. */
+	void OnQuickSave();
+	void OnQuickLoad();
 
 	/** Shared eye trace used by Use and the per-frame look label. */
 	bool TraceLook(struct FHitResult& OutHit) const;
