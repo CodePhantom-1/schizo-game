@@ -192,6 +192,42 @@ static bool test_save_load_continue_through_c() {
     return ok;
 }
 
+static bool test_festival_and_npc_task_through_c() {
+    SimWorld* w = sim_world_create("../db/canon", 42);
+    if (!w) return false;
+
+    // Day 1 is the New Waters festival (festivals.csv); the world starts on
+    // day 1, so the freshly created world is already a festival day.
+    char name[128];
+    bool ok = sim_world_is_festival(w) == 1;
+    int len = sim_world_festival_name(w, name, sizeof(name));
+    ok = ok && len > 0 && std::string(name) == "New Waters";
+
+    // Day 2: not a festival day.
+    sim_world_advance_days(w, 1);
+    ok = ok && sim_world_is_festival(w) == 0;
+    len = sim_world_festival_name(w, name, sizeof(name));
+    ok = ok && len == 0 && std::string(name).empty();
+
+    // Day 181: First-Cutting Procession, repeating every year (day 541 too).
+    sim_world_advance_days(w, 179);  // day 2 -> day 181
+    ok = ok && sim_world_day(w) == 181;
+    ok = ok && sim_world_is_festival(w) == 1;
+    len = sim_world_festival_name(w, name, sizeof(name));
+    ok = ok && len > 0 && std::string(name) == "First-Cutting Procession";
+
+    char task[128];
+    len = sim_world_npc_task_at(w, "ur_utu_gatekeeper_dawn", 6, task, sizeof(task));
+    ok = ok && len > 0;
+    ok = ok && sim_world_npc_task_at(w, "no_such_npc", 6, task, sizeof(task)) == -1;
+    ok = ok && sim_world_npc_task_at(nullptr, "ur_utu_gatekeeper_dawn", 6, task, sizeof(task)) == -1;
+    ok = ok && sim_world_is_festival(nullptr) == 0;
+    ok = ok && sim_world_festival_name(nullptr, name, sizeof(name)) == -1;
+
+    sim_world_destroy(w);
+    return ok;
+}
+
 static bool test_save_load_null_and_bad_path() {
     bool ok = sim_world_save(nullptr, "/tmp/x") == -1;
     ok = ok && sim_world_load(nullptr, "/tmp/x") == nullptr;
@@ -208,5 +244,6 @@ SIM_MAIN(test_lifecycle_and_clock,
          test_eat_drink_error_codes_through_c,
          test_craft_chain_and_eat_through_c,
          test_task_at_through_c,
+         test_festival_and_npc_task_through_c,
          test_save_load_continue_through_c,
          test_save_load_null_and_bad_path)

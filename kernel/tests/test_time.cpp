@@ -65,10 +65,41 @@ static bool test_festival_days() {
     return true;
 }
 
+// K-2: festival_days holds day-of-year values, so a festival repeats every
+// year (day 10 of year 2 is day number 370 on the 360-day calendar).
+static bool test_festival_days_repeat_every_year() {
+    CalendarConfig cfg;
+    cfg.festival_days = {10, 20};
+    Calendar cal(cfg);
+    SIM_CHECK(cal.is_festival(370));   // year 2's day 10
+    SIM_CHECK(cal.is_festival(380));   // year 2's day 20
+    SIM_CHECK(!cal.is_festival(371));
+    SIM_CHECK(cal.is_festival(730));   // year 3's day 10 (day_of_year wraps again)
+    return true;
+}
+
+// K-2: festivals.csv rows give a festival its id/name; festival_id/name are
+// "" on a non-festival day, or when festival_days is set without any
+// FestivalDef naming that day (the plain test_festival_days case above).
+static bool test_festival_id_and_name_lookup() {
+    CalendarConfig cfg;
+    cfg.festival_days = {181};
+    cfg.festivals = {{"first_cutting_procession", 181, "First-Cutting Procession"}};
+    Calendar cal(cfg);
+    SIM_CHECK_EQ(cal.festival_id(181), std::string("first_cutting_procession"));
+    SIM_CHECK_EQ(cal.festival_name(181), std::string("First-Cutting Procession"));
+    SIM_CHECK_EQ(cal.festival_id(541), std::string("first_cutting_procession"));  // repeats in year 2
+    SIM_CHECK(cal.festival_id(182).empty());   // not a festival day at all
+    SIM_CHECK(cal.festival_name(182).empty());
+    return true;
+}
+
 SIM_MAIN(test_day_one_is_year_one_month_one_day_one,
          test_year_rolls_over,
          test_day_number_round_trip,
          test_day_of_year,
          test_seasons_wrap,
          test_unnamed_months_by_default,
-         test_festival_days)
+         test_festival_days,
+         test_festival_days_repeat_every_year,
+         test_festival_id_and_name_lookup)

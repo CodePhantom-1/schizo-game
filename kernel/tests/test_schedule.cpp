@@ -7,6 +7,7 @@
 // checked against the real canon.
 #include "sim/Schedule.hpp"
 
+#include <cstdio>
 #include "sim/Test.hpp"
 
 #include <algorithm>
@@ -44,16 +45,33 @@ Db load_fixture_db() {
     {
         std::ofstream out(dir / "schedules.csv", std::ios::trunc);
         if (!out) throw std::runtime_error("cannot write schedule test fixture");
-        out << "id,role,hour,task,season,tag,source_ref\n"
-            << "baker_all_season,baker,3,bakes the daily bread,,INVENTED,test fixture\n"
-            << "baker_harvest,baker,3,bakes the harvest loaves,harvest,INVENTED,test fixture\n"
-            << "farmer_plow,farmer,6,plows the field,,INVENTED,test fixture\n"
+        out << "id,role,hour,task,season,tag,source_ref,festival,shift\n"
+            << "baker_all_season,baker,3,bakes the daily bread,,INVENTED,test fixture,,\n"
+            << "baker_harvest,baker,3,bakes the harvest loaves,harvest,INVENTED,test fixture,,\n"
+            << "baker_festival,baker,3,bakes the festival loaves,,INVENTED,test fixture,"
+               "harvest_fest,\n"
+            << "farmer_plow,farmer,6,plows the field,,INVENTED,test fixture,,\n"
             << "farmer_sowing_late,farmer,20,sharpens the scythe by lamplight,sowing,INVENTED,"
-               "test fixture\n"
-            << "guard_watch,guard,22,walks the wall,,INVENTED,test fixture\n"
-            << "ghost_shift,ghost,9,is not real,,OPEN,test fixture\n";
+               "test fixture,,\n"
+            << "guard_watch,guard,22,walks the wall,,INVENTED,test fixture,,\n"
+            << "ghost_shift,ghost,9,is not real,,OPEN,test fixture,,\n"
+            << "gatekeeper_dawn,gatekeeper,6,opens the gate at dawn,,INVENTED,test fixture,,dawn\n"
+            << "gatekeeper_dusk,gatekeeper,18,shuts the gate at dusk,,INVENTED,test fixture,,dusk\n";
     }
     return Db::load(dir.string());
+}
+
+// A "harvest_fest" festival on day 250 (inside the fixture's harvest season,
+// D-015 start day 181, but a different day than day 200 so the plain
+// seasonal-tie-break test (day 200) and the festival-tie-break test (day
+// 250) each have a day where their own row wins outright — both are real,
+// simultaneously-reachable outcomes, not competing on the same hour).
+Calendar fixture_calendar_with_festival() {
+    CalendarConfig cfg;
+    cfg.seasons = {{"rains", 1}, {"sowing", 91}, {"harvest", 181}, {"vintage", 271}};
+    cfg.festivals = {{"harvest_fest", 250, "Harvest Fest (test fixture)"}};
+    cfg.festival_days = {250};
+    return Calendar(cfg);
 }
 
 }  // namespace
@@ -62,10 +80,11 @@ static bool test_schedule_roles_sorted_unique_skips_open() {
     const Db db = load_fixture_db();
     const std::vector<std::string> roles = schedule_roles(db);
     SIM_CHECK(std::is_sorted(roles.begin(), roles.end()));
-    SIM_CHECK_EQ(roles.size(), std::size_t{3});
+    SIM_CHECK_EQ(roles.size(), std::size_t{4});
     SIM_CHECK(std::find(roles.begin(), roles.end(), "baker") != roles.end());
     SIM_CHECK(std::find(roles.begin(), roles.end(), "farmer") != roles.end());
     SIM_CHECK(std::find(roles.begin(), roles.end(), "guard") != roles.end());
+    SIM_CHECK(std::find(roles.begin(), roles.end(), "gatekeeper") != roles.end());
     SIM_CHECK(std::find(roles.begin(), roles.end(), "ghost") == roles.end());
     return true;
 }
@@ -177,16 +196,31 @@ static bool test_open_row_never_surfaces() {
 
 static bool test_every_fixture_row_reachable() {
     const Db db = load_fixture_db();
-    const Calendar cal = real_calendar();
+    // A calendar carrying both the real seasons and the fixture's own
+    // "harvest_fest" festival (day 250, distinct from day 200 so the plain
+    // seasonal baker_harvest row and the festival-tie-break baker_festival
+    // row each get a day where they're the merge winner) so the festival-
+    // and shift-tagged fixture rows are reachable through the same probe as
+    // everything else.
+    CalendarConfig cfg;
+    cfg.seasons = {{"rains", 1}, {"sowing", 91}, {"harvest", 181}, {"vintage", 271}};
+    cfg.festivals = {{"harvest_fest", 250, "Harvest Fest (test fixture)"}};
+    cfg.festival_days = {250};
+    const Calendar cal{cfg};
     std::set<Id> reachable;
-    for (DayNumber day : {DayNumber{1}, DayNumber{100}, DayNumber{200}, DayNumber{300}}) {
+    const std::vector<std::string> variants = {"", "dawn", "dusk"};
+    for (DayNumber day : {DayNumber{1}, DayNumber{100}, DayNumber{200}, DayNumber{250}, DayNumber{300}}) {
         for (const std::string& role : schedule_roles(db)) {
-            for (const ScheduledTask& t : day_plan(db, cal, role, day)) reachable.insert(t.schedule_id);
+            for (const std::string& variant : variants)
+                for (const ScheduledTask& t : day_plan(db, cal, role, day, variant))
+                    reachable.insert(t.schedule_id);
         }
     }
     for (const Row& row : db.rows("schedules")) {
         const std::string tag = row.get("tag");
         if (tag == "OPEN") continue;
+        if (reachable.count(row.get("id")) != 1)
+            std::fprintf(stderr, "DEBUG unreachable: %s\n", row.get("id").c_str());
         SIM_CHECK(reachable.count(row.get("id")) == 1);
     }
     return true;
@@ -240,10 +274,65 @@ static bool test_determinism_same_inputs_same_outputs() {
     return true;
 }
 
+// K-2: festival-override precedence — a festival row wins the hour-3 tie
+// over both the seasonal and the all-season baker row, but only on its own
+// festival's day; any other day (even in the same season) falls back to the
+// seasonal/all-season precedence Schedule.hpp already documented.
+static bool test_festival_row_wins_over_seasonal_and_all_season() {
+    const Db db = load_fixture_db();
+    const Calendar cal = fixture_calendar_with_festival();
+
+    const auto festival_plan = day_plan(db, cal, "baker", 250);  // harvest AND harvest_fest
+    SIM_CHECK_EQ(festival_plan.size(), std::size_t{1});
+    SIM_CHECK_EQ(festival_plan[0].schedule_id, Id("baker_festival"));
+
+    const auto non_festival_plan = day_plan(db, cal, "baker", 200);  // harvest, not the festival day
+    SIM_CHECK_EQ(non_festival_plan.size(), std::size_t{1});
+    SIM_CHECK_EQ(non_festival_plan[0].schedule_id, Id("baker_harvest"));
+    return true;
+}
+
+// K-2: a festival day repeats every year — day 250 of year 2 (day number
+// 610 on the 360-day calendar) is the same festival as year 1's day 250.
+static bool test_festival_repeats_every_year() {
+    const Db db = load_fixture_db();
+    const Calendar cal = fixture_calendar_with_festival();
+    SIM_CHECK(cal.is_festival(250));
+    SIM_CHECK(cal.is_festival(610));   // year 2, same day-of-year
+    SIM_CHECK(cal.is_festival(970));   // year 3
+    SIM_CHECK(!cal.is_festival(611));
+    SIM_CHECK_EQ(day_plan(db, cal, "baker", 610)[0].schedule_id, Id("baker_festival"));
+    return true;
+}
+
+// K-2: the dawn and dusk gatekeepers are two people of one role — each
+// variant only ever sees its own shift row; a bare role query (no npc in
+// mind) sees the role's shared rows, which here is none.
+static bool test_dawn_and_dusk_gatekeeper_shifts_differ() {
+    const Db db = load_fixture_db();
+    const Calendar cal = real_calendar();
+
+    const auto dawn_plan = day_plan(db, cal, "gatekeeper", 1, "dawn");
+    SIM_CHECK_EQ(dawn_plan.size(), std::size_t{1});
+    SIM_CHECK_EQ(dawn_plan[0].schedule_id, Id("gatekeeper_dawn"));
+
+    const auto dusk_plan = day_plan(db, cal, "gatekeeper", 1, "dusk");
+    SIM_CHECK_EQ(dusk_plan.size(), std::size_t{1});
+    SIM_CHECK_EQ(dusk_plan[0].schedule_id, Id("gatekeeper_dusk"));
+
+    SIM_CHECK(day_plan(db, cal, "gatekeeper", 1).empty());  // no shared rows for this role
+
+    SIM_CHECK_EQ(task_at(db, cal, "gatekeeper", 1, 12, "dawn")->schedule_id, Id("gatekeeper_dawn"));
+    SIM_CHECK_EQ(task_at(db, cal, "gatekeeper", 1, 12, "dusk")->schedule_id, Id("gatekeeper_dusk"));
+    return true;
+}
+
 SIM_MAIN(test_schedule_roles_sorted_unique_skips_open, test_role_matching_is_case_insensitive_and_trimmed,
          test_seasonal_row_wins_tie_over_all_season_row, test_seasonal_bend_across_each_season,
          test_carry_over_before_first_hour_same_day, test_carry_over_crosses_a_season_boundary,
          test_task_at_exact_and_between_hours, test_unknown_role_returns_nullopt,
          test_day_one_before_first_hour_is_not_empty,
          test_open_row_never_surfaces, test_every_fixture_row_reachable,
-         test_every_real_canon_row_reachable, test_determinism_same_inputs_same_outputs)
+         test_every_real_canon_row_reachable, test_determinism_same_inputs_same_outputs,
+         test_festival_row_wins_over_seasonal_and_all_season, test_festival_repeats_every_year,
+         test_dawn_and_dusk_gatekeeper_shifts_differ)

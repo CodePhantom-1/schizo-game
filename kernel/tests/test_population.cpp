@@ -515,6 +515,39 @@ static bool test_npc_task_at_uses_the_npcs_own_role() {
     return true;
 }
 
+// K-2: the real canon's dawn and dusk gatekeepers (people.csv's `shift`
+// column) are two people of one role; npc_task_at must route each to only
+// his own shift's schedules.csv row, never the other's.
+static bool test_dawn_and_dusk_gatekeepers_differ_on_real_canon() {
+    World w;
+    w.db = Db::load("../db/canon");
+    seed_people(w.ctx, w.population);
+    const Npc* dawn = find_npc(w.population, "ur_utu_gatekeeper_dawn");
+    const Npc* dusk = find_npc(w.population, "sin_iddinam_gatekeeper_dusk");
+    SIM_CHECK(dawn != nullptr);
+    SIM_CHECK(dusk != nullptr);
+    SIM_CHECK_EQ(dawn->role, std::string("gatekeeper"));
+    SIM_CHECK_EQ(dusk->role, std::string("gatekeeper"));
+    SIM_CHECK_EQ(dawn->shift, std::string("dawn"));
+    SIM_CHECK_EQ(dusk->shift, std::string("dusk"));
+
+    const Calendar cal{};  // no seasons/festivals needed for this all-season pair
+    const auto dawn_task = npc_task_at(w.db, cal, w.population, "ur_utu_gatekeeper_dawn", 1, 6);
+    const auto dusk_task = npc_task_at(w.db, cal, w.population, "sin_iddinam_gatekeeper_dusk", 1, 18);
+    SIM_CHECK(dawn_task.has_value());
+    SIM_CHECK(dusk_task.has_value());
+    SIM_CHECK_EQ(dawn_task->schedule_id, Id("gates_open_at_dawn"));
+    SIM_CHECK_EQ(dusk_task->schedule_id, Id("gates_close_at_dusk"));
+    SIM_CHECK(dawn_task->schedule_id != dusk_task->schedule_id);
+
+    // Ur-Utu never sees the dusk task, even queried at the dusk hour, and
+    // vice versa — the whole point of the shift column.
+    const auto dawn_at_dusk_hour = npc_task_at(w.db, cal, w.population, "ur_utu_gatekeeper_dawn", 1, 18);
+    SIM_CHECK(dawn_at_dusk_hour.has_value());
+    SIM_CHECK(dawn_at_dusk_hour->schedule_id != Id("gates_close_at_dusk"));
+    return true;
+}
+
 static bool test_npc_task_at_against_real_canon_is_deterministic() {
     World w;
     w.db = Db::load("../db/canon");
@@ -547,4 +580,5 @@ SIM_MAIN(test_seed_reads_the_named_people,
          test_seed_link_wiring_is_idempotent,
          test_named_leaders_never_get_knows_edges_from_real_canon,
          test_npc_task_at_uses_the_npcs_own_role,
-         test_npc_task_at_against_real_canon_is_deterministic)
+         test_npc_task_at_against_real_canon_is_deterministic,
+         test_dawn_and_dusk_gatekeepers_differ_on_real_canon)

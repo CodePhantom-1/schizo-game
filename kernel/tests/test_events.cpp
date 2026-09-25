@@ -382,6 +382,47 @@ static bool test_tick_touches_only_the_events_state() {
     return true;
 }
 
+// K-2: events.csv's festival_pickpockets ("festival;chance:3", repeatable)
+// is real canon, gated on the real festivals.csv calendar (WorldState::init's
+// wiring, reproduced here since this file builds its own minimal World).
+// Never fires off its festival day (deterministic — the festival condition
+// alone decides that, no roll needed); ticking across many years of its one
+// festival day (repeatable, 1-in-3 chance each year) makes "never fires at
+// all" statistically indistinguishable from zero, standing in for "fires on
+// its festival" without depending on a lucky rng seed.
+static bool test_festival_pickpockets_fires_on_its_real_festival_day() {
+    CalendarConfig cfg;
+    cfg.seasons = {{"rains", 1}, {"sowing", 91}, {"harvest", 181}, {"vintage", 271}};
+    cfg.festivals = {{"new_waters", 1, "New Waters"},
+                      {"first_cutting_procession", 181, "First-Cutting Procession"},
+                      {"ishtars_torch", 271, "Ishtar's Torch"},
+                      {"feeding_of_the_dead", 360, "Feeding of the Dead"}};
+    cfg.festival_days = {1, 181, 271, 360};
+    World w(cfg);
+    w.db = Db::load("../db/canon");
+    load_rules(w.ctx(), w.events);
+    SIM_CHECK(w.db.has("events", "festival_pickpockets"));
+
+    // Never fires on an ordinary (non-festival) day, whatever the rng draws.
+    for (std::uint64_t seed : {1u, 2u, 3u}) {
+        World nf(cfg);
+        nf.db = w.db;
+        nf.rng = Rng(seed);
+        load_rules(nf.ctx(), nf.events);
+        tick_events(nf.ctx(10), nf.events, 1);  // day 10: harvest season, not a festival day
+        SIM_CHECK_EQ(fires_of(nf.events, "festival_pickpockets"), std::size_t{0});
+    }
+
+    // Fires on its festival (day 181, repeating every 360-day year) often
+    // enough across 50 occurrences that never firing would mean the wiring
+    // is broken, not bad luck ((2/3)^50 chance of a false failure).
+    tick_events(w.ctx(181), w.events, 1);
+    for (int year = 1; year < 50; ++year)
+        tick_events(w.ctx(181 + static_cast<DayNumber>(year) * 360), w.events, 1);
+    SIM_CHECK(fires_of(w.events, "festival_pickpockets") >= 1);
+    return true;
+}
+
 SIM_MAIN(test_real_canon_rules_load_and_behave,
          test_load_rules_is_idempotent,
          test_load_rules_parses_rows_skips_open_and_reloads_clean,
@@ -394,4 +435,5 @@ SIM_MAIN(test_real_canon_rules_load_and_behave,
          test_chance_is_deterministic_and_per_rule,
          test_repeatable_rules_fire_again_but_only_once_per_day,
          test_fired_log_is_ordered_by_day_and_counts_agree,
-         test_tick_touches_only_the_events_state)
+         test_tick_touches_only_the_events_state,
+         test_festival_pickpockets_fires_on_its_real_festival_day)
