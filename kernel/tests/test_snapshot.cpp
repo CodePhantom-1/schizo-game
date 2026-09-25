@@ -166,6 +166,39 @@ static bool test_wave2_fields_round_trip() {
     return true;
 }
 
+// K-1: the fields added for durable rite knowledge and rite effects
+// (MagicState::known_rites/active_wards/omens/next_effect_id) must survive
+// a save/load too, same pattern as test_wave2_fields_round_trip.
+static bool test_k1_rite_fields_round_trip() {
+    WorldState w;
+    w.init("../db/canon", 3);
+    learn_rite(w.magic, w.db, "sacrifice_fish_sea_gems");
+    learn_rite(w.magic, w.db, "zisurru_warding");
+    add_ward(w.magic, "zisurru_warding", "any", "player", "protection", w.day, 7);
+    add_omen(w.magic, "barutu_haruspicy", "any", w.day, "favourable", 0.8);
+
+    WorldState r;
+    load_world(r, "../db/canon", save_world(w));
+
+    SIM_CHECK(knows_rite(r.magic, "sacrifice_fish_sea_gems"));
+    SIM_CHECK(knows_rite(r.magic, "zisurru_warding"));
+    SIM_CHECK(!knows_rite(r.magic, "barutu_haruspicy"));
+
+    SIM_CHECK_EQ(r.magic.active_wards.size(), std::size_t{1});
+    SIM_CHECK_EQ(r.magic.active_wards.front().id, w.magic.active_wards.front().id);
+    SIM_CHECK_EQ(r.magic.active_wards.front().kind, std::string("protection"));
+    SIM_CHECK_EQ(r.magic.active_wards.front().target, std::string("player"));
+    SIM_CHECK_EQ(r.magic.active_wards.front().expires_day, w.day + 7);
+
+    SIM_CHECK_EQ(r.magic.omens.size(), std::size_t{1});
+    SIM_CHECK_EQ(r.magic.omens.front().reading, std::string("favourable"));
+    SIM_CHECK(r.magic.omens.front().probability > 0.79 && r.magic.omens.front().probability < 0.81);
+
+    SIM_CHECK_EQ(r.magic.next_effect_id, w.magic.next_effect_id);
+    SIM_CHECK(save_world(r) == save_world(w));
+    return true;
+}
+
 // A field-coverage guard: mutating each module's state changes the save
 // bytes. A field the writer forgot would leave the save identical.
 static bool test_every_module_changes_the_save_bytes() {
@@ -210,6 +243,21 @@ static bool test_every_module_changes_the_save_bytes() {
     }
     {
         WorldState w = base;
+        learn_rite(w.magic, w.db, "zisurru_warding");
+        SIM_CHECK(save_world(w) != s0);
+    }
+    {
+        WorldState w = base;
+        add_ward(w.magic, "zisurru_warding", "any", "player", "protection", w.day, 7);
+        SIM_CHECK(save_world(w) != s0);
+    }
+    {
+        WorldState w = base;
+        add_omen(w.magic, "barutu_haruspicy", "any", w.day, "favourable", 0.8);
+        SIM_CHECK(save_world(w) != s0);
+    }
+    {
+        WorldState w = base;
         report_crime(w.justice, "the_warchief", "", "theft", w.day, "the_prophet");
         SIM_CHECK(save_world(w) != s0);
     }
@@ -226,7 +274,7 @@ static bool test_every_module_changes_the_save_bytes() {
     return true;
 }
 
-SIM_MAIN(test_wave2_fields_round_trip, test_save_load_round_trips,
+SIM_MAIN(test_wave2_fields_round_trip, test_k1_rite_fields_round_trip, test_save_load_round_trips,
          test_restored_world_advances_identically,
          test_malformed_save_throws,
          test_load_world_is_atomic_on_failure,

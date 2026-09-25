@@ -5,6 +5,7 @@
 #include "sim/World.hpp"
 #include "sim/Snapshot.hpp"
 #include "sim/Schedule.hpp"
+#include "sim/Actions.hpp"
 
 #include <cstring>
 #include <fstream>
@@ -248,6 +249,51 @@ int sim_world_craft(SimWorld* world, const char* actor, const char* recipe,
     if (reason.rfind("station not at hand", 0) == 0) return -3;
     if (reason.rfind("missing input", 0) == 0) return -4;
     return -1;  // times <= 0/out of range guarded above and by check(); anything else falls back here
+}
+
+// Rites --------------------------------------------------------------------
+int sim_world_learn_rite(SimWorld* world, const char* rite) {
+    if (world == nullptr || rite == nullptr) return -1;
+    learn_rite(world->world.magic, world->world.db, Id(rite));
+    return 0;
+}
+
+int sim_world_knows_rite(const SimWorld* world, const char* rite) {
+    if (world == nullptr || rite == nullptr) return 0;
+    return knows_rite(world->world.magic, Id(rite)) ? 1 : 0;
+}
+
+int sim_world_perform_rite(SimWorld* world, const char* performer, const char* rite,
+                           const char* place, char* effect_out, int cap) {
+    if (world == nullptr || performer == nullptr || rite == nullptr || place == nullptr) return -1;
+    const RiteResult r = perform_rite_action(world->world, Id(performer), Id(rite), Id(place));
+    if (effect_out != nullptr && cap > 0) write_str(effect_out, cap, r.effect_family);
+    if (!r.performed) return r.refusal_reason == "rite_not_known" ? 1 : 0;
+    return r.succeeded ? 3 : 2;
+}
+
+int sim_world_active_wards(const SimWorld* world, const char* target, char* out, int cap) {
+    if (world == nullptr || target == nullptr) return -1;
+    const std::vector<Ward> wards = active_wards(world->world.magic, world->world.day);
+    std::string joined;
+    for (const Ward& w : wards) {
+        if (w.target != target) continue;
+        if (!joined.empty()) joined += '\n';
+        joined += w.id + "\t" + w.rite_id + "\t" + w.deity + "\t" + w.kind + "\t" +
+                 std::to_string(w.cast_day) + "\t" + std::to_string(w.expires_day);
+    }
+    return write_str(out, cap, joined);
+}
+
+int sim_world_last_omen(const SimWorld* world, const char* rite, char* out, int cap) {
+    if (world == nullptr || rite == nullptr) return -1;
+    for (auto it = world->world.magic.omens.rbegin(); it != world->world.magic.omens.rend(); ++it) {
+        if (it->rite_id != rite) continue;
+        std::ostringstream prob;
+        prob << it->probability;
+        return write_str(out, cap, it->reading + "\t" + prob.str());
+    }
+    return write_str(out, cap, "");
 }
 
 // Schedule ---------------------------------------------------------------

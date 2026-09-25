@@ -63,9 +63,18 @@
 //     empty in all canon rows today; calendar.csv festival_days is an OPEN
 //     row). Otherwise time is acceptable.
 //
-//  8. Purity requirement (score weight 0.20, Magic.hpp:10): rites.csv carries
-//     no purity column (db/schema/rites.md lists the full header), so the
-//     header's "default 0" applies and purity >= 0 always holds.
+//  8. Purity requirement (score weight 0.20, Magic.hpp:10): read from the
+//     rite's own `purity_required` column (db/schema/rites.md), parsed as an
+//     integer defaulting to 0 when the column is empty or unparseable — the
+//     header's "default 0" (K-1: purity gating becomes real once a row
+//     carries a value; rows with none keep the old non-gating default).
+//
+//  K-1 additions (kernel/contracts/scenario_rite.md gaps 1/2/5): durable
+//  rite knowledge (learn_rite/knows_rite), the material-key normalizer
+//  exposed for Actions.cpp (rite_material_keys), and the timed-effect/omen
+//  storage (add_ward/add_omen/active_wards/has_active_ward) Actions.cpp
+//  writes into after interpreting a RiteResult. None of this decides WHEN an
+//  effect fires — Magic.hpp:22-23 still holds — it only owns MagicState.
 //
 //  9. Consumption of materials is the CALLER's outcome to apply (Magic.hpp:22
 //     -23: "no effect application here — the caller reads RiteResult and
@@ -75,11 +84,12 @@
 
 #include "sim/Context.hpp"
 
+#include <cstdlib>
+
 namespace sim {
 namespace {
 
 constexpr int kNeutralFavour = 50;  // Magic.hpp:37 "50 neutral birth"
-constexpr int kPurityRequirement = 0;  // Magic.hpp:10 "default 0" (no purity column in rites.csv)
 
 char ascii_lower(char c) {
     return (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c;
@@ -184,6 +194,14 @@ bool time_acceptable(const Row& rite, const WorldContext& ctx) {
     return ctx.cal.is_festival(ctx.day);
 }
 
+// Magic.hpp:10 — the rite's purity requirement (K-1: rites.csv now carries a
+// purity_required column; empty/unparseable keeps the documented default 0,
+// same convention Crafting.cpp uses for its own numeric columns).
+int purity_requirement(const Row& rite) {
+    const std::string v = trimmed(rite.get("purity_required"));
+    return v.empty() ? 0 : std::atoi(v.c_str());
+}
+
 bool is_a_specific_deity(const Id& deity) {
     return !deity.empty() && deity != "any";
 }
@@ -228,7 +246,7 @@ RiteResult perform_rite(const WorldContext& ctx, MagicState& state,
     const double score =
         favour_component +
         0.20 * (has_all_materials(*rite, inputs) ? 1.0 : 0.0) +
-        0.20 * (state.purity >= kPurityRequirement ? 1.0 : 0.0) +
+        0.20 * (state.purity >= purity_requirement(*rite) ? 1.0 : 0.0) +
         0.10 * (place_acceptable(state.place, rite->get("place")) ? 1.0 : 0.0) +
         0.10 * (time_acceptable(*rite, ctx) ? 1.0 : 0.0);
 
@@ -244,6 +262,73 @@ RiteResult perform_rite(const WorldContext& ctx, MagicState& state,
         if (!result.succeeded) add_favour(state, result.deity, -5);
     }
     return result;
+}
+
+// --- K-1: durable knowledge (gap 1) ----------------------------------------
+
+void learn_rite(MagicState& state, const Db& db, const Id& rite_id) {
+    const std::optional<Row> row = db.find("rites", rite_id);
+    if (!row.has_value() || row->get("tag") == "OPEN") return;  // nothing canon to learn
+    state.known_rites.insert(rite_id);
+}
+
+bool knows_rite(const MagicState& state, const Id& rite_id) {
+    return state.known_rites.find(rite_id) != state.known_rites.end();
+}
+
+// --- K-1: the material-key normalizer, exposed for Actions.cpp (gap 2) -----
+
+std::vector<Id> rite_material_keys(const Db& db, const Id& rite_id) {
+    std::vector<Id> keys;
+    const std::optional<Row> row = db.find("rites", rite_id);
+    if (!row.has_value() || row->get("tag") == "OPEN") return keys;
+    for (const std::string& entry : split_on(row->get("materials"), ';')) {
+        const std::string key = material_key(entry);
+        if (!key.empty()) keys.push_back(key);
+    }
+    return keys;
+}
+
+// --- K-1: the timed-effect/omen surface (gap 5) -----------------------------
+
+bool has_active_ward(const MagicState& state, const Id& target, DayNumber day) {
+    for (const Ward& w : state.active_wards)
+        if (w.target == target && day < w.expires_day) return true;
+    return false;
+}
+
+std::vector<Ward> active_wards(const MagicState& state, DayNumber day) {
+    std::vector<Ward> out;
+    for (const Ward& w : state.active_wards)
+        if (day < w.expires_day) out.push_back(w);
+    return out;
+}
+
+Ward& add_ward(MagicState& state, const Id& rite_id, const Id& deity, const Id& target,
+               const std::string& kind, DayNumber cast_day, int duration_days) {
+    Ward w;
+    w.id = "ward_" + std::to_string(state.next_effect_id++);
+    w.rite_id = rite_id;
+    w.deity = deity;
+    w.target = target;
+    w.kind = kind;
+    w.cast_day = cast_day;
+    w.expires_day = cast_day + (duration_days > 0 ? duration_days : 1);
+    state.active_wards.push_back(std::move(w));
+    return state.active_wards.back();
+}
+
+Omen& add_omen(MagicState& state, const Id& rite_id, const Id& deity, DayNumber day,
+               const std::string& reading, double probability) {
+    Omen o;
+    o.id = "omen_" + std::to_string(state.next_effect_id++);
+    o.rite_id = rite_id;
+    o.deity = deity;
+    o.day = day;
+    o.reading = reading;
+    o.probability = probability;
+    state.omens.push_back(std::move(o));
+    return state.omens.back();
 }
 
 }  // namespace sim

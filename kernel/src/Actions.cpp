@@ -69,6 +69,61 @@ int standing_penalty(const std::string& verdict) {
     return it == kSeverity.end() ? 0 : it->second;
 }
 
+bool contains(const std::string& haystack_lower, const char* needle) {
+    return haystack_lower.find(needle) != std::string::npos;
+}
+
+// K-1 gap 5: interprets a SUCCESSFUL RiteResult by effect family
+// (rpg-systems §10.3), applying it to the world. A performed-but-failed
+// attempt already took its favour penalty inside sim::perform_rite
+// (Magic.cpp); nothing further happens to a failure here — "the effect is
+// the game" (Magic.hpp:22) only on success.
+void apply_rite_effect(WorldState& w, const Id& performer, const RiteResult& result) {
+    const std::string family = ascii_lower(result.effect_family);
+
+    if (contains(family, "protection") || contains(family, "blessing") ||
+        contains(family, "curse") || contains(family, "binding")) {
+        const bool is_curse = contains(family, "curse") || contains(family, "binding");
+        const std::string kind = is_curse ? "curse" : contains(family, "blessing")
+                                                           ? "blessing"
+                                                           : "protection";
+        add_ward(w.magic, result.rite_id, result.deity, performer, kind, w.day, kWardDurationDays);
+        // rpg-systems §10.3: "sorcery is a crime" — a curse costs the
+        // performer's own purity even when no one catches them (INVENTED).
+        if (is_curse) w.magic.purity = std::max(0, w.magic.purity - kCursePurityCost);
+        return;
+    }
+
+    if (contains(family, "divination") || contains(family, "omen")) {
+        // rpg-systems §10.3: "omens with probabilities, not certainties" —
+        // the reading is a coarse INVENTED banding of the rite's own score,
+        // never a flat true/false.
+        const std::string reading = result.score >= 0.7   ? "favourable"
+                                    : result.score >= 0.4  ? "uncertain"
+                                                            : "ill-favoured";
+        add_omen(w.magic, result.rite_id, result.deity, w.day, reading, result.score);
+        return;
+    }
+
+    if (contains(family, "healing") || contains(family, "purification")) {
+        if (contains(family, "healing")) {
+            Needs& n = needs_of(w.needs, performer);
+            n.hunger = std::max(0, n.hunger - kHealingRelief);
+            n.thirst = std::max(0, n.thirst - kHealingRelief);
+            n.fatigue = std::max(0, n.fatigue - kHealingRelief);
+        }
+        if (contains(family, "purification"))
+            w.magic.purity = std::min(100, w.magic.purity + kPurificationBoost);
+        return;
+    }
+
+    // "favour"/"offering" families: the base +2/-5 favour swing already
+    // applied inside sim::perform_rite covers this (Magic.cpp reading 2).
+    // Substitution, ancestors and divine intervention: no canon rite names
+    // these families yet (scenario_rite.md "not exercised, out of scope") —
+    // left a no-op rather than guessed at.
+}
+
 }  // namespace
 
 Id commit_crime(WorldState& w, const Id& criminal, const Id& law_row,
@@ -162,6 +217,48 @@ void fail_quest(WorldState& w, const Id& def_id, DayNumber day) {
     if (find_active(w.quests, def_id) == nullptr) return;
     fail(w.quests, def_id);  // Quests::fail — no reward on the failure path
     w.quests.journal[def_id].push_back(JournalEntry{day, "failed", "abandoned"});
+}
+
+RiteResult perform_rite_action(WorldState& w, const Id& performer, const Id& rite_id,
+                               const Id& place) {
+    RiteInputs inputs;
+    inputs.performer_knows_rite = knows_rite(w.magic, rite_id);
+
+    // Read-only lookup: a performer never seen before must not create an
+    // inventory entry on a path that may still end in refusal.
+    const std::vector<Id> keys = rite_material_keys(w.db, rite_id);
+    const auto inv_it = w.inventories.find(performer);
+    for (const Id& key : keys) {
+        if (key == "water") {  // Crafting.cpp/Needs.cpp rule: free, never held
+            inputs.materials_held[key] = 1;
+            continue;
+        }
+        int have = 0;
+        if (inv_it != w.inventories.end()) {
+            const auto it = inv_it->second.counts.find(key);
+            if (it != inv_it->second.counts.end()) have = static_cast<int>(it->second);
+        }
+        inputs.materials_held[key] = have;
+    }
+
+    w.magic.place = place;
+    const RiteResult result = perform_rite(w.context(), w.magic, rite_id, inputs);
+    if (!result.performed) return result;  // refusal: no inventory entry ever created, nothing consumed
+
+    // Magic.hpp: "a failed rite still consumes the materials"; materials are
+    // presence-only (Magic.cpp reading 5), so a performed attempt (success
+    // or failure) consumes exactly 1 unit of each required non-water key.
+    Inventory& inv = w.inventories[performer];
+    for (const Id& key : keys) {
+        if (key == "water") continue;
+        const auto it = inv.counts.find(key);
+        if (it == inv.counts.end() || it->second <= 0) continue;
+        it->second -= 1;
+        if (it->second <= 0) inv.counts.erase(it);
+    }
+
+    if (result.succeeded) apply_rite_effect(w, performer, result);
+    return result;
 }
 
 }  // namespace sim

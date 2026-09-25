@@ -83,4 +83,45 @@ void complete_quest(WorldState& w, const Id& def_id, DayNumber day);
 // independent of tick_quests' deadline sweep. No reward either way.
 void fail_quest(WorldState& w, const Id& def_id, DayNumber day);
 
+// K-1: a timed ward's default duration when a rite's canon row gives no
+// number (rpg-systems §10.3: "lasts hours or days" — no exact figure).
+// INVENTED, retunable.
+constexpr int kWardDurationDays = 7;
+
+// K-1: a "healing and purification" rite's flat relief/restoration amount
+// (rpg-systems §10.3 names the effect, not a number). INVENTED, retunable.
+constexpr int kHealingRelief = 30;       // hunger/thirst/fatigue, floored at 0
+constexpr int kPurificationBoost = 30;   // purity, capped at 100
+
+// K-1: the price of a "curse and binding" rite (rpg-systems §10.3: "sorcery
+// is a crime" — being caught costs standing, but every attempt, caught or
+// not, is INVENTED here to cost the performer's own purity; no canon row
+// exercises this family yet). INVENTED, retunable.
+constexpr int kCursePurityCost = 15;
+
+// perform_rite_action (scenario_rite.md gaps 1-5): the engine-facing verb
+// for "one rite, start to finish". Sequences what sim/Magic.hpp deliberately
+// leaves to the caller (Magic.hpp:22-23):
+//  - knowledge: reads MagicState::known_rites (knows_rite) instead of the
+//    caller re-deriving it every attempt (gap 1);
+//  - materials: reads what `performer` holds (w.inventories), via the same
+//    normalized keys Magic.cpp scores against (rite_material_keys) — "water"
+//    is free well-water and never checked/consumed, the Crafting.cpp rule
+//    (module_Needs.md / Crafting.hpp); a PERFORMED attempt (success or
+//    failure) consumes 1 unit of each other required material — materials
+//    are presence-only (Magic.hpp reading 5), so quantities beyond 1 are not
+//    modeled; a REFUSED attempt (performed == false: unknown rite, or not
+//    known) leaves the inventory byte-for-byte untouched (gap 2);
+//  - purity/place/time: `place` sets MagicState::place for this attempt;
+//    purity gating is now real once a rite's canon row carries
+//    purity_required (gap 3 — see db/canon/rites.csv);
+//  - effect: on success, applies RiteResult.effect_family by family (gap 5)
+//    — protection/blessing/curse become a Ward (Magic::add_ward), divination
+//    becomes an Omen (Magic::add_omen, probability = the rite's own score),
+//    healing/purification relieves Needs and/or purity. Substitution,
+//    ancestors and divine intervention have no canon rite yet (scenario_rite
+//    .md's "not exercised, out of scope") and are left as a no-op here.
+RiteResult perform_rite_action(WorldState& w, const Id& performer, const Id& rite_id,
+                               const Id& place);
+
 }  // namespace sim

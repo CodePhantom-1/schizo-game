@@ -124,6 +124,40 @@ int sim_world_give_item(SimWorld* world, const char* actor, const char* item, in
 int sim_world_craft(SimWorld* world, const char* actor, const char* recipe,
                      const char* stations_semicolon_list, int times);
 
+// Rites (K-1: sim/Magic.hpp + sim/Actions.hpp's perform_rite_action) --------
+// Marks `rite` as known by the performer (durable state; a no-op for an
+// unknown/OPEN rite id). Returns 0 on success, -1 on a null argument.
+int sim_world_learn_rite(SimWorld* world, const char* rite);
+
+// True (1) iff `rite` has been learned via sim_world_learn_rite; 0 if not,
+// or on a null argument.
+int sim_world_knows_rite(const SimWorld* world, const char* rite);
+
+// Performs `rite` for `performer` at `place` (a place tag, e.g.
+// "temple:city_of_the_moon"; see sim/Magic.hpp's place-matching rules) and
+// applies its effect on success (Actions.hpp's perform_rite_action).
+// Writes the RiteResult's effect_family into `effect_out` (empty when
+// refused). Returns:
+//   0   refused: unknown rite id
+//   1   refused: not known (call sim_world_learn_rite first)
+//   2   performed, failed
+//   3   performed, succeeded
+//  -1   null argument
+int sim_world_perform_rite(SimWorld* world, const char* performer, const char* rite,
+                           const char* place, char* effect_out, int cap);
+
+// Active protection/blessing/curse wards on `target` as of today, one per
+// line "id\trite_id\tdeity\tkind\tcast_day\texpires_day" (\n-joined,
+// expired wards excluded). Writes at most cap-1 bytes plus NUL; returns the
+// untruncated length, or -1 on a null argument.
+int sim_world_active_wards(const SimWorld* world, const char* target, char* out, int cap);
+
+// The most recent omen from `rite`, or "" if none exist yet, as
+// "reading\tprobability" (e.g. "favourable\t0.800000"). Writes at most
+// cap-1 bytes plus NUL; returns the untruncated length, or -1 on a null
+// argument.
+int sim_world_last_omen(const SimWorld* world, const char* rite, char* out, int cap);
+
 // Schedule --------------------------------------------------------------------
 // The task in force for `role` at `hour` (0..23) on the current day.
 // Writes at most cap-1 bytes plus NUL; returns the untruncated length, or
