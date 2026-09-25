@@ -173,7 +173,7 @@ std::string save_world(const WorldState& w) {
         wr.line({"POP_NPCS", s64(static_cast<std::int64_t>(w.population.npcs.size()))});
         for (const Npc& n : w.population.npcs) {
             wr.line({n.id, n.name, n.home_city, n.household, n.faction_id, n.patron_deity,
-                     s64(n.loyalty), s64(static_cast<std::int64_t>(n.memory.size()))});
+                     s64(n.loyalty), s64(static_cast<std::int64_t>(n.memory.size())), n.role});
             for (const MemoryEntry& m : n.memory)
                 wr.line({s64(m.day), m.subject, m.fact});
         }
@@ -198,6 +198,10 @@ std::string save_world(const WorldState& w) {
             wr.line({o.id, o.swearer, o.to_faction, s64(o.day), sbool(o.broken)});
 
         wr.line({"FACTION_CURSE", sbool(w.faction.oath_breaker_curse)});
+
+        wr.line({"FACTION_OUTLAWED", s64(static_cast<std::int64_t>(w.faction.outlawed_by_faction.size()))});
+        for (const auto& [fid, val] : w.faction.outlawed_by_faction)
+            wr.line({fid, sbool(val)});
     }
 
     // MAGIC
@@ -214,11 +218,11 @@ std::string save_world(const WorldState& w) {
         wr.line({"JUSTICE_OPEN", s64(static_cast<std::int64_t>(w.justice.open_crimes.size()))});
         for (const Crime& c : w.justice.open_crimes)
             wr.line({c.id, c.criminal, c.law_row, c.crime_kind, s64(c.day), c.witnessed_by,
-                     sbool(c.atoned)});
+                     sbool(c.atoned), c.stage, s64(c.hearing_day)});
 
         wr.line({"JUSTICE_VERDICTS", s64(static_cast<std::int64_t>(w.justice.verdicts.size()))});
         for (const Hearing& h : w.justice.verdicts)
-            wr.line({h.crime_id, s64(h.day), h.verdict});
+            wr.line({h.crime_id, s64(h.day), h.verdict, h.tablet_id, s64(h.compensation_paid)});
 
         wr.line({"JUSTICE_NEXT_ID", s64(w.justice.next_id)});
     }
@@ -268,7 +272,8 @@ std::string save_world(const WorldState& w) {
     {
         wr.line({"QUESTS_DEFS", s64(static_cast<std::int64_t>(w.quests.defs.size()))});
         for (const QuestDef& d : w.quests.defs)
-            wr.line({d.id, d.kind, s64(d.deadline_days)});
+            wr.line({d.id, d.kind, s64(d.deadline_days), s64(d.reward_silver), d.reward_faction,
+                     s64(d.reward_standing)});
 
         wr.line({"QUESTS_ACTIVE", s64(static_cast<std::int64_t>(w.quests.active.size()))});
         for (const Quest& q : w.quests.active)
@@ -281,6 +286,12 @@ std::string save_world(const WorldState& w) {
         wr.line({"QUESTS_FAILED", s64(static_cast<std::int64_t>(w.quests.failed_list.size()))});
         for (const Id& id : w.quests.failed_list)
             wr.line({id});
+
+        std::int64_t entries = 0;
+        for (const auto& [qid, list] : w.quests.journal) entries += static_cast<std::int64_t>(list.size());
+        wr.line({"QUESTS_JOURNAL", s64(entries)});
+        for (const auto& [qid, list] : w.quests.journal)
+            for (const JournalEntry& e : list) wr.line({qid, s64(e.day), e.stage, e.text});
     }
 
     // NEEDS (W2-I; additive section — SIMSAVE 1 format tolerates it)
@@ -355,7 +366,7 @@ void load_world(WorldState& out, const std::string& canon_dir, const std::string
             std::size_t n = rd.section("POP_NPCS");
             for (std::size_t i = 0; i < n; ++i) {
                 std::vector<std::string> f = rd.next();
-                if (f.size() != 8) throw std::runtime_error("snapshot: bad npc row");
+                if (f.size() != 9) throw std::runtime_error("snapshot: bad npc row");
                 Npc npc;
                 npc.id = f[0];
                 npc.name = f[1];
@@ -364,6 +375,7 @@ void load_world(WorldState& out, const std::string& canon_dir, const std::string
                 npc.faction_id = f[4];
                 npc.patron_deity = f[5];
                 npc.loyalty = static_cast<int>(Reader::parse_i64(f[6]));
+                npc.role = f[8];
                 std::size_t memcount = static_cast<std::size_t>(Reader::parse_u64(f[7]));
                 npc.memory.reserve(memcount);
                 for (std::size_t j = 0; j < memcount; ++j) {
@@ -408,6 +420,13 @@ void load_world(WorldState& out, const std::string& canon_dir, const std::string
                 w.faction.oaths.push_back(std::move(o));
             }
             w.faction.oath_breaker_curse = Reader::parse_bool(rd.scalar("FACTION_CURSE"));
+            w.faction.outlawed_by_faction.clear();
+            n = rd.section("FACTION_OUTLAWED");
+            for (std::size_t i = 0; i < n; ++i) {
+                std::vector<std::string> f = rd.next();
+                if (f.size() != 2) throw std::runtime_error("snapshot: bad outlawed row");
+                w.faction.outlawed_by_faction[f[0]] = Reader::parse_bool(f[1]);
+            }
         }
 
         // MAGIC
@@ -430,7 +449,7 @@ void load_world(WorldState& out, const std::string& canon_dir, const std::string
             std::size_t n = rd.section("JUSTICE_OPEN");
             for (std::size_t i = 0; i < n; ++i) {
                 std::vector<std::string> f = rd.next();
-                if (f.size() != 7) throw std::runtime_error("snapshot: bad crime row");
+                if (f.size() != 9) throw std::runtime_error("snapshot: bad crime row");
                 Crime c;
                 c.id = f[0];
                 c.criminal = f[1];
@@ -439,16 +458,20 @@ void load_world(WorldState& out, const std::string& canon_dir, const std::string
                 c.day = Reader::parse_i64(f[4]);
                 c.witnessed_by = f[5];
                 c.atoned = Reader::parse_bool(f[6]);
+                c.stage = f[7];
+                c.hearing_day = Reader::parse_i64(f[8]);
                 w.justice.open_crimes.push_back(std::move(c));
             }
             n = rd.section("JUSTICE_VERDICTS");
             for (std::size_t i = 0; i < n; ++i) {
                 std::vector<std::string> f = rd.next();
-                if (f.size() != 3) throw std::runtime_error("snapshot: bad hearing row");
+                if (f.size() != 5) throw std::runtime_error("snapshot: bad hearing row");
                 Hearing h;
                 h.crime_id = f[0];
                 h.day = Reader::parse_i64(f[1]);
                 h.verdict = f[2];
+                h.tablet_id = f[3];
+                h.compensation_paid = Reader::parse_i64(f[4]);
                 w.justice.verdicts.push_back(std::move(h));
             }
             w.justice.next_id = static_cast<int>(Reader::parse_i64(rd.scalar("JUSTICE_NEXT_ID")));
@@ -549,11 +572,14 @@ void load_world(WorldState& out, const std::string& canon_dir, const std::string
             std::size_t n = rd.section("QUESTS_DEFS");
             for (std::size_t i = 0; i < n; ++i) {
                 std::vector<std::string> f = rd.next();
-                if (f.size() != 3) throw std::runtime_error("snapshot: bad quest def row");
+                if (f.size() != 6) throw std::runtime_error("snapshot: bad quest def row");
                 QuestDef d;
                 d.id = f[0];
                 d.kind = f[1];
                 d.deadline_days = static_cast<int>(Reader::parse_i64(f[2]));
+                d.reward_silver = Reader::parse_i64(f[3]);
+                d.reward_faction = f[4];
+                d.reward_standing = static_cast<int>(Reader::parse_i64(f[5]));
                 w.quests.defs.push_back(std::move(d));
             }
             n = rd.section("QUESTS_ACTIVE");
@@ -579,6 +605,13 @@ void load_world(WorldState& out, const std::string& canon_dir, const std::string
                 std::vector<std::string> f = rd.next();
                 if (f.size() != 1) throw std::runtime_error("snapshot: bad failed-quest row");
                 w.quests.failed_list.push_back(f[0]);
+            }
+            w.quests.journal.clear();
+            n = rd.section("QUESTS_JOURNAL");
+            for (std::size_t i = 0; i < n; ++i) {
+                std::vector<std::string> f = rd.next();
+                if (f.size() != 4) throw std::runtime_error("snapshot: bad journal row");
+                w.quests.journal[f[0]].push_back(JournalEntry{Reader::parse_i64(f[1]), f[2], f[3]});
             }
         }
 

@@ -131,6 +131,41 @@ static bool test_load_world_is_atomic_on_failure() {
     return true;
 }
 
+// Wave-2 review: the fields added in wave 2 must survive a save/load, not just
+// change the bytes (quest rewards, journal, npc role, crime stage/hearing day,
+// verdict tablet/compensation, outlawry).
+static bool test_wave2_fields_round_trip() {
+    WorldState w;
+    w.init("../db/canon", 9);
+    SIM_CHECK(!w.quests.defs.empty());
+    w.quests.defs.front().reward_silver = 77;
+    w.quests.defs.front().reward_faction = "the_empire";
+    w.quests.defs.front().reward_standing = 4;
+    w.quests.journal["q_x"].push_back(JournalEntry{3, "met", "a line\twith tab"});
+    SIM_CHECK(!w.population.npcs.empty());
+    w.population.npcs.front().role = "baker";
+    Crime& c = report_crime(w.justice, "player", "theft", "theft", w.day, "");
+    c.stage = "detained";
+    c.hearing_day = 12;
+    w.justice.verdicts.push_back(Hearing{"crime_x", 5, "compensation", "verdict_tablet_crime_x", 50});
+    w.faction.outlawed_by_faction["the_empire"] = true;
+
+    WorldState r;
+    load_world(r, "../db/canon", save_world(w));
+    SIM_CHECK_EQ(r.quests.defs.front().reward_silver, Silver{77});
+    SIM_CHECK_EQ(r.quests.defs.front().reward_faction, std::string("the_empire"));
+    SIM_CHECK_EQ(r.quests.defs.front().reward_standing, 4);
+    SIM_CHECK_EQ(r.quests.journal["q_x"].front().text, std::string("a line\twith tab"));
+    SIM_CHECK_EQ(r.population.npcs.front().role, std::string("baker"));
+    SIM_CHECK_EQ(r.justice.open_crimes.back().stage, std::string("detained"));
+    SIM_CHECK_EQ(r.justice.open_crimes.back().hearing_day, DayNumber{12});
+    SIM_CHECK_EQ(r.justice.verdicts.back().tablet_id, std::string("verdict_tablet_crime_x"));
+    SIM_CHECK_EQ(r.justice.verdicts.back().compensation_paid, Silver{50});
+    SIM_CHECK(r.faction.outlawed_by_faction["the_empire"]);
+    SIM_CHECK(save_world(r) == save_world(w));
+    return true;
+}
+
 // A field-coverage guard: mutating each module's state changes the save
 // bytes. A field the writer forgot would leave the save identical.
 static bool test_every_module_changes_the_save_bytes() {
@@ -191,7 +226,7 @@ static bool test_every_module_changes_the_save_bytes() {
     return true;
 }
 
-SIM_MAIN(test_save_load_round_trips,
+SIM_MAIN(test_wave2_fields_round_trip, test_save_load_round_trips,
          test_restored_world_advances_identically,
          test_malformed_save_throws,
          test_load_world_is_atomic_on_failure,
