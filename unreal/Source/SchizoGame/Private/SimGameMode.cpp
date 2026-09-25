@@ -4,6 +4,8 @@
 #include "SimWorldSubsystem.h"
 
 // The kernel's C API through SimRuntime's public include path.
+#include "SimDayNight.h"  // W6-C: the sun and sky on the sim clock
+#include "SimNpcDirector.h"  // W6-C: the residents, spawned from kernel schedules
 #include "SimPlayerController.h"
 #include "SimTablet.h"
 #include "sim/CApi.h"
@@ -53,6 +55,29 @@ void ASimGameMode::SpawnBox(const FVector& Location, const FVector& Scale, const
 #endif
 }
 
+void ASimGameMode::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// W6-C: the street lives. Exactly one director and one sun per world,
+	// spawned here (never in a map, so no authored level is required). Both
+	// poll the kernel — it is created lazily on the first world-subsystem
+	// tick after begin play — so spawn order needs no care.
+	if (UWorld* World = GetWorld())
+	{
+		FActorSpawnParameters Params;
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		if (World->SpawnActor<ASimNpcDirector>(FVector::ZeroVector, FRotator::ZeroRotator, Params) == nullptr)
+		{
+			UE_LOG(LogSimGameMode, Warning, TEXT("Npc director spawn failed — the street stays empty."));
+		}
+		if (World->SpawnActor<ASimDayNight>(FVector::ZeroVector, FRotator::ZeroRotator, Params) == nullptr)
+		{
+			UE_LOG(LogSimGameMode, Warning, TEXT("Day/night actor spawn failed — the light stays static."));
+		}
+	}
+}
+
 void ASimGameMode::StartPlay()
 {
 	UWorld* World = GetWorld();
@@ -61,6 +86,12 @@ void ASimGameMode::StartPlay()
 		return;
 	}
 
+	// --- PLACEHOLDER GREY-BOX STREET (W6-A/W6-B own its replacement) --------
+	// The whole grey-box build below (walls, floors, tablet) is swapped for
+	// W6-B's SimStreetBuilder street at the wiring pass; keep the pawn
+	// placement at the end of StartPlay as is. Nothing here feeds the npc
+	// director — it reads the kernel and (until wired) hashes place ids onto
+	// this street's extent.
 	// The street is built BEFORE Super::StartPlay(): the pawn spawns there,
 	// and it must find the PlayerStart, not the engine's fallback.
 	// The street: a floor, the moon-gate walls, a lintel. Grey-box stone.
@@ -85,6 +116,7 @@ void ASimGameMode::StartPlay()
 	}
 
 	UE_LOG(LogSimGameMode, Log, TEXT("The grey-box street stands (v2)."));
+	// --- end PLACEHOLDER GREY-BOX STREET ------------------------------------
 
 	// The pawn spawned during Login, before any PlayerStart stood — restart
 	// it so FindPlayerStart places it at ours, facing the gate.

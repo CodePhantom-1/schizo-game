@@ -15,6 +15,7 @@ class SCHIZOGAME_API ASimGameMode : public AGameModeBase
 
 public:
 	ASimGameMode();
+	virtual void BeginPlay() override;
 	virtual void StartPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
 	virtual AActor* FindPlayerStart_Implementation(AController* Player, const FString& IncomingName = TEXT("")) override;
