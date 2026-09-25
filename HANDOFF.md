@@ -75,3 +75,10 @@ Both lost pieces rebuilt and merged; 40/40 kernel tests. Divine wrath (`sim/Divi
    ~/UnrealEngine/Engine/Binaries/Linux/UnrealEditor "$PWD/unreal/SchizoGame.uproject" -game
    ```
 6. **Housekeeping:** done in the audit above — worktrees and dead branches are removed; `main` is the only local branch.
+
+## The art pass (2026-09-25 night) — the slice looks like a game
+- Real CC0 surfaces on every wall/roof (ambientCG via tools/art/fetch_textures.py; metre-scaled planar UVs; authored M_Ground/M_PlasterWall; tools/art/README.md is the pipeline bible).
+- Real people: 10 Quaternius CC0 animated humans (tools/art/fetch_characters.py + ue_import_characters.py) — the player and every NPC; cylinders remain only as the no-asset fallback.
+- The street is dressed: 10 code-built props placed by place kind, a gradient sky dome (unlit, no GPU capture), warm post-process (tools/art/props_gen.py + ue_import_props.py; sim.PropsDressing 0 hides).
+- Verification: kernel probed end-to-end like a player (69/70 beats; the one bug — player exile voiding faction treaties — fixed, split books in Faction.hpp, 40/40); UE code audited (gate now passable, dead PSO cvar fixed, window/roof collision restored).
+- The iGPU's FIRST launch after any content change compiles pipelines for ~10-15 min (frames stall, window may sit black) — it is working, not hung; subsequent launches are fast. The 5700 XT remains gated on the kernel reboot.
