@@ -1,11 +1,18 @@
-// SimPlayerController.cpp — the Use verb (touch, read, knock, pray: the verb
-// set starts here — game-design §8, "you can touch almost everything").
+// SimPlayerController.cpp — the verb set starts here (game-design §8, "you
+// can touch almost everything"): Use from the eyes, eat and drink from the
+// satchel, the body's needs riding the street's clock. Everything the player
+// does that the kernel knows goes through sim/CApi.h.
 #include "SimPlayerController.h"
 
 #include "SchizoGame.h"
+#include "SimHud.h"
+#include "SimInteractable.h"
 #include "SimTablet.h"
+#include "SimWorldSubsystem.h"
+#include "sim/CApi.h"
 
 #include "Camera/CameraComponent.h"
+#include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "GameFramework/Pawn.h"
 #include "HAL/IConsoleManager.h"
@@ -29,6 +36,10 @@ void ASimPlayerController::SetupInputComponent()
 		// Legacy bindings from Config/DefaultInput.ini — the slice's pawn moves
 		// with the engine's own bindings; Use is ours.
 		InputComponent->BindAction("Use", IE_Pressed, this, &ASimPlayerController::OnUse);
+		InputComponent->BindAction("Eat", IE_Pressed, this, &ASimPlayerController::OnEat);
+		InputComponent->BindAction("Quaff", IE_Pressed, this, &ASimPlayerController::OnQuaff);
+		InputComponent->BindAction("Inventory", IE_Pressed, this, &ASimPlayerController::OnInventoryPressed);
+		InputComponent->BindAction("Inventory", IE_Released, this, &ASimPlayerController::OnInventoryReleased);
 	}
 }
 
@@ -53,15 +64,90 @@ void ASimPlayerController::Tick(float DeltaSeconds)
 		CVarForceUsePending->Set(0, ECVF_SetByConsole);
 		OnUse();
 	}
+
+	EnsureSimHud();
+
+	// The diegetic prompt: what is under the crosshair right now.
+	FHitResult LookHit;
+	if (TraceLook(LookHit) && LookHit.GetActor() != nullptr)
+	{
+		if (ISimInteractable* Interactable = Cast<ISimInteractable>(LookHit.GetActor()))
+		{
+			CurrentVerbLabel = Interactable->GetVerbLabel();
+		}
+		else if (LookHit.GetActor()->IsA<ASimTablet>())
+		{
+			CurrentVerbLabel = TEXT("Read");
+		}
+		else
+		{
+			CurrentVerbLabel.Empty();
+		}
+	}
+	else
+	{
+		CurrentVerbLabel.Empty();
+	}
+
+	// Needs over time: every whole game hour the street's clock passes, the
+	// kernel advances hunger/thirst/fatigue for the player at its documented
+	// rates (Needs.cpp: +2/+3/+4 per hour awake). The engine owns the clock,
+	// so this follows it — hour by hour, never by frame fraction.
+	const int64 Day = USimWorldSubsystem::GetSimDayFor(this);
+	const float Hour = USimWorldSubsystem::GetSimHourFor(this);
+	if (Day >= 0 && Hour >= 0.f)
+	{
+		const double AbsoluteHour = static_cast<double>(Day) * 24.0 + Hour;
+		if (LastAbsoluteHour < 0.0)
+		{
+			LastAbsoluteHour = AbsoluteHour;
+		}
+		else if (const double DeltaHours = AbsoluteHour - LastAbsoluteHour; DeltaHours >= 1.0)
+		{
+			const int WholeHours = static_cast<int>(DeltaHours);
+			if (SimWorld* Handle = USimWorldSubsystem::GetSimHandleFor(this))
+			{
+				sim_world_advance_needs(Handle, "player", WholeHours, /*sleeping=*/0);
+			}
+			LastAbsoluteHour += WholeHours;
+		}
+	}
 }
 
-void ASimPlayerController::OnUse()
+void ASimPlayerController::EnsureSimHud()
+{
+	// Every tick, not once: the engine's own HUD spawn may land after our
+	// BeginPlay in some flows, and it draws nothing — swap it for ours again.
+	if (MyHUD != nullptr && MyHUD->IsA<ASimHud>())
+	{
+		return;
+	}
+	UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return;
+	}
+	if (MyHUD != nullptr)
+	{
+		MyHUD->Destroy();
+		MyHUD = nullptr;
+	}
+	FActorSpawnParameters Params;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	MyHUD = World->SpawnActor<ASimHud>(ASimHud::StaticClass(), FVector::ZeroVector, FRotator::ZeroRotator, Params);
+	if (MyHUD != nullptr)
+	{
+		UE_LOG(LogSchizoGame, Log, TEXT("Verb HUD up ('%s')."), *MyHUD->GetName());
+	}
+}
+
+bool ASimPlayerController::TraceLook(FHitResult& OutHit) const
 {
 	UWorld* World = GetWorld();
 	APawn* Pawn = GetPawn();
 	if (World == nullptr || Pawn == nullptr)
 	{
-		return;
+		return false;
 	}
 
 	FVector Eyes;
@@ -78,15 +164,29 @@ void ASimPlayerController::OnUse()
 	}
 
 	const FVector End = Eyes + EyesRot.Vector() * 300.f;
-	UE_LOG(LogSchizoGame, Log, TEXT("Use fired from '%s': eye (%.0f,%.0f,%.0f), facing %.0f."),
-		*GetName(), Eyes.X, Eyes.Y, Eyes.Z, EyesRot.Yaw);
-	FHitResult Hit;
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(SimUse), false);
-	if (World->LineTraceSingleByChannel(Hit, Eyes, End, ECC_Visibility, Params) && Hit.GetActor() != nullptr)
+	return World->LineTraceSingleByChannel(OutHit, Eyes, End, ECC_Visibility, Params);
+}
+
+void ASimPlayerController::OnUse()
+{
+	APawn* Pawn = GetPawn();
+	if (Pawn == nullptr)
+	{
+		return;
+	}
+
+	UE_LOG(LogSchizoGame, Log, TEXT("Use fired from '%s'."), *GetName());
+	FHitResult Hit;
+	if (TraceLook(Hit) && Hit.GetActor() != nullptr)
 	{
 		UE_LOG(LogSchizoGame, Log, TEXT("Use hit '%s' at (%.0f,%.0f,%.0f)."),
 			*Hit.GetActor()->GetName(), Hit.ImpactPoint.X, Hit.ImpactPoint.Y, Hit.ImpactPoint.Z);
-		if (ASimTablet* Tablet = Cast<ASimTablet>(Hit.GetActor()))
+		if (ISimInteractable* Interactable = Cast<ISimInteractable>(Hit.GetActor()))
+		{
+			Interactable->Interact(Pawn);
+		}
+		else if (ASimTablet* Tablet = Cast<ASimTablet>(Hit.GetActor()))
 		{
 			Tablet->Interact();
 		}
@@ -101,4 +201,74 @@ void ASimPlayerController::OnUse()
 	{
 		UE_LOG(LogSchizoGame, Log, TEXT("Use hit nothing within 300 units."));
 	}
+}
+
+void ASimPlayerController::OnEat()
+{
+	SimWorld* Handle = USimWorldSubsystem::GetSimHandleFor(this);
+	if (Handle == nullptr)
+	{
+		return;
+	}
+	// The kernel ranks what is carried (Needs' category table) — no shortlist
+	// on this side, and nothing to eat when the satchel holds no food.
+	char Best[64] = {};
+	if (sim_world_best_food(Handle, "player", Best, sizeof(Best)) <= 0 || Best[0] == '\0')
+	{
+		UE_LOG(LogSchizoGame, Log, TEXT("Nothing to eat."));
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(4, 3.f, FColor::Silver, TEXT("Nothing to eat."));
+		}
+		return;
+	}
+	const FString Item(UTF8_TO_TCHAR(Best));
+	const int Result = sim_world_eat(Handle, "player", Best);
+	UE_LOG(LogSchizoGame, Log, TEXT("Ate %s (result %d); hunger now %d."),
+		*Item, Result, sim_world_hunger(Handle, "player"));
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(4, 3.f, FColor::White,
+			Result == 0 ? *FString::Printf(TEXT("You eat %s."), *Item) : TEXT("That is not food."));
+	}
+}
+
+void ASimPlayerController::OnQuaff()
+{
+	SimWorld* Handle = USimWorldSubsystem::GetSimHandleFor(this);
+	if (Handle == nullptr)
+	{
+		return;
+	}
+	// As OnEat, for thirst. "water" is never answered here — it is the well's
+	// virtual id, drawn at the well, not held.
+	char Best[64] = {};
+	if (sim_world_best_drink(Handle, "player", Best, sizeof(Best)) <= 0 || Best[0] == '\0')
+	{
+		UE_LOG(LogSchizoGame, Log, TEXT("Nothing to drink."));
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(4, 3.f, FColor::Silver, TEXT("Nothing to drink."));
+		}
+		return;
+	}
+	const FString Item(UTF8_TO_TCHAR(Best));
+	const int Result = sim_world_drink(Handle, "player", Best);
+	UE_LOG(LogSchizoGame, Log, TEXT("Drank %s (result %d); thirst now %d."),
+		*Item, Result, sim_world_thirst(Handle, "player"));
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(4, 3.f, FColor::White,
+			Result == 0 ? *FString::Printf(TEXT("You drink %s."), *Item) : TEXT("That is not drinkable."));
+	}
+}
+
+void ASimPlayerController::OnInventoryPressed()
+{
+	bInventoryHeld = true;
+}
+
+void ASimPlayerController::OnInventoryReleased()
+{
+	bInventoryHeld = false;
 }

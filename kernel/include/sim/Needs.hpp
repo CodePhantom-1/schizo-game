@@ -61,4 +61,13 @@ bool drink(const Db& db, NeedsState& s, const Id& actor, const Id& item_id,
 // Sorted alphabetically for determinism.
 std::vector<std::string> need_effects(const Needs& n);
 
+// W6-A: how much hunger/thirst eating/drinking ONE unit of `item_id` restores
+// (0 = the item is not food / not drinkable at all — the same category table
+// eat()/drink() apply). Read-only queries for the C API's best-food/best-drink
+// verbs (CApiVerbs.cpp): they change no state and never touch the inventory.
+// "water" is not an items.csv row: thirst_restore_of returns 0 for it (the
+// well's always-drinkable id is handled where it is drunk, not held).
+int hunger_restore_of(const Db& db, const Id& item_id);
+int thirst_restore_of(const Db& db, const Id& item_id);
+
 }  // namespace sim

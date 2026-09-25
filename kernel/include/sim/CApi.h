@@ -465,3 +465,6 @@ int sim_world_death_count(const SimWorld* world);
 // --- W5-A: divine wrath (wrath queries, the curse, the oath-break verb) --------
 #include "sim/CApiDivine.h"
 // --- end W5-A
+// --- W6-A: the player's verbs (carried-goods enumeration, best food/drink) ------
+#include "sim/CApiVerbs.h"
+// --- end W6-A

@@ -152,4 +152,14 @@ std::vector<std::string> need_effects(const Needs& n) {
     return out;
 }
 
+int hunger_restore_of(const Db& db, const Id& item_id) {
+    const std::optional<Row> item = db.find("items", item_id);
+    return item ? hunger_restore_for_category(item->get("category")) : 0;
+}
+
+int thirst_restore_of(const Db& db, const Id& item_id) {
+    const std::optional<Row> item = db.find("items", item_id);
+    return item ? thirst_restore_for_category(item->get("category")) : 0;
+}
+
 }  // namespace sim
