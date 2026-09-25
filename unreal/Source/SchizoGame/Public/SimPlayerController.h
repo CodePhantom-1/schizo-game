@@ -64,6 +64,9 @@ protected:
 	void OnQuickSave();
 	void OnQuickLoad();
 
+	/** Esc / the gamepad menu button: the pause menu (A8). */
+	void OnPausePressed();
+
 	/** Shared eye trace used by Use and the per-frame look label. */
 	bool TraceLook(struct FHitResult& OutHit) const;
 

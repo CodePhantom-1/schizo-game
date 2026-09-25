@@ -4,6 +4,7 @@
 // does that the kernel knows goes through sim/CApi.h.
 #include "SimPlayerController.h"
 #include "SimSaves.h"
+#include "UI/SimShellSubsystem.h"
 
 #include "SchizoGame.h"
 #include "SimHud.h"
@@ -33,6 +34,14 @@ void ASimPlayerController::OnQuickSave()
 	SimSaves::Save(this, SimSaves::QuickSlot, TEXT("Quicksave"));
 }
 
+void ASimPlayerController::OnPausePressed()
+{
+	if (USimShellSubsystem* Shell = USimShellSubsystem::Get(this))
+	{
+		Shell->OnBack();
+	}
+}
+
 void ASimPlayerController::OnQuickLoad()
 {
 	SimSaves::Load(this, SimSaves::QuickSlot);
@@ -52,6 +61,7 @@ void ASimPlayerController::SetupInputComponent()
 		InputComponent->BindAction("Inventory", IE_Pressed, this, &ASimPlayerController::OnInventoryPressed);
 		InputComponent->BindAction("Inventory", IE_Released, this, &ASimPlayerController::OnInventoryReleased);
 		InputComponent->BindAction("QuickSave", IE_Pressed, this, &ASimPlayerController::OnQuickSave);
+		InputComponent->BindAction("Pause", IE_Pressed, this, &ASimPlayerController::OnPausePressed).bExecuteWhenPaused = true;
 		InputComponent->BindAction("QuickLoad", IE_Pressed, this, &ASimPlayerController::OnQuickLoad);
 	}
 }
