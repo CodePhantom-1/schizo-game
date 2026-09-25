@@ -8,6 +8,7 @@
 // Rule shape (events.csv): triggers is a ';'-separated condition list parsed as
 //   <kind>:<arg>            kinds: drought_gte, war_gte, season, festival, chance
 //   e.g. "drought_gte:2;chance:10"  = drought stage >= 2 and a 1-in-10 daily chance
+//   "festival" alone = any festival day; "festival:<id>" = that festivals.csv festival (K-2)
 // Invariants:
 //  - an event fires at most once per rule unless the rule's row says repeat
 //  - deterministic: chance rolls come from ctx.rng.fork(day + rule salt)

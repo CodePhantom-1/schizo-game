@@ -83,3 +83,58 @@ no existing declaration changed signature or removed behaviour.
   a save -> load -> continue determinism check (file path, plus a buffer
   round-trip) entirely through `extern "C"`.
 - `tests/test_snapshot.cpp`: `test_load_world_is_atomic_on_failure` (new).
+
+---
+
+# SEAM CHANGELOG — K-2 (festivals + per-person schedules)
+
+Additive throughout — no existing C API signature changed; no new save state.
+
+## Db.cpp
+
+- The loader's table list gains `festivals` and `person_schedules`.
+
+## Time.hpp / World.cpp
+
+- `FestivalDef` + `CalendarConfig::festivals`; `Calendar::festival_on`, `festival_id`,
+  `festivals()`; `is_festival` also true on a yearly festival's day_of_year (module_Time.md).
+- `WorldState::init` loads `db/canon/festivals.csv` into the calendar. Magic's festival time power
+  and Events' `festival` trigger are therefore live against canon (no change to Magic).
+
+## Schedule.hpp / Population
+
+- `ScheduledTask` gains `place`, `festival`, `origin` (defaulted members).
+- New: `FestivalBend`, `festival_bend`, `market_open`, `person_day_plan`, `person_task_at`
+  (module_Schedule.md). `day_plan`/`task_at` now honour festival rows and the gathering window.
+- `npc_task_at` (Population.hpp, signature unchanged) now resolves per person: role + the
+  person's `person_schedules.csv` rows + season + festival, with `place` resolved to a places.csv id.
+
+## Snapshot
+
+- Nothing new to save: festivals and plans are pure over canon + day, and the calendar is
+  rebuilt by `init` inside `load_world`. `tests/test_festivals.cpp` checks that a restored world
+  answers every npc/hour identically across a festival.
+
+## CApi.h / CApi.cpp (additive; same buffer conventions)
+
+- **Festivals:** `sim_world_is_festival(world)` (1/0/-1), `sim_world_is_festival_day(world, day)`,
+  `sim_world_festival(world, out, cap)` (today's festival id, "" when none),
+  `sim_world_festival_on(world, day, out, cap)`, `sim_world_market_open(world)` (0 only when
+  today's festival closes the market).
+- **People:** `sim_world_npc_id(world, index, out, cap)` enumerates `0..sim_world_npc_count-1`;
+  `sim_world_npc_task_at` / `sim_world_npc_place_at` / `sim_world_npc_schedule_at(world, npc,
+  hour, out, cap)` answer "what / where / which row is person X at hour H today" (-1 for a null
+  argument, an unknown npc, or an npc with no schedule — the three named leaders).
+
+## Data (db/canon)
+
+- New `festivals.csv` (4 rows), new `person_schedules.csv` (4 rows); `schedules.csv` gains
+  `festival` + `place` columns (+4 festival rows); `people.csv` gains `home_place` + `work_place`
+  (blank on the 3 CANON rows). All new content `INVENTED`, listed in
+  docs/proposals/invented-ledger-festivals.md.
+- `tools/export_datatables.py` exports `festivals` and `person_schedules` too.
+
+## Tests
+
+- `tests/test_festivals.cpp` (new), plus additions to `test_time.cpp`, `test_schedule.cpp`,
+  `test_events.cpp`.

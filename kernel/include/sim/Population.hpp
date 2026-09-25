@@ -66,9 +66,11 @@ const Npc* find_npc(const PopulationState& state, const Id& npc_id);
 void witness(PopulationState& state, const Id& npc_id, const Id& subject,
              const std::string& fact, DayNumber day);
 
-// The task `npc_id` is doing at `hour` on `day`, from its own `role`
-// (schedules.csv, via Schedule.hpp's task_at). nullopt when the npc is
-// unknown or has no schedule-matching role (named leaders, at Wave 1).
+// The task `npc_id` is doing at `hour` on `day`: its own `role` rows plus its
+// person_schedules.csv rows, bent by season and festival, with `place`
+// resolved through people.csv (Schedule.hpp's person_task_at, K-2). nullopt
+// when the npc is unknown or has neither a schedule-matching role nor
+// person rows (named leaders, at Wave 1).
 std::optional<ScheduledTask> npc_task_at(const Db& db, const Calendar& cal,
                                           const PopulationState& state, const Id& npc_id,
                                           DayNumber day, int hour);

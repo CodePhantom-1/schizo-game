@@ -3,6 +3,9 @@
 
 #include "sim/Test.hpp"
 
+#include <stdexcept>
+#include <string>
+
 using namespace sim;
 
 static bool test_day_one_is_year_one_month_one_day_one() {
@@ -65,7 +68,55 @@ static bool test_festival_days() {
     return true;
 }
 
-SIM_MAIN(test_day_one_is_year_one_month_one_day_one,
+// K-2: yearly named festivals recur on their day_of_year, every year.
+static bool test_yearly_festivals() {
+    CalendarConfig cfg;
+    cfg.festivals = {{"late", "Late Feast", 360}, {"first", "First Feast", 1}};
+    cfg.festival_days = {50};
+    Calendar cal(cfg);
+    SIM_CHECK(cal.is_festival(1));
+    SIM_CHECK(cal.is_festival(361));  // year 2, day 1
+    SIM_CHECK(cal.is_festival(720));
+    SIM_CHECK(!cal.is_festival(2));
+    SIM_CHECK_EQ(cal.festival_id(1), std::string("first"));
+    SIM_CHECK_EQ(cal.festival_id(720), std::string("late"));
+    SIM_CHECK(cal.festival_id(2).empty());
+    SIM_CHECK(cal.festival_on(2) == nullptr);
+    // An absolute festival day is a festival, but anonymous.
+    SIM_CHECK(cal.is_festival(50));
+    SIM_CHECK(cal.festival_id(50).empty());
+    SIM_CHECK(!cal.is_festival(410));
+    // Sorted by day_of_year.
+    SIM_CHECK_EQ(cal.festivals().front().id, std::string("first"));
+    SIM_CHECK_EQ(cal.festival_on(360)->name, std::string("Late Feast"));
+    return true;
+}
+
+static bool test_bad_festival_config_throws() {
+    bool threw = false;
+    try {
+        CalendarConfig cfg;
+        cfg.festivals = {{"a", "A", 5}, {"b", "B", 5}};
+        Calendar cal(cfg);
+    } catch (const std::invalid_argument&) {
+        threw = true;
+    }
+    SIM_CHECK(threw);
+    threw = false;
+    try {
+        CalendarConfig cfg;
+        cfg.festivals = {{"a", "A", 361}};
+        Calendar cal(cfg);
+    } catch (const std::invalid_argument&) {
+        threw = true;
+    }
+    SIM_CHECK(threw);
+    return true;
+}
+
+SIM_MAIN(test_yearly_festivals,
+         test_bad_festival_config_throws,
+         test_day_one_is_year_one_month_one_day_one,
          test_year_rolls_over,
          test_day_number_round_trip,
          test_day_of_year,

@@ -130,6 +130,39 @@ int sim_world_craft(SimWorld* world, const char* actor, const char* recipe,
 // -1 on a null argument or no schedule rows at all for that role.
 int sim_world_task_at(const SimWorld* world, const char* role, int hour, char* out, int cap);
 
+// Festivals (K-2) ---------------------------------------------------------------
+// 1 when the current day is a festival day, 0 when not, -1 on a null world.
+int sim_world_is_festival(const SimWorld* world);
+// As above for any day number (>= 1); -1 on a null world or day < 1.
+int sim_world_is_festival_day(const SimWorld* world, int64_t day);
+// Today's festival id (festivals.csv, e.g. "new_waters"), "" when none.
+// Writes at most cap-1 bytes plus NUL; returns the untruncated length, or -1
+// on a null argument.
+int sim_world_festival(const SimWorld* world, char* out, int cap);
+// The festival id on any day number (>= 1), "" when none; -1 on a null
+// argument or day < 1.
+int sim_world_festival_on(const SimWorld* world, int64_t day, char* out, int cap);
+// 1 when the market trades today, 0 when today's festival closes it, -1 on a
+// null world.
+int sim_world_market_open(const SimWorld* world);
+
+// People and their day (K-2) ------------------------------------------------------
+// The id of the npc at `index` (0..sim_world_npc_count-1). Writes at most
+// cap-1 bytes plus NUL; returns the untruncated length, or -1 on a null
+// argument or an index out of range.
+int sim_world_npc_id(const SimWorld* world, int index, char* out, int cap);
+// What npc `npc` is doing at `hour` (0..23) on the current day: per-person
+// resolution (role + person overrides + season + festival). Each writes at
+// most cap-1 bytes plus NUL and returns the untruncated length, or -1 on a
+// null argument, an unknown npc, or an npc with no schedule at all.
+//   _task_at     the task text
+//   _place_at    where: a places.csv id ("" = unplaced / off the street)
+//   _schedule_at the schedule row id (or festival id for a festival gathering)
+int sim_world_npc_task_at(const SimWorld* world, const char* npc, int hour, char* out, int cap);
+int sim_world_npc_place_at(const SimWorld* world, const char* npc, int hour, char* out, int cap);
+int sim_world_npc_schedule_at(const SimWorld* world, const char* npc, int hour, char* out,
+                              int cap);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif
