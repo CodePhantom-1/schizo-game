@@ -142,3 +142,39 @@ the build: see the piece-by-piece bounding-box check in `check_kit.py`).
   flagged as a `ponytail:` simplification in the code.
 - No door/window variety beyond one door + one window per wall run
   (deliberately centred on the run's middle tile, not one per tile).
+
+## Street props + sky dome (dressing wave)
+
+`props_gen.py` builds the quarter's dressing the same headless way
+(kit_common helpers, CC0 maps embedded in the FBX): 10 street props
+(amphora, granary jar stack, basket, rolled reed mat, bench, dates tray,
+bread tray, loose loaves, unlit brazier, waterskin-on-post) and the 120 m
+inverted-hemisphere `SM_SkyDome`, each under 300 tris (the script exits
+non-zero if any misses its budget). Props are modelled with origin at BASE
+CENTRE (not the kit's corner origin) so runtime placement yaws them about
+their own centre. Origins/colours/rules are logged in
+`docs/proposals/invented-ledger-dressing.md`.
+
+```
+~/opt/blender/blender -b --factory-startup -P tools/art/props_gen.py -- --out art/generated/props
+```
+
+Imports the props to `/Game/Art/Props/Meshes` and authors the sky's
+gradient material `/Game/Art/Sky/M_SkyDome` (Unlit, TwoSided,
+Lerp(horizon, zenith, clamp(AbsWorldPosition.Z / DomeRadius)) into
+Emissive — never a SkyLight; see DECISIONS.md for the GPU-capture hang):
+
+```
+~/UnrealEngine/Engine/Binaries/Linux/UnrealEditor-Cmd \
+    "$PWD/unreal/SchizoGame.uproject" -run=pythonscript \
+    -script=tools/art/ue_import_props.py
+```
+
+Headless-written, not yet driven against a compiled editor — expect a
+first-run shakeout (the AssetImportTask half mirrors `ue_import_kit.py`
+exactly; the MaterialEditingLibrary half is new). At runtime
+`SimPropsBuilder` (a tickable world subsystem, like `SimVerbSpawner`) reads
+the street's place/door registries and places everything deterministically;
+missing meshes are skipped silently, so the street never depends on this
+import. `sim.PropsDressing 0` disables the whole pass.
+
