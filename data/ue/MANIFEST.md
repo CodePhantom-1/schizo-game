@@ -17,7 +17,9 @@ Run `python3 tools/export_datatables.py` to regenerate from db/canon.
 - regions: 4 rows
 - rite_teachings: 4 rows
 - rites: 4 rows
-- schedules: 33 rows
+- schedules: 37 rows
 - seasons: 4 rows
 - story: 6 rows
 - world_lore: 7 rows
+- festivals: 4 rows
+- person_schedules: 4 rows

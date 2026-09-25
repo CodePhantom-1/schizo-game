@@ -246,6 +246,23 @@ static bool test_season_and_festival_triggers() {
     return true;
 }
 
+// K-2: "festival:<id>" fires only on that named yearly festival; bare
+// "festival" fires on any festival day, named or anonymous.
+static bool test_named_festival_trigger() {
+    CalendarConfig cfg;
+    cfg.festivals = {{"feast_a", "Feast A", 10}, {"feast_b", "Feast B", 20}};
+    cfg.festival_days = {30};
+    World w{cfg};
+    w.events.rules.push_back(make_rule("only_a", {"festival:feast_a"}, /*repeatable=*/true));
+    w.events.rules.push_back(make_rule("any_feast", {"festival"}, /*repeatable=*/true));
+    w.events.rules.push_back(make_rule("no_such", {"festival:feast_z"}, /*repeatable=*/true));
+    tick_events(w.ctx(1), w.events, 360 + 10);  // one year and the next year's feast_a
+    SIM_CHECK_EQ(fires_of(w.events, "only_a"), std::size_t{2});    // day 10 and day 370
+    SIM_CHECK_EQ(fires_of(w.events, "any_feast"), std::size_t{4});  // 10, 20, 30, 370
+    SIM_CHECK_EQ(fires_of(w.events, "no_such"), std::size_t{0});
+    return true;
+}
+
 static bool test_malformed_and_unknown_conditions_never_fire() {
     World w;
     w.facts.drought_stage = 9;
@@ -388,6 +405,7 @@ SIM_MAIN(test_real_canon_rules_load_and_behave,
          test_drought_and_war_gates,
          test_conditions_and_together,
          test_season_and_festival_triggers,
+         test_named_festival_trigger,
          test_malformed_and_unknown_conditions_never_fire,
          test_empty_condition_list_is_a_vacuous_and,
          test_chance_one_in_one_fires_every_day,

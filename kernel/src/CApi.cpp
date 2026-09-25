@@ -4,6 +4,7 @@
 
 #include "sim/World.hpp"
 #include "sim/Snapshot.hpp"
+#include "sim/Population.hpp"
 #include "sim/Schedule.hpp"
 #include "sim/Rites.hpp"
 
@@ -368,4 +369,62 @@ int sim_world_omen(const SimWorld* world, int index, char* out, int cap) {
     const Omen& o = omens[static_cast<std::size_t>(index)];
     return write_str(out, cap, std::to_string(o.day) + ";" + o.rite_id + ";" + o.subject + ";" +
                                    o.sign + ";" + std::to_string(o.confidence_pct));
+}
+
+// Festivals (K-2) ----------------------------------------------------------
+int sim_world_is_festival(const SimWorld* world) {
+    if (world == nullptr) return -1;
+    return world->world.cal.is_festival(world->world.day) ? 1 : 0;
+}
+
+int sim_world_is_festival_day(const SimWorld* world, int64_t day) {
+    if (world == nullptr || day < 1) return -1;
+    return world->world.cal.is_festival(day) ? 1 : 0;
+}
+
+int sim_world_festival(const SimWorld* world, char* out, int cap) {
+    if (world == nullptr) return -1;
+    return write_str(out, cap, world->world.cal.festival_id(world->world.day));
+}
+
+int sim_world_festival_on(const SimWorld* world, int64_t day, char* out, int cap) {
+    if (world == nullptr || day < 1) return -1;
+    return write_str(out, cap, world->world.cal.festival_id(day));
+}
+
+int sim_world_market_open(const SimWorld* world) {
+    if (world == nullptr) return -1;
+    return market_open(world->world.db, world->world.cal, world->world.day) ? 1 : 0;
+}
+
+// People and their day (K-2) -------------------------------------------------
+int sim_world_npc_id(const SimWorld* world, int index, char* out, int cap) {
+    if (world == nullptr || index < 0) return -1;
+    const auto& npcs = world->world.population.npcs;
+    if (static_cast<std::size_t>(index) >= npcs.size()) return -1;
+    return write_str(out, cap, npcs[static_cast<std::size_t>(index)].id);
+}
+
+namespace {
+std::optional<ScheduledTask> npc_now(const SimWorld* world, const char* npc, int hour) {
+    if (world == nullptr || npc == nullptr) return std::nullopt;
+    const WorldState& w = world->world;
+    return npc_task_at(w.db, w.cal, w.population, Id(npc), w.day, hour);
+}
+}  // namespace
+
+int sim_world_npc_task_at(const SimWorld* world, const char* npc, int hour, char* out, int cap) {
+    const std::optional<ScheduledTask> t = npc_now(world, npc, hour);
+    return t ? write_str(out, cap, t->task) : -1;
+}
+
+int sim_world_npc_place_at(const SimWorld* world, const char* npc, int hour, char* out, int cap) {
+    const std::optional<ScheduledTask> t = npc_now(world, npc, hour);
+    return t ? write_str(out, cap, t->place) : -1;
+}
+
+int sim_world_npc_schedule_at(const SimWorld* world, const char* npc, int hour, char* out,
+                              int cap) {
+    const std::optional<ScheduledTask> t = npc_now(world, npc, hour);
+    return t ? write_str(out, cap, t->schedule_id) : -1;
 }

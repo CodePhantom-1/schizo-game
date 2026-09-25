@@ -1,65 +1,104 @@
 # MODULE CONTRACT — Schedule
 
-**Status:** T2 agent. The NPC day planner — schedules are tasks bent by season, not fixed positions
-(docs/mechanics.md row 7; ../docs/living-world.md §2; ../docs/city-life.md §1).
+**Status:** T2 agent; festivals + per-person resolution added by track K-2. The NPC day planner —
+schedules are tasks bent by season and festival, not fixed positions (docs/mechanics.md rows 7 and 14;
+../docs/living-world.md §2; ../docs/city-life.md §1, §5).
 
-**Owns:** nothing. Pure functions over `db/canon/schedules.csv` + `Calendar`; no state, so nothing to save.
+**Owns:** nothing. Pure functions over `db/canon/schedules.csv`, `person_schedules.csv`,
+`festivals.csv`, `people.csv` (home/work places) + `Calendar`; no state, so nothing to save.
 **May read:** `Db`, `Calendar` (both coordinator-owned contracts). No `WorldContext` needed — the query
 surface is narrower than a WorldContext consumer, so it takes only what it reads.
 **Must never:** write state, hold its own Rng, use wall-clock time, touch engine code, resolve an OPEN row.
 
 **Definition of done:** `src/Schedule.cpp` implements every declaration in `include/sim/Schedule.hpp`;
-`tests/test_schedule.cpp` passes; determinism holds (same inputs -> same outputs).
+`tests/test_schedule.cpp` and `tests/test_festivals.cpp` pass; determinism holds (same inputs -> same outputs).
 
 ## API
 
 ```cpp
+struct ScheduledTask { Id schedule_id; std::string role; int hour; std::string task;
+                       std::string place; Id festival; std::string origin; };
+struct FestivalBend  { Id festival_id; std::string name; Id deity; std::string place;
+                       int attend_from, attend_until; std::vector<std::string> exempt_roles;
+                       bool market_open; std::string gathering; };
+
 std::vector<std::string> schedule_roles(const Db& db);
-std::vector<ScheduledTask> day_plan(const Db& db, const Calendar& cal, const std::string& role, DayNumber day);
-std::optional<ScheduledTask> task_at(const Db& db, const Calendar& cal, const std::string& role, DayNumber day, int hour);
+std::vector<ScheduledTask> day_plan(const Db&, const Calendar&, const std::string& role, DayNumber day);
+std::optional<ScheduledTask> task_at(const Db&, const Calendar&, const std::string& role, DayNumber day, int hour);
+std::optional<FestivalBend> festival_bend(const Db&, const Calendar&, DayNumber day);
+bool market_open(const Db&, const Calendar&, DayNumber day);
+std::vector<ScheduledTask> person_day_plan(const Db&, const Calendar&, const Id& person_id, const std::string& role, DayNumber day);
+std::optional<ScheduledTask> person_task_at(const Db&, const Calendar&, const Id& person_id, const std::string& role, DayNumber day, int hour);
 ```
 
+`ScheduledTask` gained `place`, `festival` and `origin` (additive, defaulted — no existing caller
+changed). `Population.hpp`'s `npc_task_at` now delegates to `person_task_at` with the npc's own role.
+
+## Resolution rules
+
 Role matching is case-insensitive and trims whitespace. OPEN-tagged rows are always skipped (content
-policy: never surface an unresolved row). Rows apply on a given day when their `season` field is blank
-(all seasons) or equals `cal.season_id(day)`; when a seasonal row and an all-season row for the same role
-share an hour, the seasonal row wins (`Schedule.cpp` keeps a `bool` per chosen hour to arbitrate this).
-`task_at` returns the plan row with the greatest `hour <= hour`; if the queried hour is before the day's
-first row, it walks back day by day (bounded at 366 days, and never below day 1 — `Calendar`'s own day
-numbering starts at 1, Time.hpp) picking up the previous day's last task, so a role's night-hours task
-always resolves to something rather than nullopt. `nullopt` is returned only when the role has no rows
-in canon at all (checked via `schedule_roles`, not via an empty `day_plan` for the queried day/season).
+policy: never surface an unresolved row) — in all three tables.
+
+**Filters.** A row applies on `day` when its `season` is blank or equals `cal.season_id(day)`, and its
+`festival` is blank, or — on a festival day — `any` or equal to `cal.festival_id(day)`
+(case-insensitive). A festival row never applies on an ordinary day.
+
+**Ranking per hour.** Candidates are the role's `schedules.csv` rows plus (person-level queries only)
+the person's `person_schedules.csv` rows. At each hour the highest rank wins:
+
+| rank | row |
+|---|---|
+| 7 | person row for the named festival |
+| 6 | person row for `any` festival |
+| 5 | role row for the named festival |
+| 4 | role row for `any` festival |
+| 3 | person row, seasonal |
+| 2 | person row, all-season |
+| 1 | role row, seasonal |
+| 0 | role row, all-season |
+
+Equal rank: the later row in file order wins (the pre-K-2 behaviour). So festival rows beat
+ordinary rows, person rows beat role rows, and the narrower filter beats the wider one — the
+seasonal-beats-all-season rule of T2 is the rank 1 > rank 0 case.
+
+**The festival gathering.** On a day whose named festival has a `festivals.csv` row with a valid
+`[attend_from, attend_until)` window, and whose role is not in the row's `exempt_roles`
+(`;`-separated, trimmed, case-insensitive), and which has at least one row that day:
+1. ordinary rows (rank < 4) with `attend_from <= hour < attend_until` are removed;
+2. unless a festival row already sits at `attend_from`, a gathering task is inserted there
+   (`schedule_id` = the festival id, `task` = the row's `gathering`, `place` = the row's `place`,
+   `origin` = `"festival"`);
+3. unless `attend_until` is 24 or a row already sits there, the ordinary task that was in force at
+   `attend_until` (the last ordinary row at or before it, wrapping to the day's last ordinary row)
+   resumes at `attend_until`.
+A malformed window (non-integer hours, `from` outside 0..23, `until` not in `from+1..24`) disables
+the gathering but keeps the rest of the bend (market flag, festival rows).
+
+**Market.** `market_open` is false only when today's festival row says `market=closed`.
+
+**Places.** `place` is `""` (unplaced), `home`, `work`, or a `places.csv` id. Role-level queries
+(`day_plan`, `task_at`) return the raw token; person-level queries resolve `home`/`work` through the
+person's `people.csv` `home_place`/`work_place` (`""` when the person has none, i.e. the person
+lives or works off the slice street).
+
+**Carry-over.** `task_at`/`person_task_at` return the plan row with the greatest `hour <= hour`; before
+the day's first row they walk back day by day (bounded at 366 days, never below day 1) — each earlier
+day planned with its own season and festival — picking up that day's last task. `nullopt` only when
+the role (and, person-level, the person) has no rows at all, or when no row ever applies.
 
 ## INVENTED constants
 
-None. This module invents no machinery constants of its own — it is pure lookup logic over
-`schedules.csv`, whose 24 rows are already tagged `INVENTED` (D-012 authored glue) at the content layer.
+None in code. The rank order and gathering-window semantics are the imported "festival overrides"
+of mechanics.md row 7 made concrete; every placeholder content row they act on (festivals, festival
+schedule rows, per-person overrides, home/work places) is tagged `INVENTED` and listed in
+[docs/proposals/invented-ledger-festivals.md](../../docs/proposals/invented-ledger-festivals.md).
 
-## Festival-override hook
+## Tests
 
-Festival days are `OPEN` in canon (`calendar.csv`: `festival_days` is an open row) — per the content
-policy this module never resolves an OPEN row, so festival overrides are **documented, not built**:
-`Schedule.hpp`'s header comment notes that when festival schedules are authored, `day_plan` should
-consult a `festival` column (or a dedicated table) the same way it consults `season` today. No behaviour
-change ships for `cal.is_festival(day)` in this module.
-
-## Content gap for the coordinator (not authored here — do not fill)
-
-`db/canon/people.csv` currently has only 3 rows (the three named leaders: `law_giver`, `the_prophet`,
-`the_warchief`), and their `role` column holds a narrative title/description
-("founder of the Empire; the player's previous incarnation (implied)", etc.), not a schedule-matching
-role string. **None of the 19 schedule roles** (baker, miller, water-carrier, herdsman, gatekeeper,
-priest of the sun, paladin, fisherman, field hand, scribe, market trader, lighthouse keeper, craftsman,
-"workshops and households", cook-shop keeper, dockworker, "household", priest of the moon, watchman)
-currently have any matching row in `people.csv` — i.e. the populace that would actually run these
-schedules does not exist yet as named or generic NPCs with a `role` field the planner could key off of.
-This is a content/Population-module gap, not something to author here.
-
-## Tests (tests/test_schedule.cpp)
-
-The real `db/canon/schedules.csv` has zero seasonal rows (every row's `season` is blank), so the
-seasonal-bend, same-hour-tie-break, and season-boundary carry-over paths are exercised against a
-throwaway fixture canon written to the system temp dir at test time (never committed as canon) —
-the same pattern `test_justice.cpp` uses for its laws.csv fixture. Role-matching case/whitespace
-handling, the unknown-role nullopt path, the OPEN-row skip, determinism, and "every schedule row is
-reachable through `day_plan`" are each checked against both the fixture and the real canon (the latter
-additionally proves the real 24-row table is fully reachable through this module).
+- `tests/test_schedule.cpp` — T2's original suite (fixture canon without festivals: unchanged
+  behaviour) plus a festival fixture: the ordinary day is untouched, the gathering replaces and
+  resumes, named vs `any` festival rows, exempt roles, OPEN rows, a malformed window, per-person
+  overrides beating role rows, per-person festival rows beating the gathering, place resolution,
+  determinism; and every real-canon schedule/person-schedule row and every festival gathering is
+  reachable with the calendar exactly as `WorldState::init` builds it.
+- `tests/test_festivals.cpp` — the real canon end to end (see module_Time.md).

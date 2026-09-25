@@ -14,7 +14,9 @@ void WorldState::init(const std::string& canon_dir, std::uint64_t world_seed) {
     seed = world_seed;
     rng = Rng(world_seed);
     // The calendar's shape is ratified machinery; its seasons are canon data
-    // (seasons.csv, D-015). Months stay unnamed and festival days stay OPEN.
+    // (seasons.csv, D-015); its yearly festivals are festivals.csv (K-2 — the
+    // machine-readable form of calendar.csv's INVENTED festival_days row,
+    // D-018). Months stay unnamed in the kernel (month names are not wired).
     CalendarConfig cfg;
     for (const Row& r : db.rows("seasons")) {
         if (r.get("tag") == "OPEN") continue;
@@ -22,6 +24,14 @@ void WorldState::init(const std::string& canon_dir, std::uint64_t world_seed) {
         s.id = r.at("id");
         s.start_day_of_year = std::strtol(r.get("start_day_of_year", "1").c_str(), nullptr, 10);
         if (s.start_day_of_year >= 1) cfg.seasons.push_back(s);
+    }
+    for (const Row& r : db.rows("festivals")) {
+        if (r.get("tag") == "OPEN") continue;  // an unwritten festival never lands on the calendar
+        FestivalDef f;
+        f.id = r.at("id");
+        f.name = r.get("name");
+        f.day_of_year = std::strtol(r.get("day_of_year", "0").c_str(), nullptr, 10);
+        cfg.festivals.push_back(f);  // Calendar validates range + one-per-day
     }
     cal = Calendar{cfg};
     facts = WorldFacts{};

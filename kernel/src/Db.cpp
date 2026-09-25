@@ -82,7 +82,8 @@ Db Db::load(const std::string& canon_dir) {
         "people", "places", "planetary_powers", "quests", "ranks", "regions", "rites",
         "rite_teachings",  // K-1: who/what teaches each rite
         "schedules", "seasons", "skills", "story", "talents",
-        "terrain_schemes", "treaties", "world_lore", "recipes"};
+        "terrain_schemes", "treaties", "world_lore", "recipes",
+        "festivals", "person_schedules"};  // K-2
 
     for (const std::string& table : tables) {
         std::ifstream in(canon_dir + "/" + table + ".csv");

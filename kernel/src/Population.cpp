@@ -214,8 +214,10 @@ std::optional<ScheduledTask> npc_task_at(const Db& db, const Calendar& cal,
                                           const PopulationState& state, const Id& npc_id,
                                           DayNumber day, int hour) {
     const Npc* npc = find_npc(state, npc_id);
-    if (npc == nullptr || npc->role.empty()) return std::nullopt;
-    return task_at(db, cal, npc->role, day, hour);
+    if (npc == nullptr) return std::nullopt;
+    // K-2: per-person resolution — role rows + the person's own
+    // person_schedules.csv rows, bent by season and festival, places resolved.
+    return person_task_at(db, cal, npc->id, npc->role, day, hour);
 }
 
 }  // namespace sim

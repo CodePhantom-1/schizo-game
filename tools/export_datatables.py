@@ -21,6 +21,7 @@ TABLES = [
     "cities", "deities", "endings", "events", "factions", "items", "laws",
     "names", "pantheons", "planetary_powers", "places", "ranks", "regions",
     "rite_teachings", "rites", "schedules", "seasons", "skills", "story", "world_lore",
+    "festivals", "person_schedules",  # K-2
 ]
 
 

@@ -94,9 +94,10 @@ bool condition_matches(const EventRule& rule, const std::string& condition,
         return !arg.empty() && ctx.cal.season_id(day) == arg;
     }
     if (kind == "festival") {
-        // The Calendar exposes no per-festival id at Wave 1, so the condition
-        // can only mean "the day is one of the calendar's festival days".
-        return ctx.cal.is_festival(day);
+        // "festival" = any festival day; "festival:<id>" = that festivals.csv
+        // festival only (K-2: the Calendar now names its yearly festivals).
+        if (arg.empty()) return ctx.cal.is_festival(day);
+        return ctx.cal.festival_id(day) == arg;
     }
     if (kind == "chance") {
         long long n = 0;
