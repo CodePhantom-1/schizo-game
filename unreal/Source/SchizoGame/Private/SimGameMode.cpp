@@ -7,6 +7,7 @@
 // The kernel's C API through SimRuntime's public include path.
 #include "SimDayNight.h"  // W6-C: the sun and sky on the sim clock
 #include "SimNpcDirector.h"  // W6-C: the residents, spawned from kernel schedules
+#include "SimCharacter.h"  // the protagonist's body — replaces the spectator pawn
 #include "SimPlayerController.h"
 #include "SimStreetBuilder.h"  // W6-B: the Moon Gate Quarter from the kit
 #include "SimTablet.h"
@@ -38,9 +39,10 @@ namespace
 
 ASimGameMode::ASimGameMode()
 {
-	// The slice's player controller arrives with its verbs and HUD; the
-	// engine's default pawn is enough to walk the street.
+	// The slice's player controller arrives with its verbs and HUD; the pawn
+	// is the protagonist's own body (a walking character, not a spectator).
 	PlayerControllerClass = ASimPlayerController::StaticClass();
+	DefaultPawnClass = ASimCharacter::StaticClass();
 	// The clock on screen needs the game mode to tick (actors don't by default).
 	PrimaryActorTick.bCanEverTick = true;
 }

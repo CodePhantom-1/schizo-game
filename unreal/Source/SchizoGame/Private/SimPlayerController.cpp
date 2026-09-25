@@ -163,8 +163,11 @@ bool ASimPlayerController::TraceLook(FHitResult& OutHit) const
 		EyesRot = Pawn->GetActorRotation();
 	}
 
-	const FVector End = Eyes + EyesRot.Vector() * 300.f;
+	const FVector End = Eyes + EyesRot.Vector() * 500.f;
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(SimUse), false);
+	// The protagonist has a body now: the shoulder camera's sightline starts
+	// behind it, so the trace must step over its own capsule and meshes.
+	Params.AddIgnoredActor(Pawn);
 	return World->LineTraceSingleByChannel(OutHit, Eyes, End, ECC_Visibility, Params);
 }
 

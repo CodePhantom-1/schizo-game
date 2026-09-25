@@ -74,8 +74,10 @@ def import_fbx(fbx_rel_path, mesh_id):
     fbx_options = unreal.FbxImportUI()
     fbx_options.import_mesh = True
     fbx_options.import_as_skeletal = False
-    fbx_options.import_materials = False  # slots are coloured at runtime (SimStreetBuilder)
-    fbx_options.import_textures = False
+    # The FBX carries the CC0 surface maps embedded (kit_common exports with
+    # path_mode=COPY + embed_textures): import them as real materials.
+    fbx_options.import_materials = True
+    fbx_options.import_textures = True
     fbx_options.static_mesh_import_data.combine_meshes = True
     # Auto convex collision would fill every cut solid: an 18-DOP hull of a
     # wall-with-doorway is just the wall, so buildings would be unenterable

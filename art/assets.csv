@@ -15,3 +15,27 @@ House_TwoRoomCourtyard,art/generated/meshes/House_TwoRoomCourtyard.fbx,mesh_hous
 House_RoofAccess,art/generated/meshes/House_RoofAccess.fbx,mesh_house_example,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
 SM_RoofSlabFlat,art/generated/meshes/SM_RoofSlabFlat.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
 SM_ParapetRun,art/generated/meshes/SM_ParapetRun.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+M_Mudbrick_Color,art/source/Bricks100/Bricks100_2K-JPG_Color.jpg,texture_map,CC0,https://ambientcg.com/a/Bricks100,A
+M_Mudbrick_NormalGL,art/source/Bricks100/Bricks100_2K-JPG_NormalGL.jpg,texture_map,CC0,https://ambientcg.com/a/Bricks100,A
+M_Mudbrick_Roughness,art/source/Bricks100/Bricks100_2K-JPG_Roughness.jpg,texture_map,CC0,https://ambientcg.com/a/Bricks100,A
+M_Mudbrick_AmbientOcclusion,art/source/Bricks100/Bricks100_2K-JPG_AmbientOcclusion.jpg,texture_map,CC0,https://ambientcg.com/a/Bricks100,A
+M_MudPlaster_Color,art/source/Ground087/Ground087_2K-JPG_Color.jpg,texture_map,CC0,https://ambientcg.com/a/Ground087,A
+M_MudPlaster_NormalGL,art/source/Ground087/Ground087_2K-JPG_NormalGL.jpg,texture_map,CC0,https://ambientcg.com/a/Ground087,A
+M_MudPlaster_Roughness,art/source/Ground087/Ground087_2K-JPG_Roughness.jpg,texture_map,CC0,https://ambientcg.com/a/Ground087,A
+M_MudPlaster_AmbientOcclusion,art/source/Ground087/Ground087_2K-JPG_AmbientOcclusion.jpg,texture_map,CC0,https://ambientcg.com/a/Ground087,A
+M_Timber_Color,art/source/Bark012/Bark012_2K-JPG_Color.jpg,texture_map,CC0,https://ambientcg.com/a/Bark012,A
+M_Timber_NormalGL,art/source/Bark012/Bark012_2K-JPG_NormalGL.jpg,texture_map,CC0,https://ambientcg.com/a/Bark012,A
+M_Timber_Roughness,art/source/Bark012/Bark012_2K-JPG_Roughness.jpg,texture_map,CC0,https://ambientcg.com/a/Bark012,A
+M_Timber_AmbientOcclusion,art/source/Bark012/Bark012_2K-JPG_AmbientOcclusion.jpg,texture_map,CC0,https://ambientcg.com/a/Bark012,A
+M_Reed_Color,art/source/Wicker010A/Wicker010A_2K-JPG_Color.jpg,texture_map,CC0,https://ambientcg.com/a/Wicker010A,A
+M_Reed_NormalGL,art/source/Wicker010A/Wicker010A_2K-JPG_NormalGL.jpg,texture_map,CC0,https://ambientcg.com/a/Wicker010A,A
+M_Reed_Roughness,art/source/Wicker010A/Wicker010A_2K-JPG_Roughness.jpg,texture_map,CC0,https://ambientcg.com/a/Wicker010A,A
+M_Reed_AmbientOcclusion,art/source/Wicker010A/Wicker010A_2K-JPG_AmbientOcclusion.jpg,texture_map,CC0,https://ambientcg.com/a/Wicker010A,A
+M_Ground_Color,art/source/Ground109/Ground109_2K-JPG_Color.jpg,texture_map,CC0,https://ambientcg.com/a/Ground109,A
+M_Ground_NormalGL,art/source/Ground109/Ground109_2K-JPG_NormalGL.jpg,texture_map,CC0,https://ambientcg.com/a/Ground109,A
+M_Ground_Roughness,art/source/Ground109/Ground109_2K-JPG_Roughness.jpg,texture_map,CC0,https://ambientcg.com/a/Ground109,A
+M_Ground_AmbientOcclusion,art/source/Ground109/Ground109_2K-JPG_AmbientOcclusion.jpg,texture_map,CC0,https://ambientcg.com/a/Ground109,A
+M_Plinth_Color,art/source/Rock035/Rock035_2K-JPG_Color.jpg,texture_map,CC0,https://ambientcg.com/a/Rock035,A
+M_Plinth_NormalGL,art/source/Rock035/Rock035_2K-JPG_NormalGL.jpg,texture_map,CC0,https://ambientcg.com/a/Rock035,A
+M_Plinth_Roughness,art/source/Rock035/Rock035_2K-JPG_Roughness.jpg,texture_map,CC0,https://ambientcg.com/a/Rock035,A
+M_Plinth_AmbientOcclusion,art/source/Rock035/Rock035_2K-JPG_AmbientOcclusion.jpg,texture_map,CC0,https://ambientcg.com/a/Rock035,A

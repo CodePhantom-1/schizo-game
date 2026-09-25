@@ -15,6 +15,10 @@ import bpy
 import bmesh
 import math
 import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import fetch_textures as ft  # noqa: E402 -- plain python, no bpy, safe to import here
 
 # ---- Grid + real-world dimensions (source: real Mesopotamian mudbrick
 # residential architecture, tag [A] — general practice attested at Ur III /
@@ -63,6 +67,8 @@ MAT_DEFS = {
     "M_Reed": ((0.68, 0.58, 0.30), 0.85),
 }
 
+TEX_DEFS = ft.TEX_DEFS  # material name -> {asset_id, tile_m, use} (CC0, ambientCG)
+
 
 def get_material(name):
     if name in bpy.data.materials:
@@ -77,6 +83,28 @@ def get_material(name):
     # diffuse_color, not the node tree, so set it explicitly too.
     mat.diffuse_color = (*color, 1.0)
     mat.roughness = rough
+
+    # Real surface maps when fetched (tools/art/fetch_textures.py, CC0):
+    # albedo + roughness on UV0, scaled to the documented tile size. D-023
+    # stays low-fi — colour and sheen carry the surface; the bevelled
+    # geometry carries the rest, no normal map in the export.
+    spec = TEX_DEFS.get(name)
+    if spec and ft.already_fetched(spec["asset_id"]):
+        nt = mat.node_tree
+        tc = nt.nodes.new("ShaderNodeTexCoord")
+        mapping = nt.nodes.new("ShaderNodeMapping")
+        mapping.inputs["Scale"].default_value = (1.0 / spec["tile_m"],) * 3
+        nt.links.new(tc.outputs["UV"], mapping.inputs["Vector"])
+        for map_type, bsdf_input in (("Color", "Base Color"), ("Roughness", "Roughness")):
+            path = ft.map_path(spec["asset_id"], map_type)
+            if not os.path.exists(path):
+                continue
+            img = bpy.data.images.load(path)
+            img.name = f"{spec['asset_id']}_{map_type}"
+            node = nt.nodes.new("ShaderNodeTexImage")
+            node.image = img
+            nt.links.new(mapping.outputs["Vector"], node.inputs["Vector"])
+            nt.links.new(node.outputs["Color"], bsdf.inputs[bsdf_input])
     return mat
 
 
@@ -242,6 +270,11 @@ def export_piece(obj, out_dir):
         axis_up="Y",
         object_types={"MESH"},
         use_mesh_modifiers=True,
+        # The CC0 surface maps travel inside the FBX so UE's importer can
+        # build the materials (ue_import_kit.py runs with
+        # import_materials/import_textures on).
+        path_mode="COPY",
+        embed_textures=True,
     )
     glb_path = os.path.join(mesh_dir, f"{obj.name}.glb")
     bpy.ops.export_scene.gltf(
