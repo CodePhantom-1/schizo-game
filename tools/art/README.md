@@ -68,6 +68,30 @@ UnrealEditor-Cmd "$PWD/unreal/SchizoGame.uproject" \
   stores vertex colour sRGB-encoded, so `M_Scatter` decodes it with a 2.2 power. `Sim.Scatter` tests
   it; `-SimShotDrought=4` shoots the withered city.
 
+## Terrain (Stage V batch 3): ground detail, landforms, the countryside
+
+```
+python3 tools/art/sources.py ph_dry_mud_field ph_brown_mud_dry ph_mud_cracked_dry ph_coast_sand ph_dry_ground_rocks ph_rock_boulder_dry
+python3 tools/art/ground_atlas.py                                          # 1. art/generated/tex/T_Ground.png (16 detail cells) + art/review/ground_atlas.png
+UnrealEditor-Cmd "$PWD/unreal/SchizoGame.uproject" \
+    -run=pythonscript -script="$PWD/tools/art/ue_make_terrain_material.py"  # 2. /Game/Art/Terrain: T_Ground (linear), M_Terrain (needs MPC_World: run the scatter import first)
+```
+
+- **Ground kinds:** `ASimEnvironment::GroundKind` names what each terrain triangle is (the same regions
+  as Tommy's `TerrainColor`, whose colours are untouched — `Sim.Terrain.GroundKind` pins their hash)
+  and the terrain carries it in vertex alpha as Kind / 15.
+- **`M_Terrain`** is Tommy's `M_Flat` as it renders (vertex colour x his world noise) times the kind's
+  detail cell x 2 (each cell averages 0.5, so a flat cell changes nothing): planar, triplanar on
+  slopes, furrows on irrigated fields; the drought (`MPC_World.Wither`) cracks fields and silt and
+  crusts them with salt. The terrain falls back to `M_Flat` when `M_Terrain` is not imported.
+- **Landforms** (`TerrainHeight`): levees, five tells, gullies down the southern dunes; applied before
+  the apron, lagoon, road, canals, river and sea, which always win (`Sim.Terrain.Landforms`).
+- **The countryside** (`ASimScatter::ScatterCountryside`): barley that sprouts at sowing and ripens at
+  harvest, bare rows in the rains, date groves on the levees, reeds on the banks, scrub on the dunes,
+  sherds on the tells — read from `flora.csv`'s `levee`/`field`/`bank`/`desert`/`tell_top` habitats,
+  6 m clear of the road west (`Sim.Scatter.Countryside`). Review shots: `-SimShotAdvanceDays=100`
+  (sowing) or `190` (harvest), `-SimShotDrought=4`.
+
 # Mudbrick house kit (T8)
 
 Procedural, code-built modular kit for the City of the Moon street, run

@@ -80,3 +80,39 @@
 ### Task 5: records and push
 
 - [ ] `docs/notes-for-tommy.md` (what changed in his `SimEnvironment`: `GroundKind`, `M_Terrain`, the landform terms — and that his colours are untouched), HANDOFF "Stage V batch 3", `docs/proposals/invented-ledger-terrain.md` (every number above), `tools/art/README.md` (ground atlas + terrain material commands), completion-plan progress. Fresh-context review against the Review Focus → fix pass → push → CI green.
+
+## Status (2026-09-26): all 5 tasks done (on Tommy's Windows box)
+
+| Task | Commits | Verified by |
+|---|---|---|
+| 1 ground atlas | f831c8f | `test_art_ground.py` 6/6 (mean 0.5 per cell, tiling, deterministic), `art/review/ground_atlas.png` |
+| 2 GroundKind + M_Terrain | b54f08e | `Sim.Terrain.GroundKind` (2,000-sample colour hash pinned from the pre-refactor build; 6 hand-picked kinds), rendered shots `vb3_*_fields.png` |
+| 3 landforms | 629fa53 | `Sim.Terrain.Landforms` (apron heights pinned before the change; road ≤ 20 cm; canals ≤ −250 cm; 5 tells ≥ 8 m proud, kind Tell, 500 m + r clear of road and river) |
+| 4 countryside scatter | 8c42988 | `Sim.Scatter.Countryside` (every habitat > 0, road clear 6 m, crops by season, deterministic), `ue_test.sh` 68/68, `ue_smoke.sh` all ok, shots `vb3_sowing/harvest/drought4_*` |
+| 5 records | (this) | HANDOFF, notes for Tommy, `invented-ledger-terrain.md`, completion-plan, `tools/art/README.md` "Terrain", roadmap |
+
+The review was done inline against the Review Focus list (each item has a test or a shot), not by a separate fresh-context agent.
+
+**Rulings made during execution** (each: what — why — cost if wrong):
+- T2: `GroundKind` is a separate classifier that mirrors `TerrainColor`'s regions; `TerrainColor`'s code is untouched (not rewritten as a switch) — colour identity by construction, and Task 3's new kinds (Salt, Tell) change no colour — two branch trees to keep in step (the colour-hash test catches colour drift, not kind drift).
+- T2: `M_Terrain` keeps Tommy's `M_Flat` roughness 0.92 / specular 0.25 (not the plan's 0.95) and his world noise — a flat detail must reproduce today's terrain exactly — none.
+- T2: `M_Flat`'s "blocky" noise was never blocky: its snapped position goes to a Noise pin named `Position`, which does not exist (it is `World Position`), so the noise reads the raw world position; `M_Terrain` reproduces what renders — Tommy may want the blocky look switched on (every flat surface changes).
+- T2: `T_Ground` imports as linear (not sRGB) so a 0.5 cell stays 0.5 and x 2 leaves the colour — none.
+- T2: every material link in the new scripts is checked (a missing pin raises): it caught UE's If pins (`A > B`, `A == B`, `A < B`) and the Noise pin (`World Position`) — none.
+- T3: tells 3–4.5 km out (the plan says 30–90 km) and 500 m + radius clear of road and river (plan: 5 km) — the terrain window is 15 km and its grid 15 m near the city growing 8%/step (~216 m cells at 3 km); 30–90 km is off the map — tells sit nearer than planned.
+- T3: each tell stands on a plateau at the mean base height of its foot, then rises its full height — on the northern steppe the dune ridges swing ±7 m and a tell on a trough read lower than its surroundings — the mound's foot can show a small step on a ridge.
+- T3: no field dykes in the geometry (60 cm dykes on a 15 m grid would alias into random bumps; the global constraint sends sub-3-cell features elsewhere); the furrows are in `M_Terrain` — the fields read flat from the side.
+- T3: levees are +70 cm over ~45 m (not ~9 m) so they read at the grid — softer banks.
+- T3: landforms go before the apron, lagoon, road, canal, river and sea terms (not after them with the masks re-applied) — the same result with no duplicated masks — none.
+- T4: barley is two rows, `barley_shoots` (sowing) and `barley_ripe` (harvest) — the plan's one row wanted a different mesh per season — none.
+- T4: countryside density multipliers against `per_100m2` (the table's numbers are the city's): desert × 0.2, levee × 0.5, tell top × 0.05 — at table density the dunes and the 250–600 m tells blew the 60,000 budget (it truncated spatially) — tune in `HabitatDensity`.
+- T4: whole-row colours for Kenney's wheat (shoots `leaf_1`, ripe `reed_3`; its ripe `_defaultMat` read as terracotta); `dirtDark` → `mud_2` — none.
+- T4: `ue_import_scatter.py` now only adds missing `MPC_World` parameters — re-setting the list gave them new ids and broke `M_Terrain` (default material in game) — none.
+- T4: `-SimQuitAfter=<s>` (core ticker, runs while the menu pauses the world) ends the Windows smoke menu run cleanly; `-SimShotAdvanceDays=<n>` shoots other seasons — none.
+
+**Deferred minors:**
+- Kenney's `crops_wheatStageA` is 720 triangles; ~7,500 barley instances under a 250 m cull is heavy — an LOD or a lighter code-built barley in batch 7 (performance).
+- The levees and gullies are subtle at the terrain's resolution; the tells are far out of the standard shot views (add a `tells` shot view if wanted).
+- The countryside grid covers x −900..600 m, y −600..700 m plus the tells; beyond that the land is Tommy's hand-placed palms and tufts only.
+- Blender 4.5 (the plan asks for 5.2) and Windows: run the Python tools with `PYTHONUTF8=1`; several write CRLF on Windows (normalise before committing).
+- One rendered run stalled at engine start ("Presizing…") for 20 minutes and was killed; the next ran normally.
