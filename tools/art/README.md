@@ -32,6 +32,42 @@ nice -n 19 ~/.local/bin/blender -b --factory-startup -P tools/art/building_mesh.
   exists, else the kit room; `Sim.StreetBuildings` checks both paths give the same door slots. The
   first boot after an import builds the meshes into the DDC (the menu takes longer once).
 
+## Scatter (Stage V batch 2): plants, stones and clutter
+
+The palms, reeds, lilies, grasses, spring flowers, stones, jars and sacks of the crescent, placed
+from data. Run from the repo root, in order (Windows: `py` for `python3`, Blender at
+`"C:\Program Files\Blender Foundation\Blender <v>\blender.exe"`, UE at `<UE>\Engine\Binaries\Win64\UnrealEditor-Cmd.exe`):
+
+```
+python3 tools/art/sources.py kenney_nature_kit kaykit_medieval_hexagon   # 0. the two model packs -> art/source/
+blender -b --factory-startup -P tools/art/scatter_mesh.py -- [--sheet]    # 1. art/scatter_meshes.csv -> art/generated/scatter/SM_F_<id>.glb (+ art/review/scatter_contact.png)
+blender -b --factory-startup -P tools/art/check_scatter.py                 # 2. gate: every GLB present, in budget, standing on z = 0
+python3 tools/art/license_gate.py --write-credits                          # 3. the new SM_F_ manifest rows + docs/credits.md
+python3 tools/art/scatter.py                                               # 4. db/canon (places, flora) -> unreal/Content/Sim/scatter.csv (CI: --check)
+python3 tools/plot_city.py --scatter                                       # 5. art/review/scatter_plan.png: every instance over the city plan
+UnrealEditor-Cmd "$PWD/unreal/SchizoGame.uproject" \
+    -run=pythonscript -script="$PWD/tools/art/ue_import_scatter.py"         # 6. /Game/Art/Scatter: SM_F_<id>, M_Scatter, MPC_World
+```
+
+- **What grows where** is `db/canon/flora.csv` (species, habitats, seasons, withering, density,
+  scale; tested in `test_art_flora.py`). `scatter.py` turns each habitat (shore, water, yard,
+  garden, street_edge, open, wall_foot, precinct, tombs, camp) into candidate points and rejects
+  them by one rule set: footprints grown 0.5 m, 2.5 m round every door slot, the lagoon for all but
+  water plants (reeds to 0.3 m of water, lilies float), the channels, the wall, the sea, the gate
+  passages. Seeded: the same canon gives the same bytes (`test_art_scatter.py`).
+- **The meshes** (`art/scatter_meshes.csv`): an allow-list of Kenney Nature Kit and KayKit pieces
+  (nothing from world-art-plan §10's banned list) plus five code-built plants (`flora_gen.py`:
+  reed clump, cattail, tamarisk, saltbush, dead palm). `size_m` is the real longest side (the packs
+  are toy scale). Colours are snapped to the palette (Kenney's named materials by hand in
+  `MATERIAL_MAP`, atlas pieces sampled per face) and written as linear vertex colour; A = 1 on the
+  green faces of leafy meshes.
+- **In game:** `ASimScatter` (built by the game mode after the street) stands one HISM per mesh and
+  season set, z on the terrain (lilies on the water), culled by group. `M_Scatter` lerps a leaf to
+  straw by `MPC_World.Wither` (= drought stage / 4, from the kernel, polled each second) and sways
+  leaves in the wind; out-of-season species (spring flowers, lilies) are hidden. The mesh build
+  stores vertex colour sRGB-encoded, so `M_Scatter` decodes it with a 2.2 power. `Sim.Scatter` tests
+  it; `-SimShotDrought=4` shoots the withered city.
+
 # Mudbrick house kit (T8)
 
 Procedural, code-built modular kit for the City of the Moon street, run

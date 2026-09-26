@@ -83,7 +83,7 @@
 
 The designer's brief (2026-09-26): every kind of building for every trade and class, rich materials and surface detail instead of plain blocks, real terrain relief and textures, regional flora and fauna of all kinds. The full plan, catalogue and steps V0–V10 are in [world-art-plan.md](world-art-plan.md). V0–V3 run together with Stage AA (the crescent is built in the new style from the start); V4 with C, V5–V7 with Q, V8 with O, V9 with Q7; V10 is continuous. Stage S's art rows (S2 interiors, S5–S9) are carried out through Stage V.
 
-**Progress:** batch 1 (2026-09-26) — the asset pipeline (licence gate, fetchers, palette, trim atlas with wear) and V1–V3 for the crescent: every building generated from its data row, one mesh each, trade markers, wear by wealth (HANDOFF "Stage V batch 1"). Next: batch 2 flora, fauna and props; batch 3 terrain; batch 4 sound.
+**Progress:** batch 1 (2026-09-26) — the asset pipeline (licence gate, fetchers, palette, trim atlas with wear) and V1–V3 for the crescent: every building generated from its data row, one mesh each, trade markers, wear by wealth (HANDOFF "Stage V batch 1"). Batch 2 (2026-09-26) — flora and street life: `flora.csv`, 36 palette-locked scatter meshes (packs + code-built marsh and desert plants), 1,053 instances placed from data around the crescent, withering with the drought and flowering in season (HANDOFF "Stage V batch 2"). Next: batch 3 terrain; batch 4 fauna; batch 5 atmosphere and sound.
 
 ---
 

@@ -194,3 +194,46 @@ palm_dead,code,palm_dead,0,600
 ### Task 6: records and push
 
 - [ ] `tools/art/README.md` (a "Scatter" section: the commands of Tasks 2–4), `docs/notes-for-tommy.md` (the new actor, `MPC_World`, how to regenerate), `HANDOFF.md` ("Stage V batch 2"), `docs/proposals/invented-ledger-flora.md` (densities, habitats, the allowed pack list and why each banned item is out), `docs/completion-plan.md` progress line. Fresh-context review of the batch (Review Focus above) → fix pass → push → CI green.
+
+## Status (2026-09-26): all 6 tasks done (on Tommy's Windows box; not yet pushed)
+
+| Task | Commits | Verified by |
+|---|---|---|
+| 0 Windows fixes | ce966d8, ac8d2c0 | `sources.py` tree hashes equal the designer's manifest on Windows |
+| 1 flora.csv | ed56f40 | `test_art_flora.py`, `canon_lint`, `stage_canon_for_ue --check`, `mechanics_registry --check` |
+| 2 scatter mesher | 560651b | `check_scatter.py` 36/36, `license_gate.py`, `art/review/scatter_contact.png`; a missing source fails its row and exits 1 (Review Focus 4) |
+| 3 scatter.py | 29d9584 | `test_art_scatter.py` 8/8 (Review Focus 1, 5), `scatter.py --check` in CI, `art/review/scatter_plan.png` |
+| 4 UE import | 2416148 | `ue_import_scatter: 36/36`; a rendered run has no `Failed to compile` |
+| 5 ASimScatter | 7ad8519 | `Sim.Scatter` (Review Focus 2, 3), `ue_test.sh` 66/66, `ue_smoke.sh` all ok, shots `art/review/crescent/vb2_*.png` (RTX 3060) |
+| 6 records | (this) | HANDOFF, notes for Tommy, `invented-ledger-flora.md`, completion-plan progress, `tools/art/README.md` "Scatter" |
+
+Machine: Windows 11, RTX 3060, UE 5.8.3 (launcher build), **Blender 4.5** (the plan asks for 5.2 LTS; every script ran on 4.5), Python 3.12. The review was done inline against the Review Focus list (each item has a test or a shot), not by a separate fresh-context agent.
+
+**Rulings made during execution** (each: what — why — cost if wrong):
+- T0: `sources.py` writes `/` paths and skips `.git/` with either separator — on Windows the manifest got `\` paths and the tree hash took in git's internals — none (the hashes now match Linux).
+- T0: `.superpowers/` added to `.gitignore` — the roadmap says the ledger is gitignored; it was not — none.
+- T1: `flora` is `LORE` in `mechanics_registry.py` — art data, no mechanic reads it (like `terrain_schemes`) — a mechanic row later if flora gains gameplay (foraging, dates to pick).
+- T2: `size_m` column in `scatter_meshes.csv` (the real longest side) — the packs are toy scale (a Kenney palm is 1.4 m, a KayKit sack 16 cm); "source metres" would give dollhouse props — sizes are judgement; tune in the csv.
+- T2: Kenney's named materials map to the palette by hand (`MATERIAL_MAP`) — their cartoon colours (mint leaves, 112,229,214) snap to glaze blue by plain nearest colour — a new Kenney material falls back to the nearest snap.
+- T2: KayKit faces sample the atlas at each face's UV centre, not the image mean — KayKit packs every colour in one atlas — none.
+- T2: KayKit lilies are pinned to `leaf_0` (`ROW_COLOUR`) — their atlas green snaps to lagoon water — none.
+- T2: `building_mesh.py` loads `trim_cells.json` only if it exists — importing it for `contact_sheet()` failed on a clone without the atlas — none.
+- T3: yard and garden densities raised (date palm 0.35 → 3.0 per 100 m2, jars 0.6 → 2.5, offshoot, pomegranate, sacks, buckets, ladders, logs, dead palm) — at the plan's numbers the 2.5 m yard strips gave one palm per ~11 houses — more draw calls (still 1,053 instances, far under 40,000).
+- T3: rooted water plants only where the lagoon is ≤ 0.3 m deep (r ≥ r0 − 4.5 m on `SimEnvironment`'s slope); lilies float anywhere in the water band — Review Focus 5 — a reed ring narrower than the shore band.
+- T3: the gate passage is the gate's local |x| < 4.5 m, |y| < d/2 + 8 m — the plan gives no passage width — a bare apron at each gate.
+- T3: open ground (market square, brickyard, wharf...) takes only `open`-habitat props; every other footprint is solid — the plan's "inside any building footprint" would have kept props out of the market — none.
+- T4: `MPC_World` is reused if it exists, not recreated — `M_Scatter` references it, so a second import could not delete it — none.
+- T4: collision via `EditorStaticMeshLibrary` when `StaticMeshEditorSubsystem` is missing (the headless commandlet) — deprecated API — a later UE may drop it; the subsystem path is tried first.
+- T4: the material-compile check ran with Task 5's shots — nothing references `M_Scatter` until `ASimScatter` places it — none.
+- T5: `M_Scatter` connects VertexColor's RGB pin by its real name `""` and decodes it with a 2.2 power; its connect helper now raises on a failed link — `"RGB"` silently connected nothing (black palms), and the mesh build stores vertex colour sRGB-encoded (`StaticMeshBuilder.cpp`, `ToFColor(true)`) — none.
+- T5: lilies float on `ASimEnvironment::WaterHeight()`; reeds root on the terrain (every mesh id with `lily` floats) — `scatter.csv` has no habitat column — a new floating mesh must have `lily` in its id.
+- T5: `ASimScatter` follows the drought as well as the day (1 Hz) — `sim.Drought` changes it mid-day — none.
+- T5: `-SimShotDrought=<stage>` sets the kernel's drought before a shot tour — an `-ExecCmds` `sim.Drought` runs before the kernel world exists and does nothing — none.
+- T5: `ue_test.sh`/`ue_smoke.sh` pick `Win64/*.exe` and add `-stdout -FullStdOutLogOutput` when `UE_ROOT` is a Windows install — the roadmap says to run them in Git Bash, but they hard-coded Linux — none.
+
+**Deferred minors:**
+- `ue_import_buildings.py` (batch 1) has the same `"RGB"` pin bug: `M_Building`'s tint and grime never reach the buildings (the multiply's B stays 1), and its vertex colour also needs the sRGB decode. Fixing it changes every building's look — do it on purpose, with shots.
+- The scatter palms read darker than `SimEnvironment`'s hand-tinted palms (`leaf_1` is a dark entry, and shaded faces are dark generally — batch 1's open sky-light note). Revisit with batch 5's atmosphere.
+- Some Kenney faces have flipped normals (a palm's fronds, a log end); `M_Scatter` is two-sided so the game hides it; the contact sheet shows them dark.
+- `palm_dead` reads thin at contact-sheet scale.
+- Several repo tools open files without an encoding: on Windows run the Python tools with `PYTHONUTF8=1` (e.g. `mechanics_registry.py` rewrote an em dash otherwise).
