@@ -34,7 +34,6 @@ namespace
 					if (W.IsValid() && SimSaves::Load(Ctx(*W), Continue))
 					{
 						W->CloseAll();
-						W->Toast(LOCTEXT("Loaded", "Loaded."));
 					}
 				}, !Continue.IsEmpty())]
 			+ SVerticalBox::Slot().AutoHeight()[SimUi::Button(LOCTEXT("NewGame", "New Game"), [W] { if (W.IsValid()) W->StartNewGame(); })]
@@ -101,7 +100,6 @@ namespace
 					{
 						if (W.IsValid() && SimSaves::Save(Ctx(*W), Slot, Label))
 						{
-							W->Toast(LOCTEXT("Saved", "Saved."));
 							W->Refresh();
 						}
 					})];
@@ -130,7 +128,6 @@ namespace
 						const FString Slot = FString::Printf(TEXT("slot_%s"), *FDateTime::Now().ToString(TEXT("%Y%m%d_%H%M%S")));
 						if (SimSaves::Save(Ctx(*W), Slot, Name.IsValid() ? Name->GetText().ToString().TrimStartAndEnd() : FString()))
 						{
-							W->Toast(LOCTEXT("Saved", "Saved."));
 							W->Refresh();
 						}
 					})]

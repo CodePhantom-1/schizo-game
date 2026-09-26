@@ -82,4 +82,13 @@ namespace
 				Shell->StartNewGame();
 			}
 		}));
+
+	FAutoConsoleCommandWithWorldAndArgs CmdDeleteSlot(TEXT("sim.DeleteSlot"), TEXT("sim.DeleteSlot <slot> — delete a saved game"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld*)
+		{
+			if (Args.Num() < 1 || !SimSaves::Delete(Args[0]))
+			{
+				UE_LOG(LogSimStreetConsole, Warning, TEXT("usage: sim.DeleteSlot <slot> (see sim.Slots)"));
+			}
+		}));
 }

@@ -221,6 +221,17 @@ void USimVerbSpawner::SpawnDemoProps()
 		}
 	}
 
+	SpawnDemoPickups();
+	UE_LOG(LogSchizoGame, Log, TEXT("Verb spawner: the grey-box goods lie on the street (PLACEHOLDER; sim.VerbDemoProps 0 hides them next run)."));
+}
+
+void USimVerbSpawner::SpawnDemoPickups()
+{
+	UWorld* World = GetWorld();
+	if (World == nullptr || CVarVerbDemoProps.GetValueOnGameThread() == 0)
+	{
+		return;
+	}
 	// Satchel goods between the spawn and the gate: grain for the quern-to-come,
 	// bread and beer for the Eat/Quaff keys today.
 	struct FDemoPickup
@@ -253,7 +264,18 @@ void USimVerbSpawner::SpawnDemoProps()
 #endif
 		}
 	}
-	UE_LOG(LogSchizoGame, Log, TEXT("Verb spawner: the grey-box goods lie on the street (PLACEHOLDER; sim.VerbDemoProps 0 hides them next run)."));
+}
+
+void USimVerbSpawner::ResetDemoPickups()
+{
+	if (UWorld* World = GetWorld())
+	{
+		for (TActorIterator<ASimPickup> It(World); It; ++It)
+		{
+			It->Destroy();
+		}
+	}
+	SpawnDemoPickups();
 }
 
 TStatId USimVerbSpawner::GetStatId() const

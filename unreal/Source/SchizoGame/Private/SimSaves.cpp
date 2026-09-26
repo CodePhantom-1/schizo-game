@@ -5,6 +5,10 @@
 #include "SimGameInstanceSubsystem.h"
 #include "SimPlayerController.h"
 #include "SimGameUserSettings.h"
+#include "SimNpcDirector.h"
+#include "UI/SimShellSubsystem.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/Character.h"
 #include "SimWorldSubsystem.h"
 
 #include "Engine/World.h"
@@ -23,6 +27,14 @@ namespace
 			return Index;
 		}
 		return Cast<USimSlotIndex>(UGameplayStatics::CreateSaveGameObject(USimSlotIndex::StaticClass()));
+	}
+
+	void Tell(UObject* Ctx, const FText& Text)
+	{
+		if (USimShellSubsystem* Shell = USimShellSubsystem::Get(Ctx))
+		{
+			Shell->Toast(Text);
+		}
 	}
 
 	APlayerController* PlayerOf(UObject* Ctx)
@@ -74,6 +86,7 @@ namespace SimSaves
 		if (Owner == nullptr || Game == nullptr || !Owner->SaveToString(Game->Kernel))
 		{
 			UE_LOG(LogSchizoGame, Warning, TEXT("Save %s: no running world to save."), *Slot);
+			Tell(Ctx, NSLOCTEXT("SimUi", "SaveFailed", "The game could not be saved."));
 			return false;
 		}
 		Game->SecondsSinceLastDay = Owner->GetSecondsSinceLastDay();
@@ -93,7 +106,9 @@ namespace SimSaves
 		Game->Hour = USimWorldSubsystem::GetSimHourFor(Ctx);
 		Game->SavedAt = FDateTime::Now();
 		Game->Label = Label.IsEmpty() ? FString::Printf(TEXT("Day %lld"), Game->Day) : Label;
-		return Detail::WriteSlot(Slot, Game);
+		const bool bSaved = Detail::WriteSlot(Slot, Game);
+		Tell(Ctx, bSaved ? NSLOCTEXT("SimUi", "Saved", "Saved.") : NSLOCTEXT("SimUi", "SaveFailed", "The game could not be saved."));
+		return bSaved;
 	}
 
 	bool Load(UObject* Ctx, const FString& Slot)
@@ -102,19 +117,23 @@ namespace SimSaves
 		if (Game == nullptr)
 		{
 			UE_LOG(LogSchizoGame, Warning, TEXT("Load %s: no such save."), *Slot);
+			Tell(Ctx, NSLOCTEXT("SimUi", "NoSuchSave", "There is no such save."));
 			return false;
 		}
 		if (Game->Version != 1)
 		{
 			UE_LOG(LogSchizoGame, Error, TEXT("Load %s: save version %d is not supported (expected 1)."), *Slot, Game->Version);
+			Tell(Ctx, NSLOCTEXT("SimUi", "BadSave", "That save could not be read; your game continues."));
 			return false;
 		}
 		USimGameInstanceSubsystem* Owner = USimGameInstanceSubsystem::Get(Ctx);
 		if (Owner == nullptr || !Owner->LoadFromString(Game->Kernel))
 		{
+			Tell(Ctx, NSLOCTEXT("SimUi", "BadSave", "That save could not be read; your game continues."));
 			return false;  // logged; the current world continues
 		}
-		Owner->SetSecondsSinceLastDay(Game->SecondsSinceLastDay);
+		// The hour, not the raw seconds: the day length may differ from when it was saved.
+		USimWorldSubsystem::SetSimHourFor(Ctx, Game->Hour);
 		if (USimGameUserSettings* Settings = USimGameUserSettings::Get())
 		{
 			Settings->ApplySimSettings(Ctx);  // settings are the player's, not the save's (needs severity)
@@ -124,6 +143,10 @@ namespace SimSaves
 			if (APawn* Pawn = PC->GetPawn())
 			{
 				Pawn->TeleportTo(Game->PlayerTransform.GetLocation(), Game->PlayerTransform.Rotator(), false, true);
+				if (ACharacter* Character = Cast<ACharacter>(Pawn))
+				{
+					Character->GetCharacterMovement()->StopMovementImmediately();  // no momentum carried in
+				}
 			}
 			PC->SetControlRotation(Game->ControlRotation);
 			if (ASimPlayerController* SimPC = Cast<ASimPlayerController>(PC))
@@ -131,7 +154,12 @@ namespace SimSaves
 				SimPC->ResetNeedsClock();  // the clock jumped: re-anchor, charge nothing
 			}
 		}
+		if (ASimNpcDirector* Director = ASimNpcDirector::GetInstance(Ctx))
+		{
+			Director->RefreshAll();  // the townspeople of the loaded world, now
+		}
 		UE_LOG(LogSchizoGame, Log, TEXT("Loaded slot %s (day %lld)."), *Slot, Game->Day);
+		Tell(Ctx, NSLOCTEXT("SimUi", "Loaded", "Loaded."));
 		return true;
 	}
 

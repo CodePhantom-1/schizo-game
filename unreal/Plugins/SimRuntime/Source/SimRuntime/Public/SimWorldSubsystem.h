@@ -138,6 +138,17 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Sim", meta = (WorldContext = "WorldContextObject"))
 	static void SkipSimHoursFor(const UObject* WorldContextObject, float Hours);
 
+	/**
+	 * Advances the sub-day clock by DeltaSeconds and returns how many midnights
+	 * it crossed. When the day length changed since the last step (a setting,
+	 * the cvar), the clock is first rescaled so the hour of day is kept —
+	 * never a jump of days or a charge of needs (review of part 3, #1).
+	 */
+	static int32 StepClock(double& SecondsSinceLastDay, double& LastDaySeconds, double DaySeconds, double DeltaSeconds);
+
+	/** Load (A10): sets the hour of the current sim day (0..<24), in the current day length. */
+	static void SetSimHourFor(const UObject* WorldContextObject, float Hour);
+
 	/** New game (A12): the sub-day clock back to StartHour of the current sim day. */
 	static void ResetClockToStartFor(const UObject* WorldContextObject);
 

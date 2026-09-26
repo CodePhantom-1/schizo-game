@@ -86,14 +86,14 @@ namespace
 			+ SVerticalBox::Slot().AutoHeight()[SimUi::Slider(LOCTEXT("Voices", "Voices"), 0.f, 1.f, 0.05f, [S] { return S->VoiceVolume; }, [S](float V) { S->VoiceVolume = V; }, Percent)];
 	}
 
-	TSharedRef<SWidget> Controls(USimGameUserSettings* S)
+	TSharedRef<SWidget> Controls(USimGameUserSettings* S, TFunction<void()> OnKeysChanged)
 	{
 		return SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight()[SimUi::Slider(LOCTEXT("Sensitivity", "Look sensitivity"), 0.2f, 3.f, 0.05f,
 				[S] { return S->MouseSensitivity; }, [S](float V) { S->MouseSensitivity = V; }, Times)]
 			+ SVerticalBox::Slot().AutoHeight()[SimUi::Check(LOCTEXT("InvertY", "Invert look up/down"),
 				[S] { return S->bInvertY; }, [S](bool B) { S->bInvertY = B; })]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)[MakeRebindList()];
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)[MakeRebindList(OnKeysChanged)];
 	}
 
 	TSharedRef<SWidget> Accessibility(USimGameUserSettings* S)
@@ -118,18 +118,20 @@ TSharedRef<SWidget> MakeSettingsScreen(USimShellSubsystem& Shell)
 	{
 		S = GetMutableDefault<USimGameUserSettings>();  // no engine settings object (tests): edit the defaults
 	}
-	TSharedRef<SWidgetSwitcher> Pages = SNew(SWidgetSwitcher)
+	// The open tab survives a rebuild (a rebind or Apply refreshes the screen).
+	static int32 LastTab = 0;
+	TSharedRef<SWidgetSwitcher> Pages = SNew(SWidgetSwitcher).WidgetIndex_Lambda([]() { return LastTab; })
 		+ SWidgetSwitcher::Slot()[Gameplay(S)]
 		+ SWidgetSwitcher::Slot()[Graphics(S)]
 		+ SWidgetSwitcher::Slot()[AudioPage(S)]
-		+ SWidgetSwitcher::Slot()[Controls(S)]
+		+ SWidgetSwitcher::Slot()[Controls(S, [W]() { if (W.IsValid()) W->Refresh(); })]
 		+ SWidgetSwitcher::Slot()[Accessibility(S)];
 	const FText Tabs[] = {LOCTEXT("TabGameplay", "Gameplay"), LOCTEXT("TabGraphics", "Graphics"), LOCTEXT("TabAudio", "Audio"),
 		LOCTEXT("TabControls", "Controls"), LOCTEXT("TabAccess", "Accessibility")};
 	TSharedRef<SHorizontalBox> TabRow = SNew(SHorizontalBox);
 	for (int32 I = 0; I < UE_ARRAY_COUNT(Tabs); ++I)
 	{
-		TabRow->AddSlot().AutoWidth()[SimUi::SmallButton(Tabs[I], [Pages, I]() { Pages->SetActiveWidgetIndex(I); })];
+		TabRow->AddSlot().AutoWidth()[SimUi::SmallButton(Tabs[I], [I]() { LastTab = I; })];
 	}
 	return SNew(SVerticalBox)
 		+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 10)[SimUi::Title(LOCTEXT("SettingsTitle", "Settings"))]

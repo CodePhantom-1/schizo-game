@@ -8,7 +8,7 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 UE_ROOT="${UE_ROOT:-$HOME/UnrealEngine}"
 LOG="$(mktemp -t ue_smoke.XXXXXX.log)"
 timeout 600 "$UE_ROOT/Engine/Binaries/Linux/UnrealEditor" "$REPO/unreal/SchizoGame.uproject" -game -nullrhi -unattended -SimNoMenu \
-	-ExecCmds="sim.Dump, sim.Accept the_outsiders_first_days, sim.Quests active, sim.Talk the captain of the prisoner transport, sim.AdvanceDays 1, sim.AdvanceHours 12, sim.Dump, sim.SaveSlot smoke_a Smoke test, sim.AdvanceDays 3, sim.LoadSlot smoke_a, sim.Dump, sim.AdvanceDays 5, sim.NewGame, sim.Dump, quit" -log > "$LOG" 2>&1
+	-ExecCmds="sim.Dump, sim.Accept the_outsiders_first_days, sim.Quests active, sim.Talk the captain of the prisoner transport, sim.AdvanceDays 1, sim.AdvanceHours 12, sim.Dump, sim.SaveSlot smoke_a Smoke test, sim.AdvanceDays 3, sim.LoadSlot smoke_a, sim.Dump, sim.AdvanceDays 5, sim.NewGame, sim.Dump, sim.LoadSlot no_such_slot, sim.DeleteSlot smoke_a, quit" -log > "$LOG" 2>&1
 RC=$?
 TEXT="$(tr -d '\0' < "$LOG")"
 fail=0
@@ -30,6 +30,7 @@ BEFORE="$(sed -n 2p <<<"$DUMPS")"; AFTER="$(sed -n 3p <<<"$DUMPS")"
 [[ -n "$BEFORE" && "$BEFORE" == "$AFTER" ]] && echo "ok   the load restored the day and hour ($AFTER)" || { echo "BAD  after the load: '$AFTER', saved at: '$BEFORE'"; fail=1; }
 LAST="$(tail -1 <<<"$DUMPS")"
 [[ "$LAST" == "sim: day 1 (1 Rains-Coming, year 1)"* ]] && echo "ok   New Game starts a fresh world on day 1" || { echo "BAD  after New Game: '$LAST'"; fail=1; }
+need 'Shell: toast There is no such save' "a failed load tells the player"
 never 'Fatal error|Assertion failed|Ensure condition failed|=== Handled ensure' "no crash, assert or ensure"
 # A plain boot (no -SimNoMenu) shows the loading notice, then the main menu over the city.
 LOG2="$(mktemp -t ue_smoke_menu.XXXXXX.log)"
@@ -40,5 +41,7 @@ TEXT2="$(tr -d '\0' < "$LOG2")"
 grep -qa 'Shell: open Loading' <<<"$TEXT2" && echo "ok   the loading notice opens on boot" || { echo "MISS the loading notice on boot"; fail=1; }
 grep -qa 'Shell: open MainMenu' <<<"$TEXT2" && echo "ok   then the main menu, over the city" || { echo "MISS the main menu after loading"; fail=1; }
 grep -qaE 'Fatal error|Assertion failed|Ensure condition failed' <<<"$TEXT2" && { echo "BAD  the menu boot logged a crash or ensure"; fail=1; } || echo "ok   the menu boot is clean"
+# The smoke test leaves no save behind (it must never become the developer's "Continue").
+[[ ! -f "$REPO/unreal/Saved/SaveGames/smoke_a.sav" ]] && echo "ok   the smoke save was cleaned up" || { echo "BAD  smoke_a.sav left behind"; fail=1; }
 echo "log: $LOG (menu run: $LOG2)"
 exit $fail

@@ -120,12 +120,10 @@ void USimWorldSubsystem::Tick(float DeltaTime)
 			*USimGameInstanceSubsystem::CanonDir(), sim_world_day(SimOwner->SimHandle), *FString(UTF8_TO_TCHAR(Season)),
 			FMath::Clamp(StartHour, 0.f, 23.999f));
 	}
-	SimOwner->SecondsSinceLastDay += DeltaTime;
-	const float DaySeconds = SecondsPerDay();
-	while (SimOwner->SecondsSinceLastDay >= DaySeconds)
+	const int32 Midnights = StepClock(SimOwner->SecondsSinceLastDay, SimOwner->LastDaySeconds, SecondsPerDay(), DeltaTime);
+	for (int32 i = 0; i < Midnights; ++i)
 	{
 		sim_world_advance_days(SimOwner->SimHandle, 1);
-		SimOwner->SecondsSinceLastDay -= DaySeconds;
 		UE_LOG(LogSimRuntime, Log, TEXT("Sim day %lld."), sim_world_day(SimOwner->SimHandle));
 	}
 }
@@ -347,5 +345,40 @@ void USimWorldSubsystem::ResetClockToStartFor(const UObject* WorldContextObject)
 	if (Sim != nullptr && SimOwner != nullptr)
 	{
 		SimOwner->SetSecondsSinceLastDay(Sim->SecondsPerDay() * FMath::Clamp(Sim->StartHour, 0.f, 23.999f) / 24.0);
+		SimOwner->LastDaySeconds = Sim->SecondsPerDay();
+	}
+}
+
+int32 USimWorldSubsystem::StepClock(double& SecondsSinceLastDay, double& LastDaySeconds, double DaySeconds, double DeltaSeconds)
+{
+	if (DaySeconds <= 0.0)
+	{
+		return 0;
+	}
+	if (LastDaySeconds > 0.0 && !FMath::IsNearlyEqual(LastDaySeconds, DaySeconds))
+	{
+		SecondsSinceLastDay = SecondsSinceLastDay / LastDaySeconds * DaySeconds;  // keep the hour of day
+	}
+	LastDaySeconds = DaySeconds;
+	SecondsSinceLastDay += FMath::Max(0.0, DeltaSeconds);
+	int32 Midnights = 0;
+	while (SecondsSinceLastDay >= DaySeconds)
+	{
+		SecondsSinceLastDay -= DaySeconds;
+		++Midnights;
+	}
+	return Midnights;
+}
+
+void USimWorldSubsystem::SetSimHourFor(const UObject* WorldContextObject, float Hour)
+{
+	const UWorld* World = WorldOf(WorldContextObject);
+	const USimWorldSubsystem* Sim = GetSim(World);
+	USimGameInstanceSubsystem* SimOwner = FindSimOwner(World);
+	if (Sim != nullptr && SimOwner != nullptr)
+	{
+		const double DaySeconds = Sim->SecondsPerDay();
+		SimOwner->SetSecondsSinceLastDay(DaySeconds * FMath::Clamp(Hour, 0.f, 23.999f) / 24.0);
+		SimOwner->LastDaySeconds = DaySeconds;
 	}
 }

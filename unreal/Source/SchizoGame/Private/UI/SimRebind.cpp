@@ -71,6 +71,18 @@ namespace SimRebind
 				Out.Add({D.ActionName, false, 1.f, FKey()});
 			}
 		}
+		// A movement direction that lost its key stays listed (unbound), so it can be given one.
+		for (const FInputAxisKeyMapping& D : DefAxes)
+		{
+			if (D.Key.IsGamepadKey() || D.Key == EKeys::MouseX || D.Key == EKeys::MouseY)
+			{
+				continue;
+			}
+			if (!Out.ContainsByPredicate([&](const FBinding& B) { return B.bAxis && B.Name == D.AxisName && FMath::IsNearlyEqual(B.Scale, D.Scale); }))
+			{
+				Out.Add({D.AxisName, true, D.Scale, FKey()});
+			}
+		}
 		Out.Sort([](const FBinding& A, const FBinding& B)
 		{
 			return A.Name.LexicalLess(B.Name) || (A.Name == B.Name && A.Scale > B.Scale);
@@ -94,14 +106,30 @@ namespace SimRebind
 		{
 			if (M.Key == NewKey) Input->RemoveAxisMapping(M, false);
 		}
+		// The action (or axis direction) keeps one key per device class: a new keyboard/mouse key
+		// replaces its keyboard/mouse key(s), whatever OldKey the (possibly stale) caller names;
+		// a gamepad binding is left alone, and the other way round.
+		const bool bPad = NewKey.IsGamepadKey();
 		if (bAxis)
 		{
-			if (OldKey.IsValid()) Input->RemoveAxisMapping(FInputAxisKeyMapping(Name, OldKey, Scale), false);
+			for (const FInputAxisKeyMapping& M : TArray<FInputAxisKeyMapping>(Input->GetAxisMappings()))
+			{
+				if (M.AxisName == Name && FMath::IsNearlyEqual(M.Scale, Scale) && M.Key.IsGamepadKey() == bPad)
+				{
+					Input->RemoveAxisMapping(M, false);
+				}
+			}
 			Input->AddAxisMapping(FInputAxisKeyMapping(Name, NewKey, Scale), false);
 		}
 		else
 		{
-			if (OldKey.IsValid()) Input->RemoveActionMapping(FInputActionKeyMapping(Name, OldKey), false);
+			for (const FInputActionKeyMapping& M : TArray<FInputActionKeyMapping>(Input->GetActionMappings()))
+			{
+				if (M.ActionName == Name && M.Key.IsGamepadKey() == bPad)
+				{
+					Input->RemoveActionMapping(M, false);
+				}
+			}
 			Input->AddActionMapping(FInputActionKeyMapping(Name, NewKey), false);
 		}
 		Commit(Input);
@@ -126,7 +154,7 @@ namespace SimRebind
 	}
 }
 
-TSharedRef<SWidget> MakeRebindList()
+TSharedRef<SWidget> MakeRebindList(TFunction<void()> OnChanged)
 {
 	TSharedRef<SVerticalBox> Box = SNew(SVerticalBox);
 	for (const SimRebind::FBinding& B : SimRebind::List())
@@ -144,9 +172,12 @@ TSharedRef<SWidget> MakeRebindList()
 			.EscapeCancelsSelection(true)
 			.KeySelectionText(NSLOCTEXT("SimUi", "PressKey", "Press a key…"))
 			.NoKeySpecifiedText(NSLOCTEXT("SimUi", "Unbound", "(unbound)"))
-			.OnKeySelected_Lambda([B](const FInputChord& Chord) { SimRebind::Rebind(B.Name, B.bAxis, B.Scale, B.Key, Chord.Key); }))];
+			.OnKeySelected_Lambda([B, OnChanged](const FInputChord& Chord)
+			{
+				if (SimRebind::Rebind(B.Name, B.bAxis, B.Scale, B.Key, Chord.Key) && OnChanged) OnChanged();  // show what moved
+			}))];
 	}
 	Box->AddSlot().AutoHeight().Padding(0.f, 8.f)[SimUi::SmallButton(NSLOCTEXT("SimUi", "ResetKeys", "Reset to defaults"),
-		[] { SimRebind::ResetToDefaults(); })];
+		[OnChanged] { SimRebind::ResetToDefaults(); if (OnChanged) OnChanged(); })];
 	return Box;
 }

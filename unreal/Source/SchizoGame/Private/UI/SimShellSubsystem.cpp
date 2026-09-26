@@ -6,6 +6,10 @@
 #include "SimGameInstanceSubsystem.h"
 #include "SimPlayerController.h"
 #include "SimWorldSubsystem.h"
+#include "SimNpcDirector.h"
+#include "SimVerbSpawner.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/GameModeBase.h"
 #include "GameFramework/Pawn.h"
 #include "UI/SimScreens.h"
@@ -61,7 +65,14 @@ public:
 
 	virtual FReply OnKeyDown(const FGeometry& Geometry, const FKeyEvent& Key) override
 	{
-		if ((Key.GetKey() == EKeys::Escape || Key.GetKey() == EKeys::Gamepad_FaceButton_Right) && Shell.IsValid())
+		if (!Shell.IsValid() || Key.IsRepeat())  // a held Esc must not bounce a menu open and shut
+		{
+			return FReply::Unhandled();
+		}
+		const FKey K = Key.GetKey();
+		const bool bBack = K == EKeys::Escape || K == EKeys::Gamepad_FaceButton_Right || K == EKeys::Gamepad_Special_Right;
+		const bool bJournalKey = K == EKeys::J && Shell->IsOpen(ESimScreen::Journal) && !Shell->IsOpen(ESimScreen::Settings);
+		if (bBack || bJournalKey)
 		{
 			Shell->CloseTop();
 			return FReply::Handled();
@@ -161,11 +172,13 @@ void USimShellSubsystem::Open(ESimScreen Screen)
 void USimShellSubsystem::CloseTop()
 {
 	const TOptional<ESimScreen> Top = Stack.Top();
-	if (!Top.IsSet() || Top.GetValue() == ESimScreen::MainMenu)
+	// The main menu has nowhere to go back to; the loading notice closes itself.
+	if (!Top.IsSet() || Top.GetValue() == ESimScreen::MainMenu || Top.GetValue() == ESimScreen::Loading)
 	{
 		return;
 	}
 	Stack.Pop();
+	OnScreenClosed(Top.GetValue());
 	ShowTop();
 }
 
@@ -173,14 +186,48 @@ void USimShellSubsystem::Close(ESimScreen Screen)
 {
 	if (Stack.PopIf(Screen))
 	{
+		OnScreenClosed(Screen);
 		ShowTop();
 	}
 }
 
 void USimShellSubsystem::CloseAll()
 {
+	const bool bSettings = Stack.Contains(ESimScreen::Settings);
 	Stack.Clear();
+	if (bSettings)
+	{
+		OnScreenClosed(ESimScreen::Settings);
+	}
 	ShowTop();
+}
+
+void USimShellSubsystem::OnScreenClosed(ESimScreen Screen)
+{
+	if (Screen == ESimScreen::Settings)
+	{
+		if (USimGameUserSettings* Settings = USimGameUserSettings::Get())
+		{
+			Settings->LoadSettings(true);  // Apply saved what counts; anything else goes
+		}
+	}
+}
+
+TSharedPtr<SWidget> USimShellSubsystem::FindFirstFocusable(const TSharedRef<SWidget>& Root)
+{
+	if (Root->SupportsKeyboardFocus() && Root->IsEnabled() && Root->GetType() != TEXT("SSimScreenFrame"))
+	{
+		return Root;
+	}
+	FChildren* Children = Root->GetChildren();
+	for (int32 i = 0; Children != nullptr && i < Children->Num(); ++i)
+	{
+		if (TSharedPtr<SWidget> Found = FindFirstFocusable(Children->GetChildAt(i)))
+		{
+			return Found;
+		}
+	}
+	return nullptr;
 }
 
 void USimShellSubsystem::OnBack()
@@ -242,14 +289,21 @@ void USimShellSubsystem::ApplyInputAndPause()
 	}
 	if (Stack.BlocksGameInput() && Shown.IsValid())
 	{
+		// Focus the first control (so arrows / the D-pad can walk the buttons); the
+		// frame above it still gets every key the control does not handle (Esc, B, J).
+		TSharedPtr<SWidget> Focus = FindFirstFocusable(Shown.ToSharedRef());
+		if (!Focus.IsValid())
+		{
+			Focus = Shown;
+		}
 		FInputModeUIOnly Mode;
-		Mode.SetWidgetToFocus(Shown);
+		Mode.SetWidgetToFocus(Focus);
 		Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 		PC->SetInputMode(Mode);
 		PC->SetShowMouseCursor(true);
 		if (FSlateApplication::IsInitialized())
 		{
-			FSlateApplication::Get().SetKeyboardFocus(Shown, EFocusCause::SetDirectly);
+			FSlateApplication::Get().SetAllUserFocus(Focus, EFocusCause::SetDirectly);
 		}
 	}
 	else
@@ -301,6 +355,18 @@ void USimShellSubsystem::StartNewGame()
 		{
 			SimPC->ResetNeedsClock();
 		}
+	}
+	if (ASimNpcDirector* Director = ASimNpcDirector::GetInstance(World))
+	{
+		Director->RefreshAll();  // the new world's townspeople
+	}
+	if (USimVerbSpawner* Spawner = World->GetSubsystem<USimVerbSpawner>())
+	{
+		Spawner->ResetDemoPickups();
+	}
+	if (ACharacter* Character = PC ? Cast<ACharacter>(PC->GetPawn()) : nullptr)
+	{
+		Character->GetCharacterMovement()->StopMovementImmediately();
 	}
 	UE_LOG(LogSchizoGame, Log, TEXT("Shell: new game"));
 	CloseAll();

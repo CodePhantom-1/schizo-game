@@ -2,6 +2,12 @@
 
 Things you need to know before you pull and work, newest first. Delete a note once you've handled it.
 
+## 2026-09-26
+
+1. **The game has menus now** (main menu, pause, save/load, settings, journal, tablet reader). They're C++ Slate in `unreal/Source/SchizoGame/Private/UI/`, with no UMG assets, so they build headless. The colours are in `Public/UI/SimUiStyle.h` if you want to restyle them in the D-023 look.
+2. **`Config/DefaultInput.ini` is committed in the engine's own normalised form.** The editor kept rewriting it. If you add a mapping, run the editor once and commit the file as it rewrites it.
+3. **For screenshots:** `-SimNoMenu` skips the menu, and `-SimShotScreens=MainMenu,Settings` captures screens.
+
 ## 2026-09-25
 
 1. **Install Git LFS before your next pull:** run `git lfs install` once. Binary assets (`.uasset`, `.umap`, `.png`, `.jpg`, audio and meshes) are stored in LFS from commit `2279832` on. Without it you get small pointer files instead of the real assets, and the editor will fail to load them.

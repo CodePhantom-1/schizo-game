@@ -56,4 +56,6 @@ private:
 	struct SimWorld* SimHandle = nullptr;
 	bool bCanonFailed = false;  // one-shot: canon missing — stop retrying creation
 	double SecondsSinceLastDay = 0.0;
+	/** The day length the clock was last stepped with (0 = none yet): a change rescales the clock. */
+	double LastDaySeconds = 0.0;
 };

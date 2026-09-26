@@ -100,3 +100,12 @@ Both lost pieces rebuilt and merged; 40/40 kernel tests. Divine wrath (`sim/Divi
 - **Unreal:** `USimQueryLibrary` (Blueprint) + `SimQuery::` (C++) for quests, journal, dialogue, names, memories, events; console `sim.Quests/Accept/Journal/Talk/Memory/Events`.
 - **Reach report:** `docs/capi-reach.md` — every kernel call, whether Unreal uses it yet, and the stage that will; CI fails a call with no stage.
 - **Next:** Stage A part 3 — the UI shell (menus, settings, save/load slots, new game, the journal/dialogue panels on USimQueryLibrary, third-person camera polish).
+
+## Stage A part 3 (2026-09-26) — the UI shell: done, reviewed, pushed
+- **How to play now:** start the game → a loading notice (first launch after an update compiles shaders for 10–15 min) → the main menu over the city: Continue · New Game · Load · Settings · Quit.
+- **Keys:** WASD move · mouse look · E use · F eat · G drink · Tab (hold) carried goods · J journal · Esc pause (gamepad Start / B back) · F5 quicksave · F9 quickload · right mouse / left trigger aim · V shoulder swap · Space jump · Shift sprint. All rebindable (Settings → Controls; a key taken by one action leaves the other; Reset restores the project keys).
+- **Saving:** named slots (Save/Load screen), quicksave, autosave on every night slept. A bad save is refused with a notice and the game continues. Loads restore the hour even if the day length changed.
+- **Settings** persist per user (GameUserSettings.ini): day length, needs severity, Mythic/Chronicle, guided mode, fast travel, illness, permadeath, graphics, 4 volumes, sensitivity, invert-Y, subtitles, text size, colour vision, player voice. Unapplied changes are discarded however the screen closes. Fields whose system is not built yet are stored and read by their stage (listed in SimGameUserSettings.h).
+- **UI tech:** Slate in C++ (unreal/Source/SchizoGame/Private/UI/), a screen stack in USimShellSubsystem; `-SimShotScreens=MainMenu,Pause,…` captures each screen; `-SimNoMenu` for unattended runs.
+- **Known gaps:** the camera and the menus were not checked on screen by a person yet (the windowed launch stalls while the desktop session is idle/locked) — play it once; the placeholder street goods reset on New Game but not on Load (world items become kernel state in Stage C).
+- **Next:** Stage AA — the crescent city (agree docs/city-of-the-moon.md with Tommy first).

@@ -43,6 +43,17 @@ bool FSimRebindMovesKey::RunTest(const FString&)
 	TestTrue(TEXT("forward is Up"), GetDefault<UInputSettings>()->GetAxisMappings().ContainsByPredicate(
 		[](const FInputAxisKeyMapping& M) { return M.AxisName == TEXT("MoveForward") && M.Key == EKeys::Up && M.Scale > 0.f; }));
 
+	// A second rebind of the same action, as the (possibly stale) UI would call it:
+	// the action ends with one keyboard key, never two.
+	TestTrue(TEXT("rebind Jump to E"), SimRebind::Rebind(TEXT("Jump"), false, 1.f, EKeys::SpaceBar, EKeys::E));
+	TestTrue(TEXT("rebind Jump again, with a stale old key"), SimRebind::Rebind(TEXT("Jump"), false, 1.f, EKeys::SpaceBar, EKeys::Q));
+	TestEqual(TEXT("Jump has one key"), KeysOf(TEXT("Jump")).Num(), 1);
+	TestTrue(TEXT("and it is Q"), KeysOf(TEXT("Jump")).Contains(EKeys::Q));
+	// A movement direction that loses its key stays in the list, unbound, so it can be given one.
+	TestTrue(TEXT("Up (forward, since the axis rebind above) to Use"), SimRebind::Rebind(TEXT("Use"), false, 1.f, EKeys::F, EKeys::Up));
+	TestTrue(TEXT("MoveForward (+) listed unbound"), SimRebind::List().ContainsByPredicate(
+		[](const SimRebind::FBinding& B) { return B.bAxis && B.Name == TEXT("MoveForward") && B.Scale > 0.f && !B.Key.IsValid(); }));
+
 	SimRebind::ResetToDefaults();
 	TestTrue(TEXT("reset: Use is E"), KeysOf(TEXT("Use")).Contains(EKeys::E));
 	TestTrue(TEXT("reset: Eat is F"), KeysOf(TEXT("Eat")).Contains(EKeys::F));

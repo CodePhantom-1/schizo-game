@@ -56,7 +56,7 @@ void ASimBed::Interact(APawn* /*Instigator*/)
 			SimPC->NotifySimHoursPreCharged(static_cast<double>(SleepHours));
 		}
 	}
-	if (Died != 1)
+	if (Died == 0)  // a night slept (1: died in it; -1: an error)
 	{
 		SimSaves::Save(this, SimSaves::AutoSlot, TEXT("Autosave"));  // A10: every night's sleep
 	}

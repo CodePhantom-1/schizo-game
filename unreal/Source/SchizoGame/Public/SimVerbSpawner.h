@@ -20,7 +20,13 @@ public:
 	virtual TStatId GetStatId() const override;
 	virtual bool DoesSupportWorldType(const EWorldType::Type WorldType) const override;
 
+	/** New Game (A12): the PLACEHOLDER goods back on the street (taken ones return). */
+	void ResetDemoPickups();
+
 private:
+	/** The three PLACEHOLDER satchel goods (grain, bread, beer). */
+	void SpawnDemoPickups();
+
 	/** Doors at every actor/component tagged "SimDoorSlot" (the street kit's contract). */
 	void SpawnDoorsAtSlots();
 

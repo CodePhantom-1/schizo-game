@@ -45,6 +45,8 @@ public:
 	void StartNewGame();
 
 	static USimShellSubsystem* Get(const UObject* WorldContext);
+	/** The first control that takes keyboard/gamepad focus in a screen (depth-first), or null. */
+	static TSharedPtr<SWidget> FindFirstFocusable(const TSharedRef<SWidget>& Root);
 	static const TCHAR* ScreenName(ESimScreen Screen);
 
 	/** The toast queue (read by the toast overlay each frame). */
@@ -52,6 +54,8 @@ public:
 
 private:
 	void ShowTop();
+	/** A screen left the stack: Settings discards what was not applied (review #2). */
+	void OnScreenClosed(ESimScreen Screen);
 	void ApplyInputAndPause();
 	void EnsureToastOverlay();
 
