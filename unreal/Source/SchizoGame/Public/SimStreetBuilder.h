@@ -45,6 +45,7 @@
 #include "SimStreetBuilder.generated.h"
 
 class UInstancedStaticMeshComponent;
+class UStaticMesh;
 
 /** One row of Content/Sim/canon/places.csv, as read at build time. */
 USTRUCT()
@@ -90,6 +91,8 @@ struct FSimStreetBuildResult
 	bool bKitMeshesFound = true;
 	int32 NumPlacesBuilt = 0;
 	int32 NumDoorSlots = 0;
+	/** Places standing as their generated building mesh (/Game/Art/Buildings, V-B1); the rest are kit rooms. */
+	int32 NumBuildingMeshes = 0;
 	/** The gate's world location (the PlayerStart and the first tablet
 	 * place off this), or ZeroVector when the gate row is missing. */
 	FVector GateLocation = FVector::ZeroVector;
@@ -127,6 +130,15 @@ public:
 	/** Every place id that produced geometry, in street-walk order. */
 	static void GetAllPlaceIds(TArray<FName>& OutPlaceIds);
 
+	/** False: build every room from the kit even where a generated building exists (tests compare the two). */
+	static bool bUseBuildingMeshes;
+
+	/** /Game/Art/Buildings/SM_B_<id> (tools/art/ue_import_buildings.py), or null when not imported. */
+	static UStaticMesh* TryBuildingMesh(FName PlaceId);
+
+	/** Where BuildRoom puts the door slot (local): the middle cell of the +y/-y run, 1 m outside. */
+	static FVector KitDoorLocal(const FVector& Origin, int32 W, int32 D, bool bDoorPlusY);
+
 private:
 	// --- kit meshes (instanced static meshes; one component per piece) ---
 	UPROPERTY() TObjectPtr<UInstancedStaticMeshComponent> ISM_WallPlain;
@@ -142,6 +154,7 @@ private:
 	UPROPERTY() TObjectPtr<UInstancedStaticMeshComponent> ISM_Awning;
 
 	bool bKitMeshesFound = true;
+	int32 NumBuildingMeshes = 0;
 	void LoadKitMeshes();
 
 	/** The current building's tint (M_Flat per-instance custom data). */

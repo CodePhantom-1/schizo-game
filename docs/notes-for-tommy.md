@@ -4,6 +4,11 @@ Things you need to know before you pull and work, newest first. Delete a note on
 
 ## 2026-09-26
 
+- **Stage V continues from your side:** your Claude can pick it up at `docs/superpowers/plans/STAGE-V-ROADMAP.md` (batches 2–7 planned in order; batch 3 edits your `SimEnvironment` and batch 5 your `SimDayNight` — they add to your code and keep your colours and values as the defaults). Say if you'd rather own those two batches by hand.
+- **The buildings are generated now (Stage V batch 1).** Every house, shop and temple is its own mesh built from its `places.csv` row (`/Game/Art/Buildings/SM_B_<place>`, one material `M_Building` on one trim atlas `T_Trim`). `SimStreetBuilder` uses them and falls back to the kit if they're missing. To regenerate after a data change, run the commands in `tools/art/README.md` (the top section). The first launch after pulling builds the new meshes once, so the menu takes longer that one time. `M_Building` has a `DroughtWear` scalar (0–1) that cracks the earthen walls; tie it to the drought when you like.
+- **North is −Y now (D-026).** Only the sun, the far scenery and the map changed; no gameplay point moved.
+- **Licences:** every asset has a row in `art/assets.csv`; CI fails on non-commercial or share-alike licences. The Quaternius characters are under their new licence, which is fine for our private repo but not for a public one.
+
 0. **Your `SimEnvironment` now builds the crescent** (D-025).
    - The city's shape comes from the canon through `SimCityData` (`places.csv` footprints and the `crescent_frame` row).
    - What changed:

@@ -9,7 +9,7 @@ places them — deterministically, no two overlapping — and fills each
 quarter's remaining frontage with homes of its wealth. Every existing
 places.csv row keeps its id (schedules and people point at them).
 
-Writes db/canon/places.csv with footprint columns: x_m, y_m (centre, metres;
+Writes db/canon/places.csv with footprint columns (and door_side, the local side the door opens on): x_m, y_m (centre, metres;
 +x east, +y south (north is -y, D-026), the old Moon Gate at the origin), yaw_deg (the building's
 width runs along yaw), w_m, d_m, typology, wealth, quarter.
 
@@ -288,6 +288,16 @@ def layout():
     return placed
 
 
+CLUSTERS = {"reed_quarter", "newcomers_terraces", "garden_of_tombs", "beyond_the_gate"}
+
+
+def door_side(r):
+    """The footprint side (local frame) the door opens on: the ring street. Arc buildings on the
+    lagoon side of the mid-band open outward (+y), the wall side inward (-y); clusters to -y."""
+    rad = math.hypot(float(r["x_m"]) - O[0], float(r["y_m"]) - O[1])
+    return "+y" if r["quarter"] not in CLUSTERS and rad < (LAGOON_R + WALL_R) / 2 else "-y"
+
+
 def write(placed, check=False):
     types = {t["id"]: t for t in read_csv(CANON / "building_types.csv")}
     quarters = {q["id"]: q for q in read_csv(CANON / "city_districts.csv")}
@@ -295,7 +305,7 @@ def write(placed, check=False):
     names = {pid: nm for items in PROGRAM.values() for pid, _, nm in items}
     buildings = {b["id"] for b in read_csv(CANON / "buildings.csv")}
     head = ["id", "city", "district", "kind", "building_id", "owner_person_id", "name", "description",
-            "quarter", "typology", "wealth", "x_m", "y_m", "yaw_deg", "w_m", "d_m", "tag", "source_ref"]
+            "quarter", "typology", "wealth", "x_m", "y_m", "yaw_deg", "w_m", "d_m", "door_side", "tag", "source_ref"]
     out = []
     for p in placed:
         t = types[p["typology"]]
@@ -313,6 +323,7 @@ def write(placed, check=False):
         r = {k: base.get(k, "") for k in head}
         r["district"] = quarters[p["quarter"]]["name"]
         r.update({k: p[k] for k in ("quarter", "typology", "wealth", "x_m", "y_m", "yaw_deg", "w_m", "d_m")})
+        r["door_side"] = door_side(p)
         out.append(r)
     lines = []
     import io

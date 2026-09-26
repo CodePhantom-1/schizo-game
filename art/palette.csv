@@ -1,0 +1,65 @@
+name,r,g,b,use
+mud_0,58,42,30,deepest mud shadow and wet mud
+mud_1,82,60,42,shaded mudbrick joints
+mud_2,108,80,56,mudbrick in shade
+mud_3,134,102,70,mudbrick
+mud_4,158,122,86,mudbrick lit
+mud_5,180,144,104,dry mudbrick face
+mud_6,198,166,124,sun-bleached mudbrick
+mud_7,216,188,146,dust and dry plaster highlight
+plaster_0,150,124,96,shaded plaster
+plaster_1,176,150,116,plaster
+plaster_2,200,176,140,fresh plaster
+plaster_3,222,202,168,smooth plaster lit
+lime_0,196,190,172,grubby whitewash
+lime_1,226,222,206,whitewash
+lime_2,244,242,232,fresh lime in sun
+brick_0,96,48,34,fired brick shadow
+brick_1,132,66,44,fired brick
+brick_2,164,90,60,fired brick lit
+brick_3,188,120,84,worn fired brick
+bitumen_0,18,16,14,bitumen
+bitumen_1,38,34,30,bitumen sheen
+bitumen_2,64,58,50,dusty bitumen
+reed_0,92,78,46,old reed shadow
+reed_1,138,118,70,weathered reed
+reed_2,176,152,92,dry reed
+reed_3,206,182,118,fresh-cut reed
+reed_4,228,208,148,reed highlight and straw
+palm_0,62,48,36,palm trunk shadow
+palm_1,96,74,52,palm fibre
+palm_2,128,102,72,palm trunk
+cedar_0,70,34,24,cedar shadow
+cedar_1,112,56,36,cedar
+cedar_2,150,84,54,oiled cedar lit
+lapis_0,20,34,82,deep lapis glaze
+lapis_1,32,60,132,lapis glaze
+lapis_2,62,98,176,lapis highlight
+lapis_3,120,156,212,glaze shine
+gold_0,150,108,30,dark gold glaze
+gold_1,206,160,52,gold-yellow glaze
+gold_2,238,206,110,gold highlight
+madder_0,110,30,26,madder red dark
+madder_1,160,46,36,madder red
+madder_2,196,82,62,faded madder
+indigo_0,30,34,70,indigo dark
+indigo_1,54,64,118,indigo
+saffron_0,196,138,34,saffron
+saffron_1,226,178,74,pale saffron
+cream_0,214,200,170,undyed cloth
+goat_0,26,22,20,black goat hair
+goat_1,58,50,44,goat hair brown-black
+stone_0,98,92,84,basalt and stone shadow
+stone_1,142,132,116,limestone shaded
+stone_2,184,172,150,limestone
+stone_3,214,204,182,limestone lit
+ochre_0,124,56,30,red ochre dark
+ochre_1,164,82,44,red ochre
+ochre_2,196,120,66,yellow-red ochre
+salt_0,232,228,214,salt bloom
+copper_0,150,86,50,copper
+patina_0,74,128,106,copper patina
+leaf_0,58,76,34,palm frond shadow
+leaf_1,92,112,48,palm frond
+leaf_2,138,150,72,dry frond
+water_0,40,84,92,lagoon water

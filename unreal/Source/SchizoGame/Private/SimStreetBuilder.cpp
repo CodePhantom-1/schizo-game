@@ -14,6 +14,7 @@
 #include "EngineUtils.h"
 #include "Misc/Crc.h"
 #include "Misc/FileHelper.h"
+#include "Misc/PackageName.h"
 #include "Misc/Paths.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogSimStreetBuilder, Log, All);
@@ -460,8 +461,6 @@ FSimStreetBuildResult ASimStreetBuilder::Build()
 	FVector GateLoc = FVector::ZeroVector;
 	bool bHaveGate = false;
 	FVector2D BoundsMin(TNumericLimits<float>::Max()), BoundsMax(TNumericLimits<float>::Lowest());
-	const FSimCityFrame& City = SimCityData::Frame();
-	const float RowSplit = (City.LagoonR + City.WallR) * 0.5f;
 
 	// The kinds of building that are open ground, not rooms.
 	static const TSet<FString> OpenGround = {
@@ -469,7 +468,7 @@ FSimStreetBuildResult ASimStreetBuilder::Build()
 		TEXT("brickyard"), TEXT("cattle_pen"), TEXT("wharf"), TEXT("fish_market"), TEXT("floating_shrine") };
 	static const TSet<FString> Stalls = { TEXT("market_stall"), TEXT("cookshop"), TEXT("scribe_booth") };
 	// The monuments SimEnvironment builds; the street only registers them.
-	static const TSet<FString> Monuments = { TEXT("city_gate"), TEXT("ziggurat"), TEXT("lighthouse") };
+	static const TSet<FString> Monuments = { TEXT("city_gate"), TEXT("ziggurat"), TEXT("lighthouse"), TEXT("sea_gate") };
 
 	for (const FSimCityPlace& P : SimCityData::Places())
 	{
@@ -486,14 +485,10 @@ FSimStreetBuildResult ASimStreetBuilder::Build()
 		BoundsMin = FVector2D(FMath::Min(BoundsMin.X, P.Center.X), FMath::Min(BoundsMin.Y, P.Center.Y));
 		BoundsMax = FVector2D(FMath::Max(BoundsMax.X, P.Center.X), FMath::Max(BoundsMax.Y, P.Center.Y));
 
-		// The door faces the ring street: the lagoon-side row opens outward (+Y local),
-		// the wall-side row inward (-Y); cluster buildings open to local south.
-		const float Radius = (P.Center - City.Center).Size();
-		const bool bArc = P.Quarter != TEXT("reed_quarter") && P.Quarter != TEXT("newcomers_terraces")
-			&& P.Quarter != TEXT("garden_of_tombs") && P.Quarter != TEXT("beyond_the_gate");
-		const bool bInnerRow = bArc && Radius < RowSplit;
-		const FString DoorSide = bInnerRow ? TEXT("north") : TEXT("south");
-		const float LocalOutwardYaw = bInnerRow ? 90.f : 270.f;  // local yaw of "out of the door"
+		// The door faces the ring street (places.csv door_side, written by city_layout.py):
+		// local "north" is +Y, "south" -Y.
+		const FString DoorSide = P.bDoorPlusY ? TEXT("north") : TEXT("south");
+		const float LocalOutwardYaw = P.bDoorPlusY ? 90.f : 270.f;  // local yaw of "out of the door"
 
 		const int32 W = FMath::Max(1, FMath::RoundToInt(P.Size.X / GRID));
 		const int32 D = FMath::Max(1, FMath::RoundToInt(P.Size.Y / GRID));
@@ -541,7 +536,27 @@ FSimStreetBuildResult ASimStreetBuilder::Build()
 			const bool bRoofed = P.Typology != TEXT("foundry") && P.Typology != TEXT("tannery") && P.Typology != TEXT("caravan_yard")
 				&& P.Typology != TEXT("rebel_barracks") && P.Typology != TEXT("potter");
 			const bool bRoofAccess = P.Typology.StartsWith(TEXT("home_")) && (FCrc::StrCrc32(*P.Id.ToString()) % 3 == 2);
-			const FVector DoorLocal = BuildRoom(Origin, W, D, DoorSide, bWindow, bRoofAccess, bRoofed);
+			// The generated building (tools/art/building_mesh.py, V-B1) when imported; the kit room otherwise.
+			// Both open the door at the same cell, so the slot is the same either way.
+			UStaticMesh* BuildingMesh = bUseBuildingMeshes ? TryBuildingMesh(P.Id) : nullptr;
+			FVector DoorLocal;
+			if (BuildingMesh != nullptr)
+			{
+				UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this, FName(*FString::Printf(TEXT("Bld_%s"), *P.Id.ToString())));
+				C->SetMobility(EComponentMobility::Static);
+				C->SetupAttachment(RootComponent);
+				C->SetStaticMesh(BuildingMesh);
+				C->SetWorldTransform(CurrentFrame);
+				C->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+				C->RegisterComponent();
+				AddInstanceComponent(C);
+				++NumBuildingMeshes;
+				DoorLocal = KitDoorLocal(Origin, W, D, P.bDoorPlusY);
+			}
+			else
+			{
+				DoorLocal = BuildRoom(Origin, W, D, DoorSide, bWindow, bRoofAccess, bRoofed);
+			}
 			PlaceLoc = CurrentFrame.TransformPosition(DoorLocal);
 			Slot.Location = PlaceLoc;
 			SpawnDoorSlot(Slot);
@@ -564,10 +579,33 @@ FSimStreetBuildResult ASimStreetBuilder::Build()
 	{
 		UE_LOG(LogSimStreetBuilder, Warning, TEXT("no 'gate' place in the quarter — GateLocation is zero."));
 	}
-	UE_LOG(LogSimStreetBuilder, Log, TEXT("The crescent's buildings stand: %d places, %d door slots%s."),
-		Result.NumPlacesBuilt, Result.NumDoorSlots, Result.bKitMeshesFound ? TEXT("") : TEXT(" (kit meshes missing — engine-cube fallback)"));
+	Result.NumBuildingMeshes = NumBuildingMeshes;
+	UE_LOG(LogSimStreetBuilder, Log, TEXT("The crescent's buildings stand: %d places, %d door slots, %d generated buildings%s."),
+		Result.NumPlacesBuilt, Result.NumDoorSlots, NumBuildingMeshes,
+		Result.bKitMeshesFound ? TEXT("") : TEXT(" (kit meshes missing — engine-cube fallback)"));
 	LastResult = Result;
 	return Result;
+}
+
+bool ASimStreetBuilder::bUseBuildingMeshes = true;
+
+UStaticMesh* ASimStreetBuilder::TryBuildingMesh(FName PlaceId)
+{
+	const FString Name = FString::Printf(TEXT("SM_B_%s"), *PlaceId.ToString());
+	// LoadObject logs a warning per miss; a fresh clone before the import misses all 94, so look first.
+	const FString Path = FString::Printf(TEXT("/Game/Art/Buildings/%s.%s"), *Name, *Name);
+	if (!FPackageName::DoesPackageExist(FString::Printf(TEXT("/Game/Art/Buildings/%s"), *Name)))
+	{
+		return nullptr;
+	}
+	return LoadObject<UStaticMesh>(nullptr, *Path);
+}
+
+FVector ASimStreetBuilder::KitDoorLocal(const FVector& Origin, int32 W, int32 D, bool bDoorPlusY)
+{
+	// BuildRoom's door: the middle cell of the north/south run, 1 m outside the wall.
+	const float Cx = Origin.X + (W / 2) * GRID + GRID * 0.5f;
+	return FVector(Cx, bDoorPlusY ? Origin.Y + D * GRID + GRID : Origin.Y - GRID, Origin.Z);
 }
 
 FSimStreetBuildResult ASimStreetBuilder::BuildQuarter(UWorld* World)

@@ -21,6 +21,11 @@ bool FSimCityDataLoads::RunTest(const FString&)
 		TestEqual(TEXT("gate typology"), Gate->Typology, FString(TEXT("city_gate")));
 		TestEqual(TEXT("gate width (cm)"), Gate->Size.X, 1600.0, 0.1);
 	}
+	// door_side (V-B1 T5): the lagoon-side row opens outward (+y), the wall side inward.
+	const FSimCityPlace* Inner = SimCityData::Find(TEXT("caravan_yard_place"));
+	const FSimCityPlace* Outer = SimCityData::Find(TEXT("donkey_stables_place"));
+	TestTrue(TEXT("lagoon-side door opens on +y"), Inner != nullptr && Inner->bDoorPlusY);
+	TestTrue(TEXT("wall-side door opens on -y"), Outer != nullptr && !Outer->bDoorPlusY);
 	const FSimCityPlace* Name = SimCityData::Find(TEXT("temple_front_place"));
 	TestTrue(TEXT("quoted names with commas parse"), Name != nullptr && !Name->Name.IsEmpty() && !Name->Quarter.IsEmpty());
 	return true;

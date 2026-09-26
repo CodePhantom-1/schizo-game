@@ -41,6 +41,18 @@ class Layout(unittest.TestCase):
             rad = math.hypot(float(r["x_m"]) - city_layout.O[0], float(r["y_m"]) - city_layout.O[1])
             self.assertTrue(band[0] - 1 <= rad <= band[1] + 1, f'{r["id"]} at r={rad:.0f}m outside {band}')
 
+    def test_door_side_faces_the_ring_street(self):
+        # The street builder's rule (V-B1 T5 moved it into the data): arc buildings nearer the
+        # lagoon than the mid-band open on local +y (outward), the rest on local -y.
+        split = (city_layout.LAGOON_R + city_layout.WALL_R) / 2
+        clusters = {"reed_quarter", "newcomers_terraces", "garden_of_tombs", "beyond_the_gate"}
+        for r in self.rows:
+            rad = math.hypot(float(r["x_m"]) - city_layout.O[0], float(r["y_m"]) - city_layout.O[1])
+            want = "+y" if r["quarter"] not in clusters and rad < split else "-y"
+            self.assertEqual(city_layout.door_side(r), want, r["id"])
+        head = next(csv.reader(open(ROOT / "db/canon/places.csv")))
+        self.assertIn("door_side", head)
+
     def test_clusters_keep_to_their_ground(self):
         for r in self.rows:
             rad = [math.hypot(x - city_layout.O[0], y - city_layout.O[1]) for x, y in city_layout.corners(r)]
