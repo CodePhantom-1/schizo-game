@@ -87,6 +87,7 @@ namespace
 			P.Center = FVector2D(FCString::Atod(*R.FindRef(TEXT("x_m"))), FCString::Atod(*R.FindRef(TEXT("y_m")))) * 100.0;
 			P.YawDeg = FCString::Atof(*R.FindRef(TEXT("yaw_deg")));
 			P.Size = FVector2D(FCString::Atod(*R.FindRef(TEXT("w_m"))), FCString::Atod(*R.FindRef(TEXT("d_m")))) * 100.0;
+			P.bDoorPlusY = R.FindRef(TEXT("door_side")) == TEXT("+y");
 			C.Index.Add(P.Id, C.Places.Num() - 1);
 		}
 		UE_LOG(LogSimCityData, Log, TEXT("The crescent: %d places, centre (%.0f, %.0f) cm, lagoon %.0f, wall %.0f."),

@@ -460,8 +460,6 @@ FSimStreetBuildResult ASimStreetBuilder::Build()
 	FVector GateLoc = FVector::ZeroVector;
 	bool bHaveGate = false;
 	FVector2D BoundsMin(TNumericLimits<float>::Max()), BoundsMax(TNumericLimits<float>::Lowest());
-	const FSimCityFrame& City = SimCityData::Frame();
-	const float RowSplit = (City.LagoonR + City.WallR) * 0.5f;
 
 	// The kinds of building that are open ground, not rooms.
 	static const TSet<FString> OpenGround = {
@@ -486,14 +484,10 @@ FSimStreetBuildResult ASimStreetBuilder::Build()
 		BoundsMin = FVector2D(FMath::Min(BoundsMin.X, P.Center.X), FMath::Min(BoundsMin.Y, P.Center.Y));
 		BoundsMax = FVector2D(FMath::Max(BoundsMax.X, P.Center.X), FMath::Max(BoundsMax.Y, P.Center.Y));
 
-		// The door faces the ring street: the lagoon-side row opens outward (+Y local),
-		// the wall-side row inward (-Y); cluster buildings open to local south.
-		const float Radius = (P.Center - City.Center).Size();
-		const bool bArc = P.Quarter != TEXT("reed_quarter") && P.Quarter != TEXT("newcomers_terraces")
-			&& P.Quarter != TEXT("garden_of_tombs") && P.Quarter != TEXT("beyond_the_gate");
-		const bool bInnerRow = bArc && Radius < RowSplit;
-		const FString DoorSide = bInnerRow ? TEXT("north") : TEXT("south");
-		const float LocalOutwardYaw = bInnerRow ? 90.f : 270.f;  // local yaw of "out of the door"
+		// The door faces the ring street (places.csv door_side, written by city_layout.py):
+		// local "north" is +Y, "south" -Y.
+		const FString DoorSide = P.bDoorPlusY ? TEXT("north") : TEXT("south");
+		const float LocalOutwardYaw = P.bDoorPlusY ? 90.f : 270.f;  // local yaw of "out of the door"
 
 		const int32 W = FMath::Max(1, FMath::RoundToInt(P.Size.X / GRID));
 		const int32 D = FMath::Max(1, FMath::RoundToInt(P.Size.Y / GRID));

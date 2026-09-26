@@ -21,6 +21,7 @@ struct FSimCityPlace
 	FVector2D Center = FVector2D::ZeroVector;  // cm
 	float YawDeg = 0.f;                          // the width runs along this heading
 	FVector2D Size = FVector2D::ZeroVector;     // cm: X width along YawDeg, Y depth
+	bool bDoorPlusY = false;                     // door_side: the door opens on local +Y (else -Y)
 };
 
 struct FSimCityFrame
@@ -28,7 +29,7 @@ struct FSimCityFrame
 	FVector2D Center = FVector2D(24000.0, 2000.0);
 	float LagoonR = 10500.f;
 	float WallR = 17500.f;
-	float HornWestDeg = 195.f;  // the wall runs from here over the north...
+	float HornWestDeg = 195.f;  // the wall runs from here over the south (+Y)...
 	float HornEastDeg = -15.f;  // ...to here
 };
 
