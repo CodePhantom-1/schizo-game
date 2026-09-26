@@ -83,8 +83,7 @@ std::int64_t scale_bp(std::int64_t x, int bp) {
 int held(const WorldState& w, const Id& actor, const Id& item) {
     const auto inv = w.inventories.find(actor);
     if (inv == w.inventories.end()) return 0;
-    const auto it = inv->second.counts.find(item);
-    return it == inv->second.counts.end() ? 0 : it->second;
+    return count_of(inv->second, item);
 }
 
 std::optional<Row> work_row(const WorldState& w, const std::string& role) {
@@ -335,8 +334,8 @@ ProgressResult work_for(WorldState& w, const Id& employer, int hours) {
             credit_purse(w.property, kPlayerActor, earned);
             r.silver = earned;
         } else if (!wage_item.empty()) {
-            int& have = w.inventories[kPlayerActor].counts[wage_item];
-            have = static_cast<int>(std::min<std::int64_t>(have + earned, 1000000000));
+            add_items(w.inventories[kPlayerActor], wage_item,
+                      static_cast<int>(std::min<std::int64_t>(earned, kMaxStackQty)));
             r.items = static_cast<int>(earned);
         }
     }
@@ -382,8 +381,7 @@ ProgressResult buy_from_market(WorldState& w, const Id& actor, const Id& city, c
 
     (void)take_from_purse(w.property, actor, total);
     consume(w.economy, city, item, qty);
-    int& have = w.inventories[actor].counts[item];
-    have = static_cast<int>(std::min<std::int64_t>(static_cast<std::int64_t>(have) + qty, 1000000000));
+    add_items(w.inventories[actor], item, qty);
     r.silver = total;
     r.items = qty;
     r.gain = note_use(w, actor, "verb:trade", trade_xp(total));
@@ -398,7 +396,7 @@ ProgressResult sell_to_market(WorldState& w, const Id& actor, const Id& city, co
     if (held(w, actor, item) < qty) { r.refusal = "not_held"; return r; }
     const Silver total = quote_sell(w, actor, city, item, qty);
 
-    w.inventories[actor].counts[item] -= qty;
+    take_items(w.inventories[actor], item, qty);
     deliver(w.economy, city, item, qty);
     credit_purse(w.property, actor, total);
     r.silver = total;

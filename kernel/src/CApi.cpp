@@ -325,7 +325,7 @@ int sim_world_eat(SimWorld* world, const char* actor, const char* item) {
         std::string reason;
         const bool was_hungry = hungry(world->world, Id(actor));  // W4-A
         if (!eat(world->world.db, world->world.needs, Id(actor), Id(item), &reason)) return -3;
-        world->world.inventories[actor].counts[item] = have - 1;
+        take_items(world->world.inventories[actor], Id(item), 1);
         // W4-A: a hungry meal is use of survival (rationing, knowing what is safe to eat).
         if (was_hungry) (void)note_use(world->world, Id(actor), "verb:eat", kEatXp);
         return 0;
@@ -346,7 +346,7 @@ int sim_world_drink(SimWorld* world, const char* actor, const char* item) {
         }
         std::string reason;
         if (!drink(world->world.db, world->world.needs, Id(actor), Id(item), &reason)) return -3;
-        if (!is_water) world->world.inventories[actor].counts[item] = have - 1;
+        if (!is_water) take_items(world->world.inventories[actor], Id(item), 1);
         return 0;
     } catch (...) {
         return -1;
@@ -376,8 +376,7 @@ int sim_world_item_count(const SimWorld* world, const char* actor, const char* i
         if (world == nullptr || actor == nullptr || item == nullptr) return -1;
         auto ait = world->world.inventories.find(actor);
         if (ait == world->world.inventories.end()) return 0;
-        auto it = ait->second.counts.find(item);
-        return it == ait->second.counts.end() ? 0 : it->second;
+        return count_of(ait->second, Id(item));
     } catch (...) {
         return -1;
     }
@@ -387,11 +386,12 @@ int sim_world_give_item(SimWorld* world, const char* actor, const char* item, in
     try {
         if (world == nullptr || actor == nullptr || item == nullptr) return -1;
         Inventory& inv = world->world.inventories[actor];
-        // Widened and saturated: count + qty must not overflow int.
-        const long long sum = static_cast<long long>(inv.counts[item]) + qty;
-        const int cur = static_cast<int>(std::clamp<long long>(sum, 0, INT_MAX));
-        inv.counts[item] = cur;
-        return cur;
+        // Saturating both ways: adds cap at kMaxStackQty, takes stop at 0.
+        if (qty > 0)
+            add_items(inv, Id(item), qty);
+        else if (qty < 0)
+            take_items(inv, Id(item), qty == INT_MIN ? INT_MAX : -qty);
+        return count_of(inv, Id(item));
     } catch (...) {
         return -1;
     }

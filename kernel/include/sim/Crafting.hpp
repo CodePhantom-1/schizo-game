@@ -5,8 +5,8 @@
 // lists and are tagged").
 //
 // Recipes are canon (db/canon/recipes.csv), not engine content: this module
-// only interprets the table. An Inventory is a bag of item counts (engine or
-// test owns the instance — this module never holds one itself, unlike the
+// only interprets the table. An Inventory is a normalized list of item stacks
+// (sim/Items.hpp; the engine or test owns the instance — this module never holds one itself, unlike the
 // other Wave modules' *State).
 //
 // Invariants:
@@ -16,6 +16,7 @@
 //    randomness, no wall clock
 //  - reads db table: recipes (skips OPEN rows)
 #include "sim/Db.hpp"
+#include "sim/Items.hpp"
 #include "sim/Types.hpp"
 
 #include <map>
@@ -26,9 +27,6 @@
 
 namespace sim {
 
-struct Inventory {
-    std::map<Id, int> counts;  // item id -> quantity
-};
 
 struct Recipe {
     Id id;

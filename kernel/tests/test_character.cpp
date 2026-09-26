@@ -359,7 +359,7 @@ static bool test_texts_need_literacy() {
     WorldState w;
     w.init("../db/canon", kSeed);
     SIM_CHECK_EQ(study_text(w, "divination", "clay_liver_model", 4).refusal, std::string("text_not_held"));
-    w.inventories["player"].counts["clay_liver_model"] = 1;
+    set_count(w.inventories["player"], "clay_liver_model", 1);
     SIM_CHECK_EQ(study_text(w, "rites", "clay_liver_model", 4).refusal, std::string("not_taught_in_text"));
     SIM_CHECK_EQ(study_text(w, "divination", "clay_liver_model", 4).refusal, std::string("cannot_read"));
     w.character.skills["scribal_arts"].value = kLiteracySkill;
@@ -367,7 +367,7 @@ static bool test_texts_need_literacy() {
     SIM_CHECK(r.ok);
     SIM_CHECK(skill_value(w.character, "divination") > 0);
     SIM_CHECK(w.character.skills.at("scribal_arts").progress > 0);  // reading is practice at reading
-    SIM_CHECK_EQ(w.inventories["player"].counts["clay_liver_model"], 1);  // read, not consumed
+    SIM_CHECK_EQ(count_of(w.inventories["player"], "clay_liver_model"), 1);  // read, not consumed
     w.character.skills["divination"].value = 60;
     SIM_CHECK_EQ(study_text(w, "divination", "clay_liver_model", 4).refusal, std::string("text_exhausted"));
     return true;
@@ -388,7 +388,7 @@ static bool test_work_pays_wages_and_grows_skills() {
     const ProgressResult grain = work_for(w, field_hand, 8);
     SIM_CHECK(grain.ok);
     SIM_CHECK_EQ(grain.items, 8);
-    SIM_CHECK_EQ(w.inventories["player"].counts["grain"], 8);
+    SIM_CHECK_EQ(count_of(w.inventories["player"], "grain"), 8);
     SIM_CHECK(skill_value(w.character, "farming") > 0);
 
     const ProgressResult silver = work_for(w, dock, 4);
@@ -423,7 +423,7 @@ static bool test_trade_moves_silver_goods_and_skill() {
     SIM_CHECK(b.ok);
     SIM_CHECK_EQ(b.silver, quote);
     SIM_CHECK_EQ(purse(w.property, "player"), 500 - quote);
-    SIM_CHECK_EQ(w.inventories["player"].counts["grain"], 10);
+    SIM_CHECK_EQ(count_of(w.inventories["player"], "grain"), 10);
     SIM_CHECK_EQ(w.economy.stock_by_city_item.at(std::string(kCity) + "/grain"), stock - 10);
     SIM_CHECK(w.character.skills.at("bargaining").progress > 0 || skill_value(w.character, "bargaining") > 0);
 
@@ -515,9 +515,9 @@ static bool test_use_hooks() {
     WorldState w;
     w.init("../db/canon", kSeed);
     // A rite performed (success or failure) grows its tradition's skill.
-    w.inventories["player"].counts["clay_liver_model"] = 1;
+    set_count(w.inventories["player"], "clay_liver_model", 1);
     SIM_CHECK(learn_rite_from_text(w, "barutu_haruspicy", "clay_liver_model").learned);
-    w.inventories["player"].counts["a_burned_goat's_liver"] = 1;
+    set_count(w.inventories["player"], "a_burned_goat's_liver", 1);
     w.magic.place = "house:diviner";
     const RiteOutcome o = perform_rite_in_world(w, "barutu_haruspicy", "inanna");
     SIM_CHECK(o.rite.performed);

@@ -51,7 +51,7 @@ std::string best_held(const WorldState& w, const Id& actor, RestoreOf restore_of
     if (ait == w.inventories.end()) return std::string();
     const std::string* best = nullptr;
     int best_restore = 0;
-    for (const auto& [item, count] : ait->second.counts) {
+    for (const auto& [item, count] : counts(ait->second)) {
         if (count <= 0) continue;  // give_item clamps at 0; zero rows never win
         const int restore = restore_of(w.db, item);
         if (restore > best_restore) {
@@ -72,7 +72,7 @@ int sim_world_inventory(const SimWorld* world, const char* actor, char* out, int
         const auto ait = world->world.inventories.find(Id(actor));
         if (ait == world->world.inventories.end()) return write_req(out, cap, std::string());
         std::string joined;
-        for (const auto& [item, count] : ait->second.counts) {
+        for (const auto& [item, count] : counts(ait->second)) {
             if (count <= 0) continue;  // consumed-to-zero rows are not carried goods
             if (!joined.empty()) joined += ';';
             joined += item + ":" + std::to_string(count);

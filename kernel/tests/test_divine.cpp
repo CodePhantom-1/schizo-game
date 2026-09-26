@@ -126,8 +126,8 @@ static bool test_oath_break_accrues_wrath_with_the_witness() {
 static bool test_failed_rite_accrues_wrath() {
     WorldState w = day5_world(kFailSeed);  // day 5: sacrifice rolls 9589
     w.magic.place = "riverbank";           // wrong place: 7000 bp, fails
-    w.inventories["player"].counts["fish"] = 1;
-    w.inventories["player"].counts["sea_gems"] = 1;
+    set_count(w.inventories["player"], "fish", 1);
+    set_count(w.inventories["player"], "sea_gems", 1);
     SIM_CHECK(learn_rite_from_teacher(w, kSacrifice, kMoonPriest).learned);
 
     const RiteOutcome o = perform_rite_in_world(w, kSacrifice);
@@ -141,8 +141,8 @@ static bool test_impure_rite_accrues_wrath_and_place_rites_offend_nobody() {
     WorldState w = day5_world();  // day 5: sacrifice rolls 3493 (8000 bp, succeeds)
     w.magic.purity = kImpureBelow - 1;  // below the floor: impure (this row sets
                                         // no requirement, so the score is unaffected)
-    w.inventories["player"].counts["fish"] = 1;
-    w.inventories["player"].counts["sea_gems"] = 1;
+    set_count(w.inventories["player"], "fish", 1);
+    set_count(w.inventories["player"], "sea_gems", 1);
     SIM_CHECK(learn_rite_from_teacher(w, kSacrifice, kMoonPriest).learned);
 
     const RiteOutcome o = perform_rite_in_world(w, kSacrifice);
@@ -154,7 +154,7 @@ static bool test_impure_rite_accrues_wrath_and_place_rites_offend_nobody() {
     // nobody, even failed: the offence is against the deity addressed.
     WorldState ward = day5_world(kFailSeed);
     ward.magic.place = "riverbank";
-    ward.inventories["player"].counts["zisurru_incantation_tablet"] = 1;
+    set_count(ward.inventories["player"], "zisurru_incantation_tablet", 1);
     SIM_CHECK(learn_rite_from_text(ward, "zisurru_warding", "zisurru_incantation_tablet").learned);
     const RiteOutcome place = perform_rite_in_world(ward, "zisurru_warding");
     SIM_CHECK(place.rite.performed);
@@ -168,8 +168,8 @@ static bool test_impure_rite_accrues_wrath_and_place_rites_offend_nobody() {
 static bool test_row_purity_requirement_raises_the_bar() {
     WorldState w = day5_world();
     w.magic.purity = 55;  // above the floor (50), below the atonement row's 60
-    w.inventories["player"].counts["fish"] = 1;
-    w.inventories["player"].counts["sea_gems"] = 1;
+    set_count(w.inventories["player"], "fish", 1);
+    set_count(w.inventories["player"], "sea_gems", 1);
     SIM_CHECK(learn_rite_from_teacher(w, kSacrifice, kMoonPriest).learned);
     SIM_CHECK(learn_rite_from_teacher(w, kAtonementRite, kSunPriest).learned);
 
@@ -202,8 +202,8 @@ static bool test_wrath_skews_the_omen() {
     WorldState* const worlds[] = {&clean, &angry};
     for (WorldState* w : worlds) {
         w->magic.place = "house:diviner";
-        w->inventories["player"].counts["clay_liver_model"] = 1;
-        w->inventories["player"].counts["a_burned_goat's_liver"] = 1;
+        set_count(w->inventories["player"], "clay_liver_model", 1);
+        set_count(w->inventories["player"], "a_burned_goat's_liver", 1);
         SIM_CHECK(learn_rite_from_text(*w, "barutu_haruspicy", "clay_liver_model").learned);
         const RiteOutcome o = perform_rite_in_world(*w, "barutu_haruspicy", "utu");
         SIM_CHECK(o.rite.succeeded);
@@ -356,8 +356,8 @@ static bool test_divine_wrath_is_deterministic() {
         w.magic.place = "temple:city_of_the_moon";
         (void)swear_and_break(w, 5);
         w.magic.purity = 40;  // an impure sacrifice
-        w.inventories["player"].counts["fish"] = 1;
-        w.inventories["player"].counts["sea_gems"] = 1;
+        set_count(w.inventories["player"], "fish", 1);
+        set_count(w.inventories["player"], "sea_gems", 1);
         (void)learn_rite_from_teacher(w, kSacrifice, kMoonPriest);
         (void)perform_rite_in_world(w, kSacrifice);
         (void)commit_crime(w, "player", "tomb_robbery", "city_of_the_moon", {kWitness});

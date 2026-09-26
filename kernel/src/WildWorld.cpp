@@ -222,7 +222,7 @@ void player_defeated(WorldState& w, const std::string& by) {
     const Silver lost = purse_of(w) / 2;
     if (lost > 0) take_from_purse(w.property, kPlayer, lost);
     Inventory& inv = w.inventories[kPlayer];
-    for (auto& [item, count] : inv.counts) count -= count / 3;
+    for (const auto& [item, count] : counts(inv)) take_items(inv, item, count / 3);
     (void)by;
 }
 
@@ -230,7 +230,7 @@ Silver purse_of(const WorldState& w) { return purse(w.property, kPlayer); }
 
 void give_player(WorldState& w, const Id& item, int units) {
     if (units <= 0 || item.empty()) return;
-    w.inventories[kPlayer].counts[item] += units;
+    add_items(w.inventories[kPlayer], item, units);
 }
 
 void push_raid(WorldState& w, RaidRecord rec) {

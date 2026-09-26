@@ -166,6 +166,27 @@ private:
     std::istringstream in_;
 };
 
+// P0a: one item stack as 8 fields (item, qty, quality, condition, owner,
+// stolen, made_day, bound) — inventories, world items and containers share it.
+std::vector<std::string> stack_fields(const ItemStack& s) {
+    return {s.item, s64(s.qty), s64(s.quality), s64(s.condition), s.owner,
+            sbool(s.stolen), s64(s.made_day), sbool(s.bound)};
+}
+
+ItemStack stack_from(const std::vector<std::string>& f, std::size_t at, const char* what) {
+    if (f.size() < at + 8) throw std::runtime_error(std::string("snapshot: bad ") + what + " stack row");
+    ItemStack s;
+    s.item = f[at];
+    s.qty = static_cast<int>(Reader::parse_i64(f[at + 1]));
+    s.quality = static_cast<int>(Reader::parse_i64(f[at + 2]));
+    s.condition = static_cast<int>(Reader::parse_i64(f[at + 3]));
+    s.owner = f[at + 4];
+    s.stolen = Reader::parse_bool(f[at + 5]);
+    s.made_day = Reader::parse_i64(f[at + 6]);
+    s.bound = Reader::parse_bool(f[at + 7]);
+    return s;
+}
+
 }  // namespace
 
 std::string save_world(const WorldState& w) {
@@ -325,13 +346,12 @@ std::string save_world(const WorldState& w) {
             wr.line({actor, s64(n.hunger), s64(n.thirst), s64(n.fatigue)});
     }
 
-    // INVENTORIES (W2-I; additive section)
+    // INVENTORIES (W2-I; P0a: one row per stack, 8 fields — stack_fields)
     {
         wr.line({"INVENTORIES", s64(static_cast<std::int64_t>(w.inventories.size()))});
         for (const auto& [actor, inv] : w.inventories) {
-            wr.line({actor, s64(static_cast<std::int64_t>(inv.counts.size()))});
-            for (const auto& [item, qty] : inv.counts)
-                wr.line({item, s64(qty)});
+            wr.line({actor, s64(static_cast<std::int64_t>(inv.stacks.size()))});
+            for (const ItemStack& s : inv.stacks) wr.line(stack_fields(s));
         }
     }
 
@@ -774,8 +794,12 @@ void load_world(WorldState& out, const std::string& canon_dir, const std::string
                 Inventory& inv = w.inventories[actor];
                 for (std::size_t j = 0; j < itemcount; ++j) {
                     std::vector<std::string> itf = rd.next();
-                    if (itf.size() != 2) throw std::runtime_error("snapshot: bad inventory item row");
-                    inv.counts[itf[0]] = static_cast<int>(Reader::parse_i64(itf[1]));
+                    if (itf.size() == 2) {  // a pre-P0a save: item, count
+                        add_items(inv, itf[0], static_cast<int>(Reader::parse_i64(itf[1])));
+                        continue;
+                    }
+                    if (itf.size() != 8) throw std::runtime_error("snapshot: bad inventory item row");
+                    add_stack(inv, stack_from(itf, 0, "inventory"));
                 }
             }
         }

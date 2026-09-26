@@ -96,8 +96,7 @@ bool teaching_matches(const Row& t, const Id& rite_id, const std::string& via) {
 int held(const WorldState& w, const Id& item) {
     const auto inv = w.inventories.find(kRitePerformer);
     if (inv == w.inventories.end()) return 0;
-    const auto it = inv->second.counts.find(item);
-    return it == inv->second.counts.end() ? 0 : it->second;
+    return count_of(inv->second, item);
 }
 
 }  // namespace
@@ -214,9 +213,7 @@ RiteOutcome perform_rite_in_world(WorldState& w, const Id& rite_id, const Id& ta
     Inventory& inv = w.inventories[kRitePerformer];
     for (const std::string& k : keys) {
         if (!is_item(w.db, k)) continue;
-        auto it = inv.counts.find(k);
-        if (it == inv.counts.end() || it->second <= 0) continue;
-        --it->second;
+        if (take_items(inv, k, 1).empty()) continue;
         out.consumed.push_back(k);
     }
 

@@ -211,9 +211,7 @@ bool resolve_encounter(WorldState& w, const Pick& pick, const WildLink& l, int h
     if (stance == "give" && e.kind == "refugees") {
         Inventory& inv = w.inventories[kPlayer];
         for (const char* food : {"bread", "grain", "dates"}) {
-            auto it = inv.counts.find(food);
-            if (it != inv.counts.end() && it->second > 0) {
-                --it->second;
+            if (!take_items(inv, food, 1).empty()) {
                 add_standing(w.faction, city_faction_id(w), 1);
                 rec.stance = "give";
                 rec.outcome = "gave";
@@ -291,8 +289,7 @@ TravelResult travel(WorldState& w, const Id& to, const Id& mode_id, int start_ho
     const TransportMode& mode = mit->second;
     if (!mode.requires_item.empty()) {
         const auto inv = w.inventories.find(kPlayer);
-        const bool has = inv != w.inventories.end() && inv->second.counts.count(mode.requires_item) &&
-                         inv->second.counts.at(mode.requires_item) > 0;
+        const bool has = inv != w.inventories.end() && count_of(inv->second, mode.requires_item) > 0;
         if (!has) return refuse(-4, "needs_item");
     }
     if (to == w.wild.player_place) return refuse(-6, "already_there");
@@ -328,18 +325,17 @@ TravelResult travel(WorldState& w, const Id& to, const Id& mode_id, int start_ho
             n.thirst = std::min(100, n.thirst + thirst_extra + (desert ? 1 : 0) + drought / 2);
             Inventory& inv = w.inventories[kPlayer];
             if (n.thirst >= 60) {
-                auto it = inv.counts.find("water");
                 if (water_here) {
                     drink(w.db, w.needs, kPlayer, "water");
-                } else if (it != inv.counts.end() && it->second > 0) {
+                } else if (count_of(inv, "water") > 0) {
                     drink(w.db, w.needs, kPlayer, "water");
-                    --it->second;
+                    take_items(inv, "water", 1);
                 }
             }
             if (n.hunger >= 60)
-                for (auto& [item, count] : inv.counts)
+                for (const auto& [item, count] : counts(inv))
                     if (count > 0 && item != "water" && eat(w.db, w.needs, kPlayer, item)) {
-                        --count;
+                        take_items(inv, item, 1);
                         break;
                     }
             if (needs_of(w.needs, kPlayer).thirst >= 100) {

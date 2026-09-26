@@ -29,16 +29,15 @@ const char* kBandit = "bandit_of_the_river_road";  // a stranger from the wild l
 int held(const WorldState& w, const Id& actor, const Id& item) {
     const auto inv = w.inventories.find(actor);
     if (inv == w.inventories.end()) return 0;
-    const auto it = inv->second.counts.find(item);
-    return it == inv->second.counts.end() ? 0 : it->second;
+    return count_of(inv->second, item);
 }
 
 void arm_player(WorldState& w) {
     for (const char* item : {"copper_spear", "tower_shield", "leather_cap"}) {
-        w.inventories["player"].counts[item] = 1;
+        set_count(w.inventories["player"], item, 1);
         (void)equip_in_world(w, "player", item);
     }
-    w.inventories["player"].counts["linen_bandage"] = 2;
+    set_count(w.inventories["player"], "linen_bandage", 2);
 }
 
 // The bandit strikes first; they trade blows until one cannot go on.
@@ -246,8 +245,8 @@ bool test_healer_smith_and_ammo() {
     credit_purse(w.property, "player", 200);
 
     // Arrows run out.
-    w.inventories["player"].counts["composite_bow"] = 1;
-    w.inventories["player"].counts["arrow"] = 2;
+    set_count(w.inventories["player"], "composite_bow", 1);
+    set_count(w.inventories["player"], "arrow", 2);
     SIM_CHECK_EQ(equip_in_world(w, "player", "composite_bow"), 0);
     SIM_CHECK(attack_in_world(w, "player", "target_post", -1).outcome != AttackOutcome::Invalid);
     SIM_CHECK(attack_in_world(w, "player", "target_post", -1).outcome != AttackOutcome::Invalid);
@@ -273,7 +272,7 @@ bool test_healer_smith_and_ammo() {
     SIM_CHECK_EQ(bleeding(combatant_of(w.combat, "player")), 0);
 
     // The smith mends a notched blade and recasts a broken one.
-    w.inventories["player"].counts["copper_dagger"] = 1;
+    set_count(w.inventories["player"], "copper_dagger", 1);
     combatant_of(w.combat, "player").durability["copper_dagger"] = 30;
     SIM_CHECK_EQ(repair_at_smith(w, "player", "copper_dagger", "ur_shara_baker"), -4);
     SIM_CHECK_EQ(repair_at_smith(w, "player", "copper_dagger", "nur_ea_smith"), 0);
@@ -286,7 +285,7 @@ bool test_healer_smith_and_ammo() {
     SIM_CHECK_EQ(held(w, "player", "tin_bronze_sickle_sword"), 1);
     SIM_CHECK(purse(w.property, "nur_ea_smith") > 0);
     // Iron is beyond the river smiths.
-    w.inventories["player"].counts["iron_dagger"] = 1;
+    set_count(w.inventories["player"], "iron_dagger", 1);
     SIM_CHECK_EQ(recast_at_smith(w, "player", "iron_dagger", "copper_spear", "nur_ea_smith"), -7);
     return true;
 }

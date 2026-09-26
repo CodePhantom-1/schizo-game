@@ -324,8 +324,7 @@ const Id kTrader = "ea_nasir_grain_trader";   // people.csv, a market trader: te
 int count_of(const WorldState& w, const Id& item) {
     const auto inv = w.inventories.find("player");
     if (inv == w.inventories.end()) return 0;
-    const auto it = inv->second.counts.find(item);
-    return it == inv->second.counts.end() ? 0 : it->second;
+    return count_of(inv->second, item);
 }
 
 }  // namespace
@@ -337,8 +336,8 @@ static bool test_k1_sacrifice_learned_offered_and_answered() {
     w.init("../db/canon", kScenarioSeed);
     w.advance_days(4);  // day 5: this rite rolls 3493
     w.magic.place = kCityTemple;
-    w.inventories["player"].counts["fish"] = 2;
-    w.inventories["player"].counts["sea_gems"] = 1;
+    set_count(w.inventories["player"], "fish", 2);
+    set_count(w.inventories["player"], "sea_gems", 1);
 
     // Unlearned: refused, nothing spent.
     RiteOutcome o = perform_rite_in_world(w, kRite);
@@ -382,7 +381,7 @@ static bool test_k1_failed_rite_still_consumes_the_offering() {
     w.init("../db/canon", kFailSeed);
     w.advance_days(4);  // day 5: this rite rolls 9589
     w.magic.place = "riverbank";
-    w.inventories["player"].counts["fish"] = 1;  // no sea gems: materials short
+    set_count(w.inventories["player"], "fish", 1);  // no sea gems: materials short
     SIM_CHECK(learn_rite_from_teacher(w, kRite, kPriest).learned);
 
     const RiteOutcome o = perform_rite_in_world(w, kRite);
@@ -429,14 +428,14 @@ static bool test_k1_zisurru_from_a_tablet_wards_a_household() {
     const Id rite = "zisurru_warding";
     SIM_CHECK_EQ(learn_rite_from_text(w, rite, "zisurru_incantation_tablet").refusal_reason,
                  std::string("text_not_held"));
-    w.inventories["player"].counts["zisurru_incantation_tablet"] = 1;
-    w.inventories["player"].counts["clay_liver_model"] = 1;
+    set_count(w.inventories["player"], "zisurru_incantation_tablet", 1);
+    set_count(w.inventories["player"], "clay_liver_model", 1);
     SIM_CHECK_EQ(learn_rite_from_text(w, rite, "clay_liver_model").refusal_reason,
                  std::string("not_taught_in_text"));
     SIM_CHECK(learn_rite_from_text(w, rite, "zisurru_incantation_tablet").learned);
     SIM_CHECK_EQ(count_of(w, "zisurru_incantation_tablet"), 1);  // read, not consumed
 
-    w.inventories["player"].counts["different_types_of_flour"] = 1;
+    set_count(w.inventories["player"], "different_types_of_flour", 1);
     w.magic.place = "household:player";
     const RiteOutcome o = perform_rite_in_world(w, rite);
     SIM_CHECK(o.rite.succeeded);  // 9000 bp > roll 5312
@@ -457,9 +456,9 @@ static bool test_k1_barutu_reads_an_omen() {
     WorldState w;
     w.init("../db/canon", kScenarioSeed);
     w.advance_days(4);
-    w.inventories["player"].counts["clay_liver_model"] = 1;
+    set_count(w.inventories["player"], "clay_liver_model", 1);
     SIM_CHECK(learn_rite_from_text(w, "barutu_haruspicy", "clay_liver_model").learned);
-    w.inventories["player"].counts["a_burned_goat's_liver"] = 1;
+    set_count(w.inventories["player"], "a_burned_goat's_liver", 1);
     w.magic.place = "house:diviner";
     add_favour(w.magic, "inanna", 30);  // 80: the true answer is "favourable"
     const std::uint64_t rng_before = w.rng.state();
@@ -484,10 +483,10 @@ static bool test_k1_loop_is_deterministic_and_saves() {
     const auto run = [](WorldState& w) {
         w.advance_days(4);
         w.magic.place = kCityTemple;
-        w.inventories["player"].counts["fish"] = 3;
-        w.inventories["player"].counts["sea_gems"] = 3;
-        w.inventories["player"].counts["clay_liver_model"] = 1;
-        w.inventories["player"].counts["a_burned_goat's_liver"] = 2;
+        set_count(w.inventories["player"], "fish", 3);
+        set_count(w.inventories["player"], "sea_gems", 3);
+        set_count(w.inventories["player"], "clay_liver_model", 1);
+        set_count(w.inventories["player"], "a_burned_goat's_liver", 2);
         (void)learn_rite_from_teacher(w, kRite, kPriest);
         (void)learn_rite_from_text(w, "barutu_haruspicy", "clay_liver_model");
         (void)perform_rite_in_world(w, kRite);
@@ -522,8 +521,8 @@ static bool test_d022_rolls_survive_save_load() {
     a.init("../db/canon", kDeterminismSeed);
     a.advance_days(4);
     a.magic.place = kCityTemple;
-    a.inventories["player"].counts["fish"] = 2;
-    a.inventories["player"].counts["sea_gems"] = 2;
+    set_count(a.inventories["player"], "fish", 2);
+    set_count(a.inventories["player"], "sea_gems", 2);
     SIM_CHECK(learn_rite_from_teacher(a, kRite, kPriest).learned);
     SIM_CHECK(learn_rite_from_teacher(a, "hymns_deity_names", kPriest).learned);
 

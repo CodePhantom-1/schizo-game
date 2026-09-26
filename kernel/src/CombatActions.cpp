@@ -23,14 +23,14 @@ std::string lower(std::string s) {
 int held(const WorldState& w, const Id& actor, const Id& item) {
     const auto inv = w.inventories.find(actor);
     if (inv == w.inventories.end()) return 0;
-    const auto it = inv->second.counts.find(item);
-    return it == inv->second.counts.end() ? 0 : it->second;
+    return count_of(inv->second, item);
 }
 
 void give(WorldState& w, const Id& actor, const Id& item, int qty) {
-    int& n = w.inventories[actor].counts[item];
-    n = std::max(0, n + qty);
-    if (n == 0) w.inventories[actor].counts.erase(item);
+    if (qty > 0)
+        add_items(w.inventories[actor], item, qty);
+    else
+        take_items(w.inventories[actor], item, -qty);
 }
 
 Silver band_of(const Db& db, const Id& item) {
@@ -389,15 +389,14 @@ int loot_body(WorldState& w, const Id& looter, const Id& body) {
     int moved = 0;
     Combatant& l = combatant_of(w.combat, looter);
     if (inv != w.inventories.end()) {
-        const std::map<Id, int> goods = inv->second.counts;
-        for (const auto& [item, qty] : goods) {
-            if (qty <= 0) continue;
-            if (const auto d = b.durability.find(item); d != b.durability.end() && held(w, looter, item) <= 0)
-                l.durability[item] = d->second;  // the dead man's notched blade stays notched
-            give(w, looter, item, qty);
-            moved += qty;
+        const std::vector<ItemStack> goods = inv->second.stacks;
+        inv->second.stacks.clear();
+        for (const ItemStack& s : goods) {
+            if (const auto d = b.durability.find(s.item); d != b.durability.end() && held(w, looter, s.item) <= 0)
+                l.durability[s.item] = d->second;  // the dead man's notched blade stays notched
+            add_stack(w.inventories[looter], s);
+            moved += s.qty;
         }
-        inv->second.counts.clear();
     }
     b.weapon.clear();
     b.shield.clear();

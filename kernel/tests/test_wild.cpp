@@ -224,7 +224,7 @@ static bool test_travel_costs_time_and_refuses_cleanly() {
     SIM_CHECK(t.minutes > 0);
     SIM_CHECK_EQ(w.wild.player_place, t.stopped_at);
     // A horse doubles the pace of a man on foot.
-    w.inventories["player"].counts["riding_horse"] = 1;
+    set_count(w.inventories["player"], "riding_horse", 1);
     w.wild.player_place = "moon_gate_place";
     const WildLink* road = nullptr;
     for (const WildLink& l : w.wild.links)
@@ -240,14 +240,14 @@ static bool test_a_journey_takes_hours_and_thirst() {
     WorldState w = fresh(21);
     w.advance_days(1);
     w.wild.player_place = "canal_head_place";
-    w.inventories["player"].counts["water"] = 20;
-    w.inventories["player"].counts["bread"] = 5;
+    set_count(w.inventories["player"], "water", 20);
+    set_count(w.inventories["player"], "bread", 5);
     needs_of(w.needs, "player").thirst = 55;
     const TravelResult t = travel(w, "city_of_the_sun", "foot", 6, "flee", 30);
     SIM_CHECK(t.minutes >= 600);  // 45 km on foot: a long day and more
     SIM_CHECK_EQ(t.code, 0);
     SIM_CHECK_EQ(w.wild.player_place, Id("city_of_the_sun"));  // an off-map venture
-    SIM_CHECK(w.inventories["player"].counts["water"] < 20);  // the road drinks
+    SIM_CHECK(count_of(w.inventories["player"], "water") < 20);  // the road drinks
     // Without water, in the drought, the long road east kills.
     WorldState d = fresh(22);
     d.advance_days(1);
@@ -264,7 +264,7 @@ static bool test_encounters_respect_terrain_and_log() {
     WorldState w = fresh(5);
     w.advance_days(1);
     w.facts.drought_stage = 3;
-    w.inventories["player"].counts["water"] = 1000;
+    set_count(w.inventories["player"], "water", 1000);
     std::set<std::string> kinds;
     for (int k = 0; k < 120; ++k) {
         w.wild.player_place = "desert_edge_place";
@@ -310,7 +310,7 @@ static bool test_clearing_a_camp_pays_and_frees() {
     SIM_CHECK_EQ(find_camp(w.wild, camp_place)->status, std::string("cleared"));
     SIM_CHECK(purse(w.property, "player") > purse_before);  // bounty + rescue reward
     SIM_CHECK(standing(w.faction, wild::city_faction_id(w)) > standing_before);
-    SIM_CHECK(w.inventories["player"].counts["gold"] >= 2);  // the loot pile
+    SIM_CHECK(count_of(w.inventories["player"], "gold") >= 2);  // the loot pile
     SIM_CHECK(npc_fate(w.wild, victim.id).empty());
     SIM_CHECK(std::find(w.quests.completed.begin(), w.quests.completed.end(),
                         "rescue_" + victim.id) != w.quests.completed.end());

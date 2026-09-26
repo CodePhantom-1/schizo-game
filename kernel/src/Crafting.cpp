@@ -77,8 +77,7 @@ std::optional<Recipe> check(const Db& db, const Inventory& inv, const Id& recipe
     }
     for (const auto& [item, qty] : r->inputs) {
         if (item == kWater) continue;
-        const auto it = inv.counts.find(item);
-        const long long have = it == inv.counts.end() ? 0 : it->second;
+        const long long have = count_of(inv, item);
         if (have < static_cast<long long>(qty) * times) {
             fail(reason, "missing input: " + item);
             return std::nullopt;
@@ -108,9 +107,9 @@ bool craft(const Db& db, Inventory& inv, const Id& recipe_id,
     const std::optional<Recipe> r = check(db, inv, recipe_id, stations_at_hand, times, reason);
     if (!r) return false;  // no partial effects: nothing consumed yet
     for (const auto& [item, qty] : r->inputs)
-        if (item != kWater) inv.counts[item] -= qty * times;
+        if (item != kWater) take_items(inv, item, qty * times);
     for (const auto& [item, qty] : r->outputs)
-        inv.counts[item] += qty * times;
+        add_items(inv, item, qty * times);
     return true;
 }
 
