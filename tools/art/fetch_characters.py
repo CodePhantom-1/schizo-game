@@ -159,27 +159,11 @@ def verify_gltf(path):
 
 
 def _update_assets_csv(rows):
-    """Same contract as fetch_textures.py: upsert by id, keep column order."""
-    path = os.path.join(REPO_ROOT, "art", "assets.csv")
-    by_id = {}
-    header = ["id", "file", "kind", "license", "source_ref", "tag"]
-    order = []
-    if os.path.exists(path):
-        with open(path, newline="") as f:
-            reader = csv.reader(f)
-            header = next(reader)
-            for r in reader:
-                by_id[r[0]] = r
-                order.append(r[0])
-    for r in rows:
-        if r[0] not in by_id:
-            order.append(r[0])
-        by_id[r[0]] = r
-    with open(path, "w", newline="") as f:
-        w = csv.writer(f)
-        w.writerow(header)
-        for rid in order:
-            w.writerow(by_id[rid])
+    """Upsert these rows into art/assets.csv (tools/art/manifest.py owns the format)."""
+    import datetime  # noqa: PLC0415
+    import manifest  # noqa: PLC0415
+    today = datetime.date.today().isoformat()
+    manifest.upsert(manifest.PATH, [manifest.legacy(r, today) for r in rows])
 
 
 def main():

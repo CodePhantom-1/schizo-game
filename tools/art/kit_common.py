@@ -373,32 +373,11 @@ def parse_args(argv):
 
 
 def write_manifest_rows(rows, header=None):
-    """Upsert `rows` (same column order as `header`) into art/assets.csv by id
-    (the first column) — shared by house_kit.py and assemble_house.py. Upsert,
-    not append: re-running a generator on an existing checkout must not
-    duplicate rows (the file is tracked)."""
-    import csv  # noqa: PLC0415 — keep the module Blender-only at top level
-    path = os.path.join(_repo_root(), "art", "assets.csv")
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    if header is None:
-        header = ["id", "file", "kind", "license", "source_ref", "tag"]
-    existing = {}
-    order = []
-    if os.path.exists(path):
-        with open(path, newline="") as f:
-            for row in csv.reader(f):
-                if row and row[0] != "id":
-                    existing[row[0]] = row
-                    order.append(row[0])
-    for r in rows:
-        if r[0] not in existing:
-            order.append(r[0])
-        existing[r[0]] = r
-    with open(path, "w", newline="") as f:
-        w = csv.writer(f)
-        w.writerow(header)
-        for key in order:
-            w.writerow(existing[key])
+    """Upsert generator rows ([id, file, kind, licence, source_ref, tag]) into art/assets.csv
+    by id (tools/art/manifest.py owns the format). Upsert, not append: re-running a
+    generator must not duplicate rows (the file is tracked)."""
+    import manifest  # noqa: PLC0415 -- tools/art is on sys.path (see the top of this file)
+    manifest.upsert(manifest.PATH, [manifest.legacy(r) for r in rows])
 
 
 def _repo_root():

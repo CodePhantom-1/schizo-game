@@ -1,62 +1,62 @@
-id,file,kind,license,source_ref,tag
-SM_WallPlain,art/generated/meshes/SM_WallPlain.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
-SM_WallDoor,art/generated/meshes/SM_WallDoor.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
-SM_WallWindow,art/generated/meshes/SM_WallWindow.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
-SM_Corner,art/generated/meshes/SM_Corner.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
-SM_RoofSlab,art/generated/meshes/SM_RoofSlab.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
-SM_RoofAccess,art/generated/meshes/SM_RoofAccess.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
-SM_Pilaster,art/generated/meshes/SM_Pilaster.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
-SM_Stair,art/generated/meshes/SM_Stair.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
-SM_Lintel,art/generated/meshes/SM_Lintel.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
-SM_CourtyardTile,art/generated/meshes/SM_CourtyardTile.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
-SM_Awning,art/generated/meshes/SM_Awning.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
-House_SmallSingleRoom,art/generated/meshes/House_SmallSingleRoom.fbx,mesh_house_example,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
-House_TwoRoomCourtyard,art/generated/meshes/House_TwoRoomCourtyard.fbx,mesh_house_example,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
-House_RoofAccess,art/generated/meshes/House_RoofAccess.fbx,mesh_house_example,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
-SM_RoofSlabFlat,art/generated/meshes/SM_RoofSlabFlat.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
-SM_ParapetRun,art/generated/meshes/SM_ParapetRun.fbx,mesh_kit_piece,"original (procedural, generated code)",docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
-M_Mudbrick_Color,art/source/Bricks100/Bricks100_2K-JPG_Color.jpg,texture_map,CC0,https://ambientcg.com/a/Bricks100,A
-M_Mudbrick_NormalGL,art/source/Bricks100/Bricks100_2K-JPG_NormalGL.jpg,texture_map,CC0,https://ambientcg.com/a/Bricks100,A
-M_Mudbrick_Roughness,art/source/Bricks100/Bricks100_2K-JPG_Roughness.jpg,texture_map,CC0,https://ambientcg.com/a/Bricks100,A
-M_Mudbrick_AmbientOcclusion,art/source/Bricks100/Bricks100_2K-JPG_AmbientOcclusion.jpg,texture_map,CC0,https://ambientcg.com/a/Bricks100,A
-M_MudPlaster_Color,art/source/Ground087/Ground087_2K-JPG_Color.jpg,texture_map,CC0,https://ambientcg.com/a/Ground087,A
-M_MudPlaster_NormalGL,art/source/Ground087/Ground087_2K-JPG_NormalGL.jpg,texture_map,CC0,https://ambientcg.com/a/Ground087,A
-M_MudPlaster_Roughness,art/source/Ground087/Ground087_2K-JPG_Roughness.jpg,texture_map,CC0,https://ambientcg.com/a/Ground087,A
-M_MudPlaster_AmbientOcclusion,art/source/Ground087/Ground087_2K-JPG_AmbientOcclusion.jpg,texture_map,CC0,https://ambientcg.com/a/Ground087,A
-M_Timber_Color,art/source/Bark012/Bark012_2K-JPG_Color.jpg,texture_map,CC0,https://ambientcg.com/a/Bark012,A
-M_Timber_NormalGL,art/source/Bark012/Bark012_2K-JPG_NormalGL.jpg,texture_map,CC0,https://ambientcg.com/a/Bark012,A
-M_Timber_Roughness,art/source/Bark012/Bark012_2K-JPG_Roughness.jpg,texture_map,CC0,https://ambientcg.com/a/Bark012,A
-M_Timber_AmbientOcclusion,art/source/Bark012/Bark012_2K-JPG_AmbientOcclusion.jpg,texture_map,CC0,https://ambientcg.com/a/Bark012,A
-M_Reed_Color,art/source/Wicker010A/Wicker010A_2K-JPG_Color.jpg,texture_map,CC0,https://ambientcg.com/a/Wicker010A,A
-M_Reed_NormalGL,art/source/Wicker010A/Wicker010A_2K-JPG_NormalGL.jpg,texture_map,CC0,https://ambientcg.com/a/Wicker010A,A
-M_Reed_Roughness,art/source/Wicker010A/Wicker010A_2K-JPG_Roughness.jpg,texture_map,CC0,https://ambientcg.com/a/Wicker010A,A
-M_Reed_AmbientOcclusion,art/source/Wicker010A/Wicker010A_2K-JPG_AmbientOcclusion.jpg,texture_map,CC0,https://ambientcg.com/a/Wicker010A,A
-M_Ground_Color,art/source/Ground109/Ground109_2K-JPG_Color.jpg,texture_map,CC0,https://ambientcg.com/a/Ground109,A
-M_Ground_NormalGL,art/source/Ground109/Ground109_2K-JPG_NormalGL.jpg,texture_map,CC0,https://ambientcg.com/a/Ground109,A
-M_Ground_Roughness,art/source/Ground109/Ground109_2K-JPG_Roughness.jpg,texture_map,CC0,https://ambientcg.com/a/Ground109,A
-M_Ground_AmbientOcclusion,art/source/Ground109/Ground109_2K-JPG_AmbientOcclusion.jpg,texture_map,CC0,https://ambientcg.com/a/Ground109,A
-M_Plinth_Color,art/source/Rock035/Rock035_2K-JPG_Color.jpg,texture_map,CC0,https://ambientcg.com/a/Rock035,A
-M_Plinth_NormalGL,art/source/Rock035/Rock035_2K-JPG_NormalGL.jpg,texture_map,CC0,https://ambientcg.com/a/Rock035,A
-M_Plinth_Roughness,art/source/Rock035/Rock035_2K-JPG_Roughness.jpg,texture_map,CC0,https://ambientcg.com/a/Rock035,A
-M_Plinth_AmbientOcclusion,art/source/Rock035/Rock035_2K-JPG_AmbientOcclusion.jpg,texture_map,CC0,https://ambientcg.com/a/Rock035,A
-SM_PropAmphora,art/generated/props/meshes/SM_PropAmphora.fbx,mesh_street_prop,"original (procedural, generated code)",docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
-SM_PropJarStack,art/generated/props/meshes/SM_PropJarStack.fbx,mesh_street_prop,"original (procedural, generated code)",docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
-SM_PropBasket,art/generated/props/meshes/SM_PropBasket.fbx,mesh_street_prop,"original (procedural, generated code)",docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
-SM_PropMatRoll,art/generated/props/meshes/SM_PropMatRoll.fbx,mesh_street_prop,"original (procedural, generated code)",docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
-SM_PropBench,art/generated/props/meshes/SM_PropBench.fbx,mesh_street_prop,"original (procedural, generated code)",docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
-SM_PropDatesTray,art/generated/props/meshes/SM_PropDatesTray.fbx,mesh_street_prop,"original (procedural, generated code)",docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
-SM_PropBreadTray,art/generated/props/meshes/SM_PropBreadTray.fbx,mesh_street_prop,"original (procedural, generated code)",docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
-SM_PropBreadLoaves,art/generated/props/meshes/SM_PropBreadLoaves.fbx,mesh_street_prop,"original (procedural, generated code)",docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
-SM_PropBrazier,art/generated/props/meshes/SM_PropBrazier.fbx,mesh_street_prop,"original (procedural, generated code)",docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
-SM_PropWaterSkin,art/generated/props/meshes/SM_PropWaterSkin.fbx,mesh_street_prop,"original (procedural, generated code)",docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
-SM_SkyDome,art/generated/props/meshes/SM_SkyDome.fbx,mesh_street_prop,"original (procedural, generated code)",docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
-Player,art/source/characters/Casual3_Male.gltf,character_model,CC0,https://quaternius.com/packs/ultimatedanimatedcharacter.html,A
-Npc0,art/source/characters/Worker_Male.gltf,character_model,CC0,https://quaternius.com/packs/ultimatedanimatedcharacter.html,A
-Npc1,art/source/characters/Worker_Female.gltf,character_model,CC0,https://quaternius.com/packs/ultimatedanimatedcharacter.html,A
-Npc2,art/source/characters/Casual_Male.gltf,character_model,CC0,https://quaternius.com/packs/ultimatedanimatedcharacter.html,A
-Npc3,art/source/characters/Casual_Female.gltf,character_model,CC0,https://quaternius.com/packs/ultimatedanimatedcharacter.html,A
-Npc4,art/source/characters/Casual2_Female.gltf,character_model,CC0,https://quaternius.com/packs/ultimatedanimatedcharacter.html,A
-Npc5,art/source/characters/OldClassy_Male.gltf,character_model,CC0,https://quaternius.com/packs/ultimatedanimatedcharacter.html,A
-Npc6,art/source/characters/OldClassy_Female.gltf,character_model,CC0,https://quaternius.com/packs/ultimatedanimatedcharacter.html,A
-Npc7,art/source/characters/Kimono_Male.gltf,character_model,CC0,https://quaternius.com/packs/ultimatedanimatedcharacter.html,A
-Npc8,art/source/characters/Wizard.gltf,character_model,CC0,https://quaternius.com/packs/ultimatedanimatedcharacter.html,A
+id,file,kind,license,author,url,acquired,sha256,ai,period,source_ref,tag
+SM_WallPlain,art/generated/meshes/SM_WallPlain.fbx,mesh_kit_piece,LicenseRef-Original,schizo-game contributors,,,,false,,docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_WallDoor,art/generated/meshes/SM_WallDoor.fbx,mesh_kit_piece,LicenseRef-Original,schizo-game contributors,,,,false,,docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_WallWindow,art/generated/meshes/SM_WallWindow.fbx,mesh_kit_piece,LicenseRef-Original,schizo-game contributors,,,,false,,docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_Corner,art/generated/meshes/SM_Corner.fbx,mesh_kit_piece,LicenseRef-Original,schizo-game contributors,,,,false,,docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_RoofSlab,art/generated/meshes/SM_RoofSlab.fbx,mesh_kit_piece,LicenseRef-Original,schizo-game contributors,,,,false,,docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_RoofAccess,art/generated/meshes/SM_RoofAccess.fbx,mesh_kit_piece,LicenseRef-Original,schizo-game contributors,,,,false,,docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_Pilaster,art/generated/meshes/SM_Pilaster.fbx,mesh_kit_piece,LicenseRef-Original,schizo-game contributors,,,,false,,docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_Stair,art/generated/meshes/SM_Stair.fbx,mesh_kit_piece,LicenseRef-Original,schizo-game contributors,,,,false,,docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_Lintel,art/generated/meshes/SM_Lintel.fbx,mesh_kit_piece,LicenseRef-Original,schizo-game contributors,,,,false,,docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_CourtyardTile,art/generated/meshes/SM_CourtyardTile.fbx,mesh_kit_piece,LicenseRef-Original,schizo-game contributors,,,,false,,docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_Awning,art/generated/meshes/SM_Awning.fbx,mesh_kit_piece,LicenseRef-Original,schizo-game contributors,,,,false,,docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+House_SmallSingleRoom,art/generated/meshes/House_SmallSingleRoom.fbx,mesh_house_example,LicenseRef-Original,schizo-game contributors,,,,false,,docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+House_TwoRoomCourtyard,art/generated/meshes/House_TwoRoomCourtyard.fbx,mesh_house_example,LicenseRef-Original,schizo-game contributors,,,,false,,docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+House_RoofAccess,art/generated/meshes/House_RoofAccess.fbx,mesh_house_example,LicenseRef-Original,schizo-game contributors,,,,false,,docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_RoofSlabFlat,art/generated/meshes/SM_RoofSlabFlat.fbx,mesh_kit_piece,LicenseRef-Original,schizo-game contributors,,,,false,,docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+SM_ParapetRun,art/generated/meshes/SM_ParapetRun.fbx,mesh_kit_piece,LicenseRef-Original,schizo-game contributors,,,,false,,docs/art-pipeline-research.md; real-world Mesopotamian mudbrick architecture [A],A
+M_Mudbrick_Color,art/source/Bricks100/Bricks100_2K-JPG_Color.jpg,texture_map,CC0-1.0,ambientCG,https://ambientcg.com/a/Bricks100,2026-09-25,fbbeac7a168b0331958ef09b3f9b39fa8c468671701bf49ae40c891e00b00681,false,,https://ambientcg.com/a/Bricks100,A
+M_Mudbrick_NormalGL,art/source/Bricks100/Bricks100_2K-JPG_NormalGL.jpg,texture_map,CC0-1.0,ambientCG,https://ambientcg.com/a/Bricks100,2026-09-25,70cb039a541626274dc3305bcce55e0ba6a1c3a28c747c424d0444abbb2375f2,false,,https://ambientcg.com/a/Bricks100,A
+M_Mudbrick_Roughness,art/source/Bricks100/Bricks100_2K-JPG_Roughness.jpg,texture_map,CC0-1.0,ambientCG,https://ambientcg.com/a/Bricks100,2026-09-25,660d01b43a5e268dcb35d77d39fd5ed7200dae1397a2e9fe78bf9dd414d3225c,false,,https://ambientcg.com/a/Bricks100,A
+M_Mudbrick_AmbientOcclusion,art/source/Bricks100/Bricks100_2K-JPG_AmbientOcclusion.jpg,texture_map,CC0-1.0,ambientCG,https://ambientcg.com/a/Bricks100,2026-09-25,11771c490a1eb7616bcf40edaed5766f282e29178f0e2470397aacfe56447051,false,,https://ambientcg.com/a/Bricks100,A
+M_MudPlaster_Color,art/source/Ground087/Ground087_2K-JPG_Color.jpg,texture_map,CC0-1.0,ambientCG,https://ambientcg.com/a/Ground087,2026-09-25,a09aefad41449a3ac9a6fd84e27653c48634d28a7051a63261593c1b83429658,false,,https://ambientcg.com/a/Ground087,A
+M_MudPlaster_NormalGL,art/source/Ground087/Ground087_2K-JPG_NormalGL.jpg,texture_map,CC0-1.0,ambientCG,https://ambientcg.com/a/Ground087,2026-09-25,7484ca3112d84e0bb6f7630f8b210f40e5bec48564faa1e44cee00e64a971ffc,false,,https://ambientcg.com/a/Ground087,A
+M_MudPlaster_Roughness,art/source/Ground087/Ground087_2K-JPG_Roughness.jpg,texture_map,CC0-1.0,ambientCG,https://ambientcg.com/a/Ground087,2026-09-25,5a41d24f5b0c702de8a796a3332f3e8fa5c29dfe6873d189ff79a2ed8f67e86b,false,,https://ambientcg.com/a/Ground087,A
+M_MudPlaster_AmbientOcclusion,art/source/Ground087/Ground087_2K-JPG_AmbientOcclusion.jpg,texture_map,CC0-1.0,ambientCG,https://ambientcg.com/a/Ground087,2026-09-25,a362298936651860002e51802b7daac5cd453a896a8528139dee2d1bfe5dd9b6,false,,https://ambientcg.com/a/Ground087,A
+M_Timber_Color,art/source/Bark012/Bark012_2K-JPG_Color.jpg,texture_map,CC0-1.0,ambientCG,https://ambientcg.com/a/Bark012,2026-09-25,8ab624e92663bd5e7f1636decc4da761ee314ac27ea528a962930f03d96dd08b,false,,https://ambientcg.com/a/Bark012,A
+M_Timber_NormalGL,art/source/Bark012/Bark012_2K-JPG_NormalGL.jpg,texture_map,CC0-1.0,ambientCG,https://ambientcg.com/a/Bark012,2026-09-25,1ebe7bf53baaf58d48acef9046697cf7a73bc228b5700f12eaff60168533d2ad,false,,https://ambientcg.com/a/Bark012,A
+M_Timber_Roughness,art/source/Bark012/Bark012_2K-JPG_Roughness.jpg,texture_map,CC0-1.0,ambientCG,https://ambientcg.com/a/Bark012,2026-09-25,b0503fd7694f7c84ef82c960129f3e23b191267b625c4ca209296ea6ae758519,false,,https://ambientcg.com/a/Bark012,A
+M_Timber_AmbientOcclusion,art/source/Bark012/Bark012_2K-JPG_AmbientOcclusion.jpg,texture_map,CC0-1.0,ambientCG,https://ambientcg.com/a/Bark012,2026-09-25,9ee9395ac487be976c576588bbf8bfc5f288e2a844e0fef37d1e6997fa472e1f,false,,https://ambientcg.com/a/Bark012,A
+M_Reed_Color,art/source/Wicker010A/Wicker010A_2K-JPG_Color.jpg,texture_map,CC0-1.0,ambientCG,https://ambientcg.com/a/Wicker010A,2026-09-25,db90ebc7416fc396dea61078f1ce871e10412e741b4cd474a73038461e912940,false,,https://ambientcg.com/a/Wicker010A,A
+M_Reed_NormalGL,art/source/Wicker010A/Wicker010A_2K-JPG_NormalGL.jpg,texture_map,CC0-1.0,ambientCG,https://ambientcg.com/a/Wicker010A,2026-09-25,acc4106b42c4e722bd5e63da9a13c4383540099de7426b9c06c1018c67e92091,false,,https://ambientcg.com/a/Wicker010A,A
+M_Reed_Roughness,art/source/Wicker010A/Wicker010A_2K-JPG_Roughness.jpg,texture_map,CC0-1.0,ambientCG,https://ambientcg.com/a/Wicker010A,2026-09-25,2b0211aeb5d8b4748b7d3ca2b7c7c44bf00ad778d9bbc00fb8d8e3672d8f718c,false,,https://ambientcg.com/a/Wicker010A,A
+M_Reed_AmbientOcclusion,art/source/Wicker010A/Wicker010A_2K-JPG_AmbientOcclusion.jpg,texture_map,CC0-1.0,ambientCG,https://ambientcg.com/a/Wicker010A,2026-09-25,7fecfa24fb372b2fd5571c44f46659ab3df53525eb331118a086480420b523a7,false,,https://ambientcg.com/a/Wicker010A,A
+M_Ground_Color,art/source/Ground109/Ground109_2K-JPG_Color.jpg,texture_map,CC0-1.0,ambientCG,https://ambientcg.com/a/Ground109,2026-09-25,0d96216c34be43b166151172e2b884849ec9b3fc24b221a0179a27c4dc876d0b,false,,https://ambientcg.com/a/Ground109,A
+M_Ground_NormalGL,art/source/Ground109/Ground109_2K-JPG_NormalGL.jpg,texture_map,CC0-1.0,ambientCG,https://ambientcg.com/a/Ground109,2026-09-25,68b01962ac79d49b86fcaabbdf2d24f957b4d76fa03617da729869650fde4ef0,false,,https://ambientcg.com/a/Ground109,A
+M_Ground_Roughness,art/source/Ground109/Ground109_2K-JPG_Roughness.jpg,texture_map,CC0-1.0,ambientCG,https://ambientcg.com/a/Ground109,2026-09-25,495ac3077f9a36b542a4feb4599f19fd58d9221107a7983a9534a10795c3c2b2,false,,https://ambientcg.com/a/Ground109,A
+M_Ground_AmbientOcclusion,art/source/Ground109/Ground109_2K-JPG_AmbientOcclusion.jpg,texture_map,CC0-1.0,ambientCG,https://ambientcg.com/a/Ground109,2026-09-25,5cee035431380e1824e6d5020330ebe22ca638c6064c73233befe95ce6e609fc,false,,https://ambientcg.com/a/Ground109,A
+M_Plinth_Color,art/source/Rock035/Rock035_2K-JPG_Color.jpg,texture_map,CC0-1.0,ambientCG,https://ambientcg.com/a/Rock035,2026-09-25,a37852d15dca9a5fe16f2b86b82ed400ea048fa42ff774192a6567013075c889,false,,https://ambientcg.com/a/Rock035,A
+M_Plinth_NormalGL,art/source/Rock035/Rock035_2K-JPG_NormalGL.jpg,texture_map,CC0-1.0,ambientCG,https://ambientcg.com/a/Rock035,2026-09-25,2c8b62a4dd0b7306c93519b72846ee92a9a3820dc348c2732ae521658e720c3c,false,,https://ambientcg.com/a/Rock035,A
+M_Plinth_Roughness,art/source/Rock035/Rock035_2K-JPG_Roughness.jpg,texture_map,CC0-1.0,ambientCG,https://ambientcg.com/a/Rock035,2026-09-25,fcb394a485e707bcfd823beb2f3a82e5998e76e51d9c729f49c4c741982133db,false,,https://ambientcg.com/a/Rock035,A
+M_Plinth_AmbientOcclusion,art/source/Rock035/Rock035_2K-JPG_AmbientOcclusion.jpg,texture_map,CC0-1.0,ambientCG,https://ambientcg.com/a/Rock035,2026-09-25,bd1684542c52610bce29f2df8a6e9e64f11c052c808f3eccd9086b5bbdd252eb,false,,https://ambientcg.com/a/Rock035,A
+SM_PropAmphora,art/generated/props/meshes/SM_PropAmphora.fbx,mesh_street_prop,LicenseRef-Original,schizo-game contributors,,,,false,,docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
+SM_PropJarStack,art/generated/props/meshes/SM_PropJarStack.fbx,mesh_street_prop,LicenseRef-Original,schizo-game contributors,,,,false,,docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
+SM_PropBasket,art/generated/props/meshes/SM_PropBasket.fbx,mesh_street_prop,LicenseRef-Original,schizo-game contributors,,,,false,,docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
+SM_PropMatRoll,art/generated/props/meshes/SM_PropMatRoll.fbx,mesh_street_prop,LicenseRef-Original,schizo-game contributors,,,,false,,docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
+SM_PropBench,art/generated/props/meshes/SM_PropBench.fbx,mesh_street_prop,LicenseRef-Original,schizo-game contributors,,,,false,,docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
+SM_PropDatesTray,art/generated/props/meshes/SM_PropDatesTray.fbx,mesh_street_prop,LicenseRef-Original,schizo-game contributors,,,,false,,docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
+SM_PropBreadTray,art/generated/props/meshes/SM_PropBreadTray.fbx,mesh_street_prop,LicenseRef-Original,schizo-game contributors,,,,false,,docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
+SM_PropBreadLoaves,art/generated/props/meshes/SM_PropBreadLoaves.fbx,mesh_street_prop,LicenseRef-Original,schizo-game contributors,,,,false,,docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
+SM_PropBrazier,art/generated/props/meshes/SM_PropBrazier.fbx,mesh_street_prop,LicenseRef-Original,schizo-game contributors,,,,false,,docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
+SM_PropWaterSkin,art/generated/props/meshes/SM_PropWaterSkin.fbx,mesh_street_prop,LicenseRef-Original,schizo-game contributors,,,,false,,docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
+SM_SkyDome,art/generated/props/meshes/SM_SkyDome.fbx,mesh_street_prop,LicenseRef-Original,schizo-game contributors,,,,false,,docs/proposals/invented-ledger-dressing.md; Mesopotamian daily-life material culture [A],A
+Player,art/source/characters/Casual3_Male.gltf,character_model,LicenseRef-QAL-1.0,Quaternius,https://quaternius.com/packs/ultimatedanimatedcharacter.html,2026-09-25,f84ec360f53796287cfdb6082ad82fd76464dc34845759ca7f1f2ee9e7604057,false,,https://quaternius.com/packs/ultimatedanimatedcharacter.html,A
+Npc0,art/source/characters/Worker_Male.gltf,character_model,LicenseRef-QAL-1.0,Quaternius,https://quaternius.com/packs/ultimatedanimatedcharacter.html,2026-09-25,324e2c95c31d11b9b48171d78fe3a0715cb9e58cea77ebc7a5b0de4936bc7b9e,false,,https://quaternius.com/packs/ultimatedanimatedcharacter.html,A
+Npc1,art/source/characters/Worker_Female.gltf,character_model,LicenseRef-QAL-1.0,Quaternius,https://quaternius.com/packs/ultimatedanimatedcharacter.html,2026-09-25,a1cb51a7bde7758884e8e83f7e8569cb6fede8f95bf4cfaf55102f468921c0d9,false,,https://quaternius.com/packs/ultimatedanimatedcharacter.html,A
+Npc2,art/source/characters/Casual_Male.gltf,character_model,LicenseRef-QAL-1.0,Quaternius,https://quaternius.com/packs/ultimatedanimatedcharacter.html,2026-09-25,db66b2424af60d7799760795ca63c8a5be1c8af64e9f134217f0a3ff9e405379,false,,https://quaternius.com/packs/ultimatedanimatedcharacter.html,A
+Npc3,art/source/characters/Casual_Female.gltf,character_model,LicenseRef-QAL-1.0,Quaternius,https://quaternius.com/packs/ultimatedanimatedcharacter.html,2026-09-25,87327963ab0f37d004c7340d130808727f3d67b724c3d41aad01fd63c7d6fc8a,false,,https://quaternius.com/packs/ultimatedanimatedcharacter.html,A
+Npc4,art/source/characters/Casual2_Female.gltf,character_model,LicenseRef-QAL-1.0,Quaternius,https://quaternius.com/packs/ultimatedanimatedcharacter.html,2026-09-25,b614bfe01ae69e0d9dfdfb6ff74fb53abfcc32be59858a9b89fb05ffd3062324,false,,https://quaternius.com/packs/ultimatedanimatedcharacter.html,A
+Npc5,art/source/characters/OldClassy_Male.gltf,character_model,LicenseRef-QAL-1.0,Quaternius,https://quaternius.com/packs/ultimatedanimatedcharacter.html,2026-09-25,9ac226f58ee2f80acb2cd4c66f15cfb210937ee1744b9465425f796aa900d9b8,false,,https://quaternius.com/packs/ultimatedanimatedcharacter.html,A
+Npc6,art/source/characters/OldClassy_Female.gltf,character_model,LicenseRef-QAL-1.0,Quaternius,https://quaternius.com/packs/ultimatedanimatedcharacter.html,2026-09-25,0c116d90c588f357e6537f12bdab5f377f6cb30590f29826092824dc55f7c5eb,false,,https://quaternius.com/packs/ultimatedanimatedcharacter.html,A
+Npc7,art/source/characters/Kimono_Male.gltf,character_model,LicenseRef-QAL-1.0,Quaternius,https://quaternius.com/packs/ultimatedanimatedcharacter.html,2026-09-25,0be982ad6230c46f4277a0bdd77cf6f0af5cbc9319a025a4bdf62ad3ac1dfcf0,false,,https://quaternius.com/packs/ultimatedanimatedcharacter.html,A
+Npc8,art/source/characters/Wizard.gltf,character_model,LicenseRef-QAL-1.0,Quaternius,https://quaternius.com/packs/ultimatedanimatedcharacter.html,2026-09-25,baa9cd2d9f1ab3452d6e47d6efc5d4c6c8381fe16a44fc710df46bf16bc7fce8,false,,https://quaternius.com/packs/ultimatedanimatedcharacter.html,A
