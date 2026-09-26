@@ -82,7 +82,7 @@ INSTANCED = {
     "cities": ("WLA-13", "present through its people, goods, gods and rumours"),
 }
 # Canon that is lore, not mechanics: shown through the codex (DGT-01).
-LORE = {"buildings", "calendar", "flora", "names", "pantheons", "regions", "story",
+LORE = {"buildings", "calendar", "fauna", "flora", "names", "pantheons", "regions", "story",
         "terrain_schemes", "world_lore"}
 
 
