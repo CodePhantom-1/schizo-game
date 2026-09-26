@@ -69,6 +69,15 @@ public:
 	/** The lagoon and sea surface height, cm (the scatter floats its lilies on it). */
 	static float WaterHeight();
 
+	/** V-B5 T4: the irrigation canals' water, 30 cm lower each drought stage (4: 120 cm); the lagoon, the
+	 *  river and the sea stay at WaterHeight(). Pure. */
+	static float CanalWaterZ(int32 Drought);
+	/** Is (X, Y) water of the irrigation canals (the field grid west of the gate), not the river or lagoon? */
+	static bool IsCanalWater(float X, float Y);
+	/** Lowers the canals' water to CanalWaterZ(Drought) (Tick, on a drought change; tests call it). */
+	void SetDrought(int32 Drought);
+	UProceduralMeshComponent* GetCanalWater() const { return CanalWater; }
+
 	/** Tommy's terrain colour of a triangle centred at (X, Y, H) with normal Z Nz (tests pin it). */
 	static FLinearColor SampleTerrainColor(float X, float Y, float H, float Nz, uint32 Seed);
 
@@ -96,6 +105,8 @@ public:
 private:
 	UPROPERTY() TObjectPtr<UProceduralMeshComponent> Terrain;
 	UPROPERTY() TObjectPtr<UProceduralMeshComponent> Water;
+	UPROPERTY() TObjectPtr<UProceduralMeshComponent> CanalWater;
+	int32 ShownDrought = 0;
 	UPROPERTY() TObjectPtr<UProceduralMeshComponent> Solid;
 	UPROPERTY() TObjectPtr<UProceduralMeshComponent> Foliage;
 	UPROPERTY() TObjectPtr<UProceduralMeshComponent> Far;

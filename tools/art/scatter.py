@@ -200,6 +200,9 @@ def regions(world, habitat):
         return [_rect(p, -hw(p), hw(p), -hd(p), hd(p)) for p in places if p["typology"] in OPEN_GROUND]
     if habitat == "precinct":
         return [r for p in places if p["typology"] == "ziggurat" for r in _ring(p, 6.0)]
+    if habitat == "festival":  # V-B5 T4: around the temple of sun and moon and along the Sacred Mound's fronts
+        return ([r for p in places if p["typology"] == "ziggurat" for r in _ring(p, 10.0)]
+                + [_front(p, 0.6, 1.8) for p in buildings if p["quarter"] == "sacred_mound"])
     if habitat == "tombs":
         return [r for p in places if p["quarter"] == "garden_of_tombs" for r in _ring(p, 8.0)]
     if habitat == "camp":

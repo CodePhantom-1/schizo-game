@@ -233,6 +233,8 @@ namespace
 		{ TEXT("smoke"),    FVector(7300.f, 2800.f, 450.f),       FVector(8700.f, 4500.f, 700.f),   false },  // the smithy's chimney
 		{ TEXT("south"),    FVector(24000.f, 3000.f, 700.f),      FVector(24000.f, 13000.f, 4700.f), false },  // the night sky: the zodiac
 		{ TEXT("north"),    FVector(24000.f, 3000.f, 700.f),      FVector(24000.f, -7000.f, 6700.f), false },  // the pole, 31 degrees up
+		{ TEXT("precinct"), FVector(21500.f, 9000.f, 350.f),      FVector(24000.f, 12800.f, 500.f), false },  // the temple front: the festival
+		{ TEXT("canal"),    FVector(-15000.f, 7600.f, 350.f),     FVector(-21000.f, 9000.f, -150.f), false },  // a field canal: the drought's water line
 	};
 
 }

@@ -4,7 +4,9 @@
 #include "Misc/AutomationTest.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "Engine/Engine.h"
+#include "Engine/StaticMesh.h"
 #include "Engine/World.h"
+#include "PhysicsEngine/BodySetup.h"
 #include "EngineUtils.h"
 #include "Misc/FileHelper.h"
 #include "SimCityData.h"
@@ -99,6 +101,36 @@ bool FSimScatter::RunTest(const FString&)
 		if (P != nullptr)
 		{
 			TestFalse(TEXT("no poppies at harvest"), P->IsVisible());
+		}
+		// V-B5 T4: the festival's banners, garlands and lamps stand only on a festival day.
+		TArray<UHierarchicalInstancedStaticMeshComponent*> Festive;
+		for (UHierarchicalInstancedStaticMeshComponent* C : Comps)
+		{
+			const FString N = C->GetName();
+			if (N.StartsWith(TEXT("Scatter_banner")) || N.StartsWith(TEXT("Scatter_garland")) || N.StartsWith(TEXT("Scatter_lamp_cluster")))
+			{
+				Festive.Add(C);
+			}
+		}
+		TestEqual(TEXT("banners, garlands and lamp stands (run ue_import_scatter.py if 0)"), Festive.Num(), 3);
+		auto AllShown = [&Festive](bool bWant)
+		{
+			for (const UHierarchicalInstancedStaticMeshComponent* C : Festive)
+			{
+				if (C->IsVisible() != bWant)
+				{
+					return false;
+				}
+			}
+			return Festive.Num() > 0;
+		};
+		Scatter->ApplyWorldState(0, TEXT("rains"), true);
+		TestTrue(TEXT("a festival day: the banners are up"), AllShown(true));
+		Scatter->ApplyWorldState(0, TEXT("rains"), false);
+		TestTrue(TEXT("the next day: taken down"), AllShown(false));
+		for (const UHierarchicalInstancedStaticMeshComponent* C : Festive)
+		{
+			TestEqual(TEXT("festival props never block (hidden most days)"), C->GetStaticMesh()->GetBodySetup()->AggGeom.GetElementCount(), 0);
 		}
 	}
 	GEngine->DestroyWorldContext(World);

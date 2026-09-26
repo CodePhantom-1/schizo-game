@@ -11,7 +11,8 @@ Roughness 0.9; two-sided; used with instanced static meshes; World Position Offs
 sin(Time x 1.7 + WorldPosition.x x 0.01) x 3 cm x saturate(local z / 300 cm) x VertexColor.a, so it
 sways leaves only and never stones or props (their A is 0). Each mesh: slot 0 = M_Scatter; trees, the
 tamarisk and props block with one simple box; grass, flowers, lilies, reeds and bushes have no
-collision.
+collision. V-B5: wet surfaces darken and gloss (MPC_World.Wet); flame_0 faces (festival lamps) glow while
+MPC_World.Festival is up; festival props never block (hidden most days).
 """
 import csv
 import os
@@ -184,6 +185,32 @@ def scatter_material(mpc):
     C(rough, "", gloss, "A")
     gloss.set_editor_property("const_b", 0.4)
     C(wet, "", gloss, "Alpha")
+    # V-B5 T4 festival lamps: faces of the palette's flame_0 (sRGB R - B = 0.84; every other colour < 0.7) glow
+    # while MPC_World.Festival is up: emissive = colour x saturate((R - B - 0.75) x 20) x Festival x 40.
+    rb = E(unreal.MaterialExpressionSubtract, -700, -250)
+    C(vc, "R", rb, "A")
+    C(vc, "B", rb, "B")
+    shift = E(unreal.MaterialExpressionSubtract, -550, -250)
+    shift.set_editor_property("const_b", 0.75)
+    C(rb, "", shift, "A")
+    steep = E(unreal.MaterialExpressionMultiply, -400, -250)
+    steep.set_editor_property("const_b", 20.0)
+    C(shift, "", steep, "A")
+    flame = E(unreal.MaterialExpressionSaturate, -250, -250)
+    C(steep, "", flame, "")
+    fest = E(unreal.MaterialExpressionCollectionParameter, -400, -400)
+    fest.set_editor_property("collection", mpc)
+    fest.set_editor_property("parameter_name", "Festival")
+    lit = E(unreal.MaterialExpressionMultiply, -100, -300)
+    C(flame, "", lit, "A")
+    C(fest, "", lit, "B")
+    glow = E(unreal.MaterialExpressionMultiply, 0, -200)
+    C(decode, "", glow, "A")
+    C(lit, "", glow, "B")
+    bright = E(unreal.MaterialExpressionMultiply, 150, -200)
+    bright.set_editor_property("const_b", 40.0)
+    C(glow, "", bright, "A")
+    MEL.connect_material_property(bright, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     MEL.connect_material_property(wet_base, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(gloss, "", unreal.MaterialProperty.MP_ROUGHNESS)
     MEL.connect_material_property(wpo, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
@@ -195,7 +222,7 @@ def scatter_material(mpc):
 def blocking_meshes():
     out = set(BLOCKING_EXTRA)
     for f in rows(os.path.join(REPO, "db", "canon", "flora.csv")):
-        if f["group"] in BLOCKING_GROUPS:
+        if f["group"] in BLOCKING_GROUPS and f["seasons"] != "festival":  # hidden most days: never a wall
             out.update(f["meshes"].split(";"))
     return out
 

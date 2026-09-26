@@ -405,9 +405,7 @@ void ASimAtmosphere::Tick(float DeltaSeconds)
 		}
 	}
 	ApplyFx(Live, Hour, Cam);
-	int32 Year = 1, Month = 1, Dom = 1;
-	USimWorldSubsystem::GetSimDateFor(World, Year, Month, Dom);
-	ApplySky(Live, ((Year - 1) * 12 + (Month - 1)) * 30 + (Dom - 1), Hour, Cam);
+	ApplySky(Live, static_cast<int32>(FMath::Max<int64>(0, USimWorldSubsystem::GetSimDayFor(World))), Hour, Cam);
 }
 
 void ASimAtmosphere::Apply()

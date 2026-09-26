@@ -377,6 +377,7 @@ ASimEnvironment::ASimEnvironment()
 	};
 	Terrain = MakeMesh(TEXT("Terrain"), true, true);
 	Water = MakeMesh(TEXT("Water"), false, false);
+	CanalWater = MakeMesh(TEXT("CanalWater"), false, false);
 	Solid = MakeMesh(TEXT("Solid"), true, true);
 	Foliage = MakeMesh(TEXT("Foliage"), false, true);
 	Far = MakeMesh(TEXT("Far"), false, false);
@@ -535,6 +536,27 @@ float ASimEnvironment::WaterHeight()
 	return WaterZ;
 }
 
+float ASimEnvironment::CanalWaterZ(int32 Drought)
+{
+	return WaterZ - 30.f * FMath::Clamp(Drought, 0, 4);
+}
+
+bool ASimEnvironment::IsCanalWater(float X, float Y)
+{
+	// The canal grid (TerrainHeight): X -68,000..-2,500, the cross canal at CanalX and the four at CanalYs
+	// (|Y| <= 21,520); the river runs at RiverY <= -27,000 and the lagoon and sea lie east of the gate.
+	return X > -68500.f && X < -2000.f && FMath::Abs(Y) < 23000.f;
+}
+
+void ASimEnvironment::SetDrought(int32 Drought)
+{
+	ShownDrought = FMath::Clamp(Drought, 0, 4);
+	if (CanalWater != nullptr)
+	{
+		CanalWater->SetRelativeLocation(FVector(0.f, 0.f, CanalWaterZ(ShownDrought) - WaterZ));
+	}
+}
+
 float ASimEnvironment::TerrainHeight(float X, float Y)
 {
 	const float D = CityDist(X, Y);
@@ -664,7 +686,7 @@ void ASimEnvironment::BuildWater()
 	TArray<float> Xs, Ys;
 	AxisCoords(15000.f, 700.f, 50000.f, 1500000.f, 1.1f, Xs);
 	AxisCoords(3000.f, 700.f, 50000.f, 1500000.f, 1.1f, Ys);
-	FSimMeshKit K;
+	FSimMeshKit K, Canals;  // V-B5 T4: the canals' cells apart, so the drought can lower them alone
 	for (int32 j = 0; j + 1 < Ys.Num(); ++j)
 	{
 		for (int32 i = 0; i + 1 < Xs.Num(); ++i)
@@ -677,13 +699,16 @@ void ASimEnvironment::BuildWater()
 			{
 				continue;
 			}
-			K.Quad(FVector(Xs[i], Ys[j], WaterZ), FVector(Xs[i + 1], Ys[j], WaterZ),
+			FSimMeshKit& Into = IsCanalWater((Xs[i] + Xs[i + 1]) * 0.5f, (Ys[j] + Ys[j + 1]) * 0.5f) ? Canals : K;
+			Into.Quad(FVector(Xs[i], Ys[j], WaterZ), FVector(Xs[i + 1], Ys[j], WaterZ),
 				FVector(Xs[i + 1], Ys[j + 1], WaterZ), FVector(Xs[i], Ys[j + 1], WaterZ),
 				FLinearColor::White, FVector::UpVector);
 		}
 	}
 	K.Commit(Water, 0, false);
 	Water->SetMaterial(0, WaterMat);
+	Canals.Commit(CanalWater, 0, false);
+	CanalWater->SetMaterial(0, WaterMat);
 }
 
 void ASimEnvironment::BuildWalls(FSimMeshKit& K, FSimMeshKit& Glow)
@@ -1352,6 +1377,12 @@ void ASimEnvironment::Tick(float DeltaSeconds)
 	if (Hour < 0.f)
 	{
 		return;
+	}
+	// V-B5 T4: the drought drinks the canals (30 cm a stage); the lagoon and the sea stay.
+	const int32 Drought = FMath::Clamp(USimWorldSubsystem::GetSimDroughtFor(this), 0, 4);
+	if (Drought != ShownDrought)
+	{
+		SetDrought(Drought);
 	}
 	// Lamps are lit at dusk (schedules.csv evening_meal_and_lamps) and put out at dawn.
 	const bool bNight = Hour >= 17.6f || Hour < 6.3f;

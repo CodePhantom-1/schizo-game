@@ -135,3 +135,42 @@ bool FSimTerrainLandforms::RunTest(const FString&)
 }
 
 #endif
+
+#if WITH_DEV_AUTOMATION_TESTS
+
+#include "Engine/Engine.h"
+#include "Engine/World.h"
+#include "ProceduralMeshComponent.h"
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimTerrainCanalDrought, "Sim.Terrain.CanalDrought",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+bool FSimTerrainCanalDrought::RunTest(const FString&)
+{
+	// V-B5 T4: the drought drinks the canals, 30 cm a stage; the lagoon, the river and the sea stay.
+	TestEqual(TEXT("drought 0: the canals at the water line"), ASimEnvironment::CanalWaterZ(0), ASimEnvironment::WaterHeight());
+	TestEqual(TEXT("drought 4: 120 cm lower"), ASimEnvironment::CanalWaterZ(4), ASimEnvironment::WaterHeight() - 120.f);
+	TestEqual(TEXT("never below stage 4"), ASimEnvironment::CanalWaterZ(9), ASimEnvironment::WaterHeight() - 120.f);
+	TestTrue(TEXT("a field canal"), ASimEnvironment::IsCanalWater(-30000.f, 9000.f));
+	TestTrue(TEXT("the cross canal"), ASimEnvironment::IsCanalWater(-30000.f, 0.f));
+	TestFalse(TEXT("the river"), ASimEnvironment::IsCanalWater(-30000.f, -39500.f));
+	TestFalse(TEXT("the lagoon"), ASimEnvironment::IsCanalWater(15000.f, 3000.f));
+	TestFalse(TEXT("the sea"), ASimEnvironment::IsCanalWater(60000.f, 0.f));
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, TEXT("SimCanalDroughtTest"));
+	FWorldContext& Ctx = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Ctx.SetCurrentWorld(World);
+	ASimEnvironment* Env = ASimEnvironment::BuildWorld(World);
+	if (TestNotNull(TEXT("the environment"), Env) && TestNotNull(TEXT("the canals' water"), Env->GetCanalWater()))
+	{
+		TestTrue(TEXT("the canals have water"), Env->GetCanalWater()->GetNumSections() > 0 && Env->GetCanalWater()->GetProcMeshSection(0)->ProcVertexBuffer.Num() > 0);
+		Env->SetDrought(4);
+		TestEqual(TEXT("drought 4: the canal water 120 cm lower"), static_cast<float>(Env->GetCanalWater()->GetComponentLocation().Z), -120.f, 0.01f);
+		Env->SetDrought(0);
+		TestEqual(TEXT("the rains: back"), static_cast<float>(Env->GetCanalWater()->GetComponentLocation().Z), 0.f, 0.01f);
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
+#endif

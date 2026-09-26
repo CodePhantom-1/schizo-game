@@ -204,5 +204,46 @@ def sherd_scatter():
     return b.finish()
 
 
-BUILDERS = {"reed_clump": reed_clump, "cattail": cattail, "tamarisk": tamarisk, "saltbush": saltbush,
+# ---- the festival (V-B5 T4): shown only on a festival day (flora.csv seasons "festival") ----
+def banner():
+    """A festival banner: a 4.5 m cedar pole, a cross-bar, a madder cloth with a lapis hem and gold fringe."""
+    b = Builder("banner")
+    b.tube((0, 0, 0), (0, 0, 4.5), 0.06, 0.05, "cedar_1", sides=6)
+    b.tube((-0.65, 0, 4.25), (0.65, 0, 4.25), 0.03, 0.03, "cedar_1", sides=4)
+    b.face([(-0.55, 0.04, 2.3), (0.55, 0.04, 2.3), (0.55, 0.04, 4.2), (-0.55, 0.04, 4.2)], "madder_1")
+    b.face([(-0.55, 0.045, 2.0), (0.55, 0.045, 2.0), (0.55, 0.045, 2.3), (-0.55, 0.045, 2.3)], "lapis_1")
+    for k in range(6):  # the fringe: six gold tassels
+        x = -0.5 + 0.2 * k
+        b.face([(x - 0.03, 0.05, 1.8), (x + 0.03, 0.05, 1.8), (x + 0.03, 0.05, 2.0), (x - 0.03, 0.05, 2.0)], "gold_1")
+    return b.finish()
+
+
+def garland():
+    """A garland: two 2.4 m posts 4 m apart and a sagging string of flowers and leaves between them."""
+    b = Builder("garland")
+    r = b.rng
+    for x in (-2.0, 2.0):
+        b.tube((x, 0, 0), (x, 0, 2.4), 0.05, 0.04, "palm_2", sides=5)
+    colours = ["saffron_0", "madder_2", "cream_0", "leaf_1"]
+    for k in range(11):
+        t = k / 10
+        x, z = -2.0 + 4.0 * t, 2.35 - 0.6 * 4 * t * (1 - t)  # the sag: 60 cm at the middle
+        b.lump((x, 0, z), (0.11, 0.11, 0.1), colours[k % 4] if k % 3 else "leaf_1", jitter=0.25)
+    return b.finish()
+
+
+def lamp_cluster():
+    """A lamp stand: a cedar post and a clay platter carrying three oil lamps, their flames lit."""
+    b = Builder("lamp_cluster")
+    b.tube((0, 0, 0), (0, 0, 1.1), 0.05, 0.04, "cedar_1", sides=5)
+    b.lump((0, 0, 1.13), (0.3, 0.3, 0.05), "ochre_1", jitter=0.05)
+    for k in range(3):
+        a = 2 * math.pi * k / 3
+        x, y = 0.17 * math.cos(a), 0.17 * math.sin(a)
+        b.lump((x, y, 1.2), (0.07, 0.05, 0.035), "ochre_2", jitter=0.08)
+        b.lump((x, y, 1.3), (0.05, 0.05, 0.1), "flame_0", jitter=0.1)
+    return b.finish()
+
+
+BUILDERS = {"banner": banner, "garland": garland, "lamp_cluster": lamp_cluster, "reed_clump": reed_clump, "cattail": cattail, "tamarisk": tamarisk, "saltbush": saltbush,
             "palm_dead": palm_dead, "sherd_scatter": sherd_scatter}

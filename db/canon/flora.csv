@@ -22,3 +22,6 @@ barley_shoots,Barley shoots,crop,field,sowing,1,crops_wheat_a,6.0,0.8,1.2,A,worl
 barley_ripe,Ripe barley,crop,field,harvest,0,crops_wheat_b,6.0,0.85,1.15,A,world-art-plan §6 (strip fields); §7 (barley); INVENTED density
 bare_rows,Bare furrow rows,crop,field,rains;vintage,0,crops_dirt_row,3.0,0.9,1.1,A,world-art-plan §6 (strip fields between crops)
 sherds,Potsherds,prop,tell_top,all,0,sherd_scatter,4.0,0.8,1.3,A,world-art-plan §6 (tells: sherd-strewn mounds)
+festival_banner,Festival banner,prop,festival,festival,0,banner,1.5,0.9,1.1,A,"festivals.csv (the procession to the temple of sun and moon); INVENTED look and density (invented-ledger-atmosphere)"
+festival_garland,Festival garland,prop,festival,festival,0,garland,0.8,0.9,1.1,A,"festivals.csv; INVENTED look and density (invented-ledger-atmosphere)"
+festival_lamps,Festival lamp stand,prop,festival,festival,0,lamp_cluster,1.5,0.9,1.2,A,"festivals.csv; customs.csv first_portion_to_the_gods (lamps at the offering); INVENTED look and density (invented-ledger-atmosphere)"

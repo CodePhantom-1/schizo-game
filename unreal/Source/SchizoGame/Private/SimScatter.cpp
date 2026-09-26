@@ -2,6 +2,7 @@
 // the kernel. scatter.csv is written by tools/art/scatter.py (checked current in CI); the meshes by
 // tools/art/ue_import_scatter.py. A fresh clone before that import stands nothing and logs one line.
 #include "SimScatter.h"
+#include "sim/CApi.h"
 
 #include "SimCityData.h"
 #include "SimEnvironment.h"
@@ -18,6 +19,16 @@
 #include "Misc/PackageName.h"
 #include "Misc/Paths.h"
 #include "PhysicsEngine/BodySetup.h"
+
+namespace
+{
+	/** Today is one of festivals.csv's days (the kernel's calendar). */
+	bool IsFestivalDay(UWorld* World)
+	{
+		SimWorld* H = USimWorldSubsystem::GetSimHandleFor(World);
+		return H != nullptr && sim_world_is_festival(H) == 1;
+	}
+}
 
 DEFINE_LOG_CATEGORY_STATIC(LogSimScatter, Log, All);
 
@@ -173,7 +184,7 @@ FSimScatterResult ASimScatter::BuildScatter(UWorld* World)
 		return FSimScatterResult();
 	}
 	S->LastResult = S->Build();
-	S->ApplyWorldState(FMath::Max(0, USimWorldSubsystem::GetSimDroughtFor(World)), USimWorldSubsystem::GetSimSeasonFor(World));
+	S->ApplyWorldState(FMath::Max(0, USimWorldSubsystem::GetSimDroughtFor(World)), USimWorldSubsystem::GetSimSeasonFor(World), IsFestivalDay(World));
 	return S->LastResult;
 }
 
@@ -403,7 +414,7 @@ void ASimScatter::ScatterCountryside(FSimScatterResult& R)
 	}
 }
 
-void ASimScatter::ApplyWorldState(int32 DroughtStage, const FString& Season)
+void ASimScatter::ApplyWorldState(int32 DroughtStage, const FString& Season, bool bFestival)
 {
 	Wither = FMath::Clamp(DroughtStage / 4.f, 0.f, 1.f);
 	LastDrought = DroughtStage;
@@ -414,7 +425,9 @@ void ASimScatter::ApplyWorldState(int32 DroughtStage, const FString& Season)
 	}
 	for (int32 i = 0; i < Hisms.Num(); ++i)
 	{
-		const bool bInSeason = HismSeasons[i].Num() == 0 || Season.IsEmpty() || HismSeasons[i].Contains(Season);
+		const bool bFestivalOnly = HismSeasons[i].Num() == 1 && HismSeasons[i][0] == TEXT("festival");
+		const bool bInSeason = bFestivalOnly ? bFestival
+			: HismSeasons[i].Num() == 0 || Season.IsEmpty() || HismSeasons[i].Contains(Season);
 		Hisms[i]->SetVisibility(bInSeason);
 	}
 }
@@ -433,6 +446,6 @@ void ASimScatter::Tick(float DeltaSeconds)
 	if (Day != LastDay || Drought != LastDrought)
 	{
 		LastDay = Day;
-		ApplyWorldState(FMath::Max(0, Drought), USimWorldSubsystem::GetSimSeasonFor(World));
+		ApplyWorldState(FMath::Max(0, Drought), USimWorldSubsystem::GetSimSeasonFor(World), IsFestivalDay(World));
 	}
 }

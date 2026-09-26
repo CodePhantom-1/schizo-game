@@ -32,8 +32,9 @@ public:
 	 *  environment (its terrain is the ground). A second call returns the standing scatter's result. */
 	static FSimScatterResult BuildScatter(UWorld* World);
 
-	/** Wither = clamp(DroughtStage / 4); the HISMs whose seasons do not include Season are hidden. */
-	void ApplyWorldState(int32 DroughtStage, const FString& Season);
+	/** Wither = clamp(DroughtStage / 4); the HISMs whose seasons do not include Season are hidden; the
+	 *  festival's (flora.csv seasons "festival": banners, garlands, lamps) show only when bFestival. */
+	void ApplyWorldState(int32 DroughtStage, const FString& Season, bool bFestival = false);
 
 	/** The Wither last applied (what MPC_World holds). */
 	float GetWither() const { return Wither; }

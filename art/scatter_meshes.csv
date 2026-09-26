@@ -39,3 +39,6 @@ crops_wheat_a,kenney_nature_kit,Models/GLTF format/crops_wheatStageA.glb,1,800,0
 crops_wheat_b,kenney_nature_kit,Models/GLTF format/crops_wheatStageB.glb,0,600,1.0
 crops_dirt_row,kenney_nature_kit,Models/GLTF format/crops_dirtRow.glb,0,300,2.0
 sherd_scatter,code,sherd_scatter,0,300,
+banner,code,banner,0,600,
+garland,code,garland,0,1200,
+lamp_cluster,code,lamp_cluster,0,800,

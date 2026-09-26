@@ -8,7 +8,8 @@ FLORA = ROOT / "db" / "canon" / "flora.csv"
 MESHES = ROOT / "art" / "scatter_meshes.csv"
 
 HABITATS = {"shore", "water", "yard", "garden", "street_edge", "open", "wall_foot", "roof", "precinct", "tombs", "camp",
-            "levee", "field", "bank", "desert", "tell_top"}  # the last five: the countryside (ASimScatter)
+            "levee", "field", "bank", "desert", "tell_top",  # these five: the countryside (ASimScatter)
+            "festival"}  # V-B5: shown only on a festival day
 GROUPS = {"tree", "shrub", "grass", "water", "flower", "crop", "prop"}
 # world-art-plan §10 guard rails: substring test on the source file name
 BANNED = ("barrel", "crate", "cactus", "pine", "oak", "mushroom", "windmill", "watermill", "chicken")
@@ -36,8 +37,9 @@ class FloraTest(unittest.TestCase):
             with self.subTest(r["id"]):
                 self.assertIn(r["group"], GROUPS)
                 self.assertTrue(set(r["habitats"].split(";")) <= HABITATS, r["habitats"])
-                if r["seasons"] != "all":
+                if r["seasons"] not in ("all", "festival"):  # "festival": ASimScatter shows it on festival days
                     self.assertTrue(set(r["seasons"].split(";")) <= self.seasons, r["seasons"])
+                self.assertEqual(r["seasons"] == "festival", r["habitats"] == "festival", r["id"])
                 self.assertIn(r["withers"], {"0", "1"})
                 self.assertGreater(float(r["per_100m2"]), 0)
                 self.assertLessEqual(float(r["scale_min"]), float(r["scale_max"]))
