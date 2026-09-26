@@ -1,3 +1,37 @@
+# The asset pipeline (Stage V batch 1): generated buildings
+
+Every building in the crescent is generated from its `places.csv` row: a unique, weathered,
+trade-readable low-poly mesh on one trim atlas. The kit below stays as the fallback (a fresh clone
+before the import, or a place with no generated mesh). Run from the repo root, in order:
+
+```
+python3 tools/art/sources.py                        # 0. fetch art/sources.csv (Poly Haven, ambientCG, Kenney, KayKit) -> art/source/ (gitignored)
+python3 tools/art/license_gate.py --write-credits   # 1. licence gate (CI runs it) + docs/credits.md
+python3 tools/art/trim_atlas.py                     # 2. palette-locked trim atlas: 16 materials x 4 wear -> art/generated/tex/T_Trim.png
+python3 tools/art/building_grammar.py               # 3. places.csv -> art/generated/buildings/specs.json (the recipe per building)
+nice -n 19 ~/.local/bin/blender -b --factory-startup -P tools/art/building_mesh.py -- [--sheet]   # 4. GLB per building (+ art/review/buildings_contact.png)
+~/.local/bin/blender -b --factory-startup -P tools/art/check_buildings.py      # 5. gate: every GLB present, in budget, doorway open
+~/UnrealEngine/Engine/Binaries/Linux/UnrealEditor-Cmd "$PWD/unreal/SchizoGame.uproject" \
+    -run=pythonscript -script="$PWD/tools/art/ue_import_buildings.py"           # 6. /Game/Art/Buildings: SM_B_<place>, T_Trim, M_Building
+```
+
+- **Palette** `art/palette.csv` (64 colours); `stylize.py` locks every texture to it (blur, box
+  downscale, no-dither quantize) so photos and procedural cells read as one hand.
+- **Atlas** 8x8 cells of 256 px, row-major `MATERIALS x WEAR` (`trim_cells.json`); photo cells from
+  the CC0 sources, procedural ones for cone mosaic, glazed lapis, ochre bands, textiles, goat hair.
+- **Grammar** (`building_grammar.py`, tested in `tools/tests/test_art_building_grammar.py`): plinth
+  and wall finish by wealth, wear by a hash of the id and wealth, palm-beam ends, parapets, roof
+  shelters, lintels, windows, and a trade marker for every non-home (ovens, kilns, chimneys and
+  soot, looms, dye vats, racks, jars, bales, boats...). Reed halls are gapped barrel vaults, tents
+  a goat-hair ridge propped at the door. The door is where `SimStreetBuilder` puts the door slot,
+  and the doorway is walkable (tested: nothing stands in it above a 0.45 m step).
+- **Mesh contract** (`building_mesh.py`): UV0 metres / tile, UV1 = the atlas cell, vertex RGB =
+  tint x grime at half (M_Building x2), A = drought wear. `M_Building`'s `DroughtWear` scalar
+  (default 0) blends every earthen wall toward its cracked cell.
+- **In game:** `SimStreetBuilder` places `SM_B_<place_id>` (collision complex-as-simple) where it
+  exists, else the kit room; `Sim.StreetBuildings` checks both paths give the same door slots. The
+  first boot after an import builds the meshes into the DDC (the menu takes longer once).
+
 # Mudbrick house kit (T8)
 
 Procedural, code-built modular kit for the City of the Moon street, run
