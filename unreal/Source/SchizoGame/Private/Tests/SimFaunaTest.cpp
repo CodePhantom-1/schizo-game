@@ -139,3 +139,96 @@ bool FSimFaunaMissing::RunTest(const FString&)
 }
 
 #endif
+
+#if WITH_DEV_AUTOMATION_TESTS
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimFaunaBirds, "Sim.Fauna.Birds",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+bool FSimFaunaBirds::RunTest(const FString&)
+{
+	FFaunaWorld W;
+	W.Fauna->HourOverride = 10.f;
+	W.Fauna->Populate(6, 300);
+	const TArray<FSimFlock>& Flocks = W.Fauna->GetFlocks();
+	int32 Birds = 0;
+	for (const FSimFlock& F : Flocks)
+	{
+		Birds += F.Pos.Num();
+	}
+	AddInfo(FString::Printf(TEXT("%d flocks, %d birds and fish"), Flocks.Num(), Birds));
+	TestTrue(TEXT("flocks stand and fly"), Flocks.Num() > 0);
+	TestTrue(TEXT("within the 600-bird budget"), Birds > 0 && Birds <= 600);
+
+	// 1,000 ticks: every bird keeps within 1.5 x its flock's radius of the anchor.
+	for (int32 t = 0; t < 1000; ++t)
+	{
+		W.Fauna->Step(0.2f);
+	}
+	int32 Far = 0;
+	for (const FSimFlock& F : Flocks)
+	{
+		for (const FVector& P : F.Pos)
+		{
+			Far += FVector2D::Distance(FVector2D(P), FVector2D(F.Anchor)) > F.Radius * 1.5f;
+		}
+	}
+	TestEqual(TEXT("every bird keeps to its flock's ground"), Far, 0);
+
+	// The player walks up to a standing flock: within 1 s its mean height rises >= 2 m (Review Focus 2).
+	const int32 Standing = Flocks.IndexOfByPredicate([&W](const FSimFlock& F)
+	{
+		return F.bGrounded && W.Fauna->GetSpecies()[F.Species].Id != TEXT("carp") && F.Pos.Num() > 0;
+	});
+	if (TestTrue(TEXT("a standing flock"), Standing != INDEX_NONE))
+	{
+		auto MeanZ = [&Flocks, Standing]()
+		{
+			float Z = 0.f;
+			for (const FVector& P : Flocks[Standing].Pos)
+			{
+				Z += P.Z / Flocks[Standing].Pos.Num();
+			}
+			return Z;
+		};
+		const float Before = MeanZ();
+		W.Fauna->PlayerOverride = FVector2D(Flocks[Standing].Pos[0]);
+		for (int32 t = 0; t < 5; ++t)
+		{
+			W.Fauna->Step(0.2f);
+		}
+		TestTrue(FString::Printf(TEXT("the flock lifts (%.0f -> %.0f cm)"), Before, MeanZ()), MeanZ() - Before >= 200.f);
+		TestTrue(TEXT("and stays up while scattered"), Flocks[Standing].LiftTimer > 0.f);
+		W.Fauna->PlayerOverride.Reset();
+		for (int32 t = 0; t < 150; ++t)  // 30 s after the player has gone: it has settled
+		{
+			W.Fauna->Step(0.2f);
+		}
+		TestTrue(TEXT("it resettles after 20 s"), Flocks[Standing].LiftTimer <= 0.f && MeanZ() - Before < 50.f);
+	}
+
+	// Deterministic: the same day again stands the same first flock.
+	TArray<FVector> First;
+	W.Fauna->Populate(7, 300);
+	for (int32 t = 0; t < 50; ++t)
+	{
+		W.Fauna->Step(0.2f);
+	}
+	if (Flocks.Num() > 0)
+	{
+		First = Flocks[0].Pos;
+	}
+	W.Fauna->Populate(7, 300);
+	for (int32 t = 0; t < 50; ++t)
+	{
+		W.Fauna->Step(0.2f);
+	}
+	int32 Same = 0;
+	for (int32 i = 0; Flocks.Num() > 0 && i < First.Num() && i < Flocks[0].Pos.Num(); ++i)
+	{
+		Same += Flocks[0].Pos[i].Equals(First[i], 0.5);
+	}
+	TestTrue(TEXT("deterministic for a fixed day"), First.Num() > 0 && Same == First.Num());
+	return true;
+}
+
+#endif

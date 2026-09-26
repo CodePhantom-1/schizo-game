@@ -9,8 +9,10 @@
 #include "sim/CApiWild.h"
 
 #include "Animation/AnimationAsset.h"
+#include "Components/InstancedStaticMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
+#include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "Camera/PlayerCameraManager.h"
@@ -86,7 +88,7 @@ bool FSimFaunaSpecies::IsActive(float Hour) const
 ASimFauna::ASimFauna()
 {
 	PrimaryActorTick.bCanEverTick = true;
-	PrimaryActorTick.TickInterval = 0.2f;  // the herd thinks at 5 Hz
+	PrimaryActorTick.TickInterval = 0.f;  // every frame: walking and flying must be smooth
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 }
 
@@ -328,13 +330,31 @@ void ASimFauna::Populate(int32 SimDay, int32 HerdHead)
 	Meshes.Reset();
 	Animals.Reset();
 	CurrentClip.Reset();
+	for (UInstancedStaticMeshComponent* C : FlockMeshes)
+	{
+		if (C != nullptr)
+		{
+			C->DestroyComponent();
+		}
+	}
+	FlockMeshes.Reset();
+	Flocks.Reset();
 	LoadSpecies();
 	LastDay = SimDay;
 	LastHerd = HerdHead;
+	StepCount = 0;  // every random draw hashes the step: the same day plays out the same
 	for (int32 s = 0; s < Species.Num(); ++s)
 	{
 		const FSimFaunaSpecies& S = Species[s];
-		if (!Skeletal(S) || SpeciesMesh[s] == nullptr)
+		if (!Skeletal(S))
+		{
+			if (!S.Model.IsEmpty())
+			{
+				AddFlocks(s, SimDay);  // the birds and the carp (Task 4)
+			}
+			continue;
+		}
+		if (SpeciesMesh[s] == nullptr)
 		{
 			continue;
 		}
@@ -386,7 +406,13 @@ void ASimFauna::Populate(int32 SimDay, int32 HerdHead)
 		}
 	}
 	Step(0.f);
-	UE_LOG(LogSimFauna, Log, TEXT("fauna: day %d, herd %d head: %d animals."), SimDay, HerdHead, Animals.Num());
+	int32 Birds = 0;
+	for (const FSimFlock& F : Flocks)
+	{
+		Birds += F.Pos.Num();
+	}
+	UE_LOG(LogSimFauna, Log, TEXT("fauna: day %d, herd %d head: %d animals, %d birds and fish in %d flocks."),
+		SimDay, HerdHead, Animals.Num(), Birds, Flocks.Num());
 }
 
 float ASimFauna::CurrentHour() const
@@ -544,6 +570,7 @@ void ASimFauna::Step(float Dt)
 			Play(i, A.State);
 		}
 	}
+	StepFlocks(Dt, Hour, Player);
 }
 
 int32 ASimFauna::CountOf(FName SpeciesId, bool bVisibleOnly) const
@@ -574,4 +601,290 @@ void ASimFauna::Tick(float DeltaSeconds)
 		}
 	}
 	Step(DeltaSeconds);
+}
+
+// --- Task 4: the birds (and the carp) -------------------------------------------------------------------
+
+namespace
+{
+	struct FFlockKind
+	{
+		float Radius, MinZ, MaxZ, FlapHz;
+		bool bGrounded, bSoar;
+	};
+
+	/** How each bird species keeps its flock (INVENTED; ledger). */
+	FFlockKind FlockKindOf(const FName Id)
+	{
+		const FString S = Id.ToString();
+		if (S == TEXT("dove")) { return { 2500.f, 300.f, 1500.f, 4.f, false, false }; }
+		if (S == TEXT("vulture")) { return { 4000.f, 3000.f, 6000.f, 0.4f, false, true }; }
+		if (S == TEXT("heron")) { return { 600.f, 0.f, 0.f, 2.f, true, false }; }
+		if (S == TEXT("flamingo")) { return { 900.f, 0.f, 0.f, 2.5f, true, false }; }
+		if (S == TEXT("goose") || S == TEXT("duck")) { return { 700.f, 0.f, 0.f, 3.f, true, false }; }
+		if (S == TEXT("carp")) { return { 600.f, 0.f, 0.f, 0.f, true, false }; }
+		if (S == TEXT("sparrow")) { return { 500.f, 0.f, 0.f, 8.f, true, false }; }
+		return { 600.f, 0.f, 0.f, 5.f, true, false };  // crow
+	}
+
+	int32 FlockGroups(const FString& Habitat)
+	{
+		if (Habitat == TEXT("roof") || Habitat == TEXT("street_edge")) { return 3; }
+		if (Habitat == TEXT("precinct") || Habitat == TEXT("water") || Habitat == TEXT("shore") || Habitat == TEXT("open")) { return 2; }
+		if (Habitat == TEXT("tombs")) { return 1; }
+		return 0;
+	}
+
+	constexpr float LiftCm = 400.f;      // the player this close to a standing bird: the flock lifts
+	constexpr float ResettleS = 20.f;    // ...and comes down this long after the player has gone
+	constexpr float SeparationCm = 150.f;
+	constexpr int32 BirdBudget = 600;
+}
+
+void ASimFauna::AddFlocks(int32 SpeciesIndex, int32 SimDay)
+{
+	const FSimFaunaSpecies& S = Species[SpeciesIndex];
+	const FString MeshName = S.Model.StartsWith(TEXT("fish_")) ? TEXT("SM_Fish_") + S.Model.Mid(5) : TEXT("SM_Bird_") + S.Model.Mid(5);
+	const FString Pkg = FString::Printf(TEXT("%s/%s"), FaunaDir, *MeshName);
+	if (!bUseFaunaMeshes || ForceMissingModels.Contains(S.Model) || !FPackageName::DoesPackageExist(Pkg))
+	{
+		return;
+	}
+	UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("%s.%s"), *Pkg, *MeshName));
+	if (Mesh == nullptr)
+	{
+		return;
+	}
+	const FFlockKind K = FlockKindOf(S.Id);
+	const FSimCityFrame& Fr = SimCityData::Frame();
+	TArray<FSimDoorSlotInfo> Slots;
+	ASimStreetBuilder::GetAllDoorSlots(Slots);
+	Slots.Sort([](const FSimDoorSlotInfo& A, const FSimDoorSlotInfo& B) { return A.PlaceId.LexicalLess(B.PlaceId); });
+	int32 Birds = 0;
+	for (const FSimFlock& F : Flocks)
+	{
+		Birds += F.Pos.Num();
+	}
+	for (int32 h = 0; h < S.Habitats.Num(); ++h)
+	{
+		const FString& H = S.Habitats[h];
+		for (int32 g = 0; g < FlockGroups(H); ++g)
+		{
+			const uint32 Seed = HashCombine(GetTypeHash(S.Id), static_cast<uint32>(SimDay * 53 + h * 7 + g));
+			const float R0 = SimHash01(Seed, 1), R1 = SimHash01(Seed, 2);
+			FVector2D At;
+			float Ground = 0.f;
+			if (H == TEXT("water") || H == TEXT("shore"))
+			{
+				const float Rad = H == TEXT("water") ? Fr.LagoonR * (0.3f + 0.4f * R1) : Fr.LagoonR - 250.f;
+				At = Fr.Center + Along(360.f * R0) * Rad;
+				Ground = H == TEXT("water") ? ASimEnvironment::WaterHeight() : ASimEnvironment::TerrainHeight(At.X, At.Y);
+			}
+			else if (H == TEXT("precinct") || H == TEXT("tombs"))
+			{
+				const FSimCityPlace* P = nullptr;
+				for (const FSimCityPlace& X : SimCityData::Places())
+				{
+					if (H == TEXT("precinct") ? X.Typology == TEXT("ziggurat") : X.Quarter == TEXT("garden_of_tombs"))
+					{
+						P = &X;
+						break;
+					}
+				}
+				if (P == nullptr)
+				{
+					continue;
+				}
+				At = P->Center + Along(360.f * R0) * 800.f * R1;
+				Ground = ASimEnvironment::TerrainHeight(At.X, At.Y);
+			}
+			else if (Slots.Num() > 0)  // roof, street_edge, open: over and before the houses
+			{
+				const FSimDoorSlotInfo& D = Slots[FMath::Min(Slots.Num() - 1, FMath::FloorToInt(R0 * Slots.Num()))];
+				At = FVector2D(D.Location) + Along(D.OutwardYawDeg) * (H == TEXT("roof") ? -400.f : 300.f);
+				Ground = H == TEXT("roof") ? 300.f : ASimEnvironment::TerrainHeight(At.X, At.Y);
+			}
+			else
+			{
+				continue;
+			}
+			const int32 Size = S.GroupMin + FMath::FloorToInt(SimHash01(Seed, 3) * (S.GroupMax - S.GroupMin + 1));
+			if (Size <= 0 || Birds + Size > BirdBudget)
+			{
+				continue;
+			}
+			FSimFlock& F = Flocks.AddDefaulted_GetRef();
+			F.Species = SpeciesIndex;
+			F.Anchor = FVector(At, Ground);
+			F.Radius = H == TEXT("roof") ? 900.f : K.Radius;
+			F.MinZ = K.MinZ;
+			F.MaxZ = H == TEXT("roof") ? 800.f : K.MaxZ;
+			F.FlapHz = K.FlapHz;
+			F.bGrounded = K.bGrounded;
+			F.bSoar = K.bSoar;
+			UInstancedStaticMeshComponent* Ism = NewObject<UInstancedStaticMeshComponent>(this,
+				FName(*FString::Printf(TEXT("Flock_%s_%d"), *S.Id.ToString(), Flocks.Num() - 1)));
+			Ism->SetupAttachment(RootComponent);
+			Ism->SetStaticMesh(Mesh);
+			Ism->NumCustomDataFloats = 1;
+			Ism->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			Ism->SetCastShadow(false);
+			Ism->RegisterComponent();
+			AddInstanceComponent(Ism);
+			FlockMeshes.Add(Ism);
+			for (int32 b = 0; b < Size; ++b)
+			{
+				const float A = 360.f * SimHash01(Seed, 10 + b), D = F.Radius * 0.6f * FMath::Sqrt(SimHash01(Seed, 200 + b));
+				const float Z = F.bGrounded ? 0.f : FMath::Lerp(F.MinZ, F.MaxZ, SimHash01(Seed, 400 + b));
+				F.Pos.Add(FVector(At + Along(A) * D, F.Anchor.Z + Z));
+				F.Vel.Add(F.bGrounded ? FVector::ZeroVector : FVector(Along(A + 90.f) * 400.f, 0.f));
+				Ism->AddInstance(FTransform(F.Pos.Last()), true);
+				Ism->SetCustomDataValue(b, 0, F.bGrounded ? 0.f : F.FlapHz, false);
+			}
+			Birds += Size;
+		}
+	}
+}
+
+void ASimFauna::StepFlocks(float Dt, float Hour, FVector2D Player)
+{
+	if (Dt <= 0.f)
+	{
+		return;
+	}
+	for (int32 f = 0; f < Flocks.Num(); ++f)
+	{
+		FSimFlock& F = Flocks[f];
+		const FSimFaunaSpecies& S = Species[F.Species];
+		const bool bActive = S.IsActive(Hour);
+		const bool bCarp = S.Id == TEXT("carp");
+		UInstancedStaticMeshComponent* Ism = FlockMeshes[f];
+		// Outside its hours a flying flock is gone to roost; a standing one sleeps where it stands.
+		if (Ism != nullptr)
+		{
+			Ism->SetVisibility(bActive || F.bGrounded);
+		}
+		if (!bActive)
+		{
+			continue;
+		}
+		const int32 N = F.Pos.Num();
+		// Scatter: the player walks up to a standing flock -> it lifts, and settles 20 s after they have gone.
+		if (F.bGrounded && !bCarp)
+		{
+			bool bNear = false;
+			for (const FVector& P : F.Pos)
+			{
+				bNear |= FVector2D::Distance(FVector2D(P), Player) < LiftCm;
+			}
+			if (bNear)
+			{
+				if (F.LiftTimer <= 0.f)
+				{
+					OnAnimalCue.Broadcast(S.Id, TEXT("lift"));
+					for (int32 i = 0; i < N; ++i)
+					{
+						const FVector2D Away = (FVector2D(F.Pos[i]) - Player).GetSafeNormal();
+						F.Vel[i] = FVector(Away * 300.f, 450.f);
+					}
+				}
+				F.LiftTimer = ResettleS;
+			}
+			else if (F.LiftTimer > 0.f)
+			{
+				F.LiftTimer = FMath::Max(0.f, F.LiftTimer - Dt);
+			}
+		}
+		const bool bFlying = !F.bGrounded || F.LiftTimer > 0.f;
+		const float MinZ = F.bGrounded ? 300.f : F.MinZ, MaxZ = F.bGrounded ? 1500.f : F.MaxZ;
+		FVector Centre = FVector::ZeroVector, AvgVel = FVector::ZeroVector;
+		for (int32 i = 0; i < N; ++i)
+		{
+			Centre += F.Pos[i] / N;
+			AvgVel += F.Vel[i] / N;
+		}
+		for (int32 i = 0; i < N; ++i)
+		{
+			FVector& P = F.Pos[i];
+			FVector& V = F.Vel[i];
+			const uint32 Salt = StepCount * 131u + static_cast<uint32>(f * 1009 + i);
+			if (bFlying)
+			{
+				FVector Sep = FVector::ZeroVector;
+				for (int32 j = 0; j < N; ++j)
+				{
+					const FVector D = P - F.Pos[j];
+					const float L = D.Size();
+					if (j != i && L < SeparationCm && L > 1.f)
+					{
+						Sep += D / (L * L) * SeparationCm;
+					}
+				}
+				FVector Steer = Sep * 300.f + (AvgVel - V) * 0.5f + (Centre - P) * 0.3f;
+				const FVector2D FromAnchor = FVector2D(P) - FVector2D(F.Anchor);
+				const float Out = FromAnchor.Size() / F.Radius;
+				if (Out > 0.7f)
+				{
+					Steer += FVector(-FromAnchor.GetSafeNormal() * 600.f * (Out - 0.7f) * 4.f, 0.f);  // the leash
+				}
+				if (F.bSoar)
+				{
+					Steer += FVector(FVector2D(-FromAnchor.Y, FromAnchor.X).GetSafeNormal() * 200.f, 0.f);  // wide circles
+				}
+				const float Z = P.Z - F.Anchor.Z;
+				Steer.Z += Z < MinZ ? (MinZ - Z) * 2.f : (Z > MaxZ ? (MaxZ - Z) * 2.f : 0.f);
+				Steer += FVector(SimHash01(Salt, 1) - 0.5f, SimHash01(Salt, 2) - 0.5f, (SimHash01(Salt, 3) - 0.5f) * 0.3f) * 300.f;
+				V += Steer * Dt;
+				const float Speed = V.Size(), Lo = F.bSoar ? 500.f : 300.f, Hi = F.bSoar ? 800.f : 900.f;
+				if (Speed > Hi) { V *= Hi / Speed; }
+				else if (Speed < Lo && Speed > 1.f) { V *= Lo / Speed; }
+				P += V * Dt;
+			}
+			else if (F.bGrounded)
+			{
+				// Standing, wading, floating or pecking: a slow wander, and down to the ground after a flight.
+				const float Z = P.Z - F.Anchor.Z;
+				if (Z > 1.f)
+				{
+					P.Z = F.Anchor.Z + FMath::Max(0.f, Z - 250.f * Dt);
+					P += FVector(FVector2D(V) * Dt * 0.5f, 0.f);
+					V *= 0.9f;
+				}
+				else
+				{
+					P.Z = F.Anchor.Z;
+					if (SimHash01(Salt, 4) < 0.02f)
+					{
+						V = FVector(Along(360.f * SimHash01(Salt, 5)) * 30.f, 0.f);
+					}
+					P += FVector(FVector2D(V) * Dt, 0.f);
+				}
+			}
+			// Carp: under the surface, one leaps now and then.
+			float Draw = P.Z;
+			if (bCarp)
+			{
+				const float Phase = FMath::Fmod(Hour * 3600.f / 7.f + i * 1.7f + f * 3.1f, 1.f);  // a leap every 7 s (sim time), staggered
+				Draw = F.Anchor.Z - 40.f + (Phase < 0.12f ? 120.f * FMath::Sin(Phase / 0.12f * PI) : 0.f);
+			}
+			// Never out of the flock's ground: 1.2 x its radius (the tests allow 1.5).
+			const FVector2D Off = FVector2D(P) - FVector2D(F.Anchor);
+			if (Off.Size() > F.Radius * 1.2f)
+			{
+				const FVector2D In = FVector2D(F.Anchor) + Off.GetSafeNormal() * F.Radius * 1.2f;
+				P.X = In.X;
+				P.Y = In.Y;
+			}
+			if (Ism != nullptr)
+			{
+				const float Yaw = FVector2D(V).SizeSquared() > 1.f ? FMath::RadiansToDegrees(FMath::Atan2(V.Y, V.X)) : 360.f * SimHash01(f, i, 7);
+				Ism->UpdateInstanceTransform(i, FTransform(FRotator(0.f, Yaw, 0.f), FVector(P.X, P.Y, Draw)), true, false, true);
+				Ism->SetCustomDataValue(i, 0, bFlying ? F.FlapHz : 0.f, false);
+			}
+		}
+		if (Ism != nullptr)
+		{
+			Ism->MarkRenderStateDirty();
+		}
+	}
 }

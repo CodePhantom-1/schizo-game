@@ -11,6 +11,7 @@
 #include "SimFauna.generated.h"
 
 class UAnimationAsset;
+class UInstancedStaticMeshComponent;
 class USkeletalMesh;
 class USkeletalMeshComponent;
 
@@ -41,6 +42,20 @@ struct FSimAnimal
 	bool bVisible = true;
 };
 
+/** A flock of birds (or a school of carp): classic boids round an anchor, one instanced mesh (Task 4). */
+struct FSimFlock
+{
+	int32 Species = INDEX_NONE;
+	FVector Anchor = FVector::ZeroVector;  // z: the ground or water the flock stands on
+	float Radius = 1000.f;
+	float MinZ = 0.f, MaxZ = 0.f;          // the flying band above Anchor.Z (0, 0: it stands)
+	float FlapHz = 3.f;
+	bool bGrounded = false;                // stands/floats until scattered (waders, fowl, crows, sparrows)
+	bool bSoar = false;                    // wide circles (vultures)
+	float LiftTimer = 0.f;                 // > 0: scattered, flying; lands when it runs out
+	TArray<FVector> Pos, Vel;
+};
+
 DECLARE_MULTICAST_DELEGATE_TwoParams(FSimAnimalCue, FName /*Species*/, FName /*Cue: flee, bark*/);
 
 UCLASS()
@@ -57,7 +72,7 @@ public:
 	/** (Re)spawns every animal for a sim day and a kernel herd head count. Deterministic in both. */
 	void Populate(int32 SimDay, int32 HerdHead);
 
-	/** Advances every animal by Dt seconds (the 5 Hz tick; tests call it directly). */
+	/** Advances every animal and flock by Dt seconds (every frame; tests call it directly). */
 	void Step(float Dt);
 
 	/** Tests: fix the hour and the player's position (negative hour / unset: read the world). */
@@ -70,6 +85,7 @@ public:
 	static TSet<FString> ForceMissingModels;
 
 	const TArray<FSimAnimal>& GetAnimals() const { return Animals; }
+	const TArray<FSimFlock>& GetFlocks() const { return Flocks; }
 	const TArray<FSimFaunaSpecies>& GetSpecies() const { return Species; }
 	int32 CountOf(FName SpeciesId, bool bVisibleOnly = false) const;
 
@@ -83,6 +99,8 @@ private:
 	TArray<TPair<FVector2D, float>> HomesFor(const FSimFaunaSpecies& S, int32 SpeciesIndex, int32 SimDay) const;
 	void Spawn(int32 SpeciesIndex, FVector2D Home, float Radius, uint32 Seed);
 	void Play(int32 Index, ESimAnimalState State);
+	void AddFlocks(int32 SpeciesIndex, int32 SimDay);
+	void StepFlocks(float Dt, float Hour, FVector2D Player);
 	float CurrentHour() const;
 	FVector2D PlayerPos() const;
 	bool Blocked(FVector2D P) const;
@@ -94,6 +112,8 @@ private:
 	UPROPERTY() TArray<TObjectPtr<USkeletalMesh>> SpeciesMesh;
 	UPROPERTY() TArray<TObjectPtr<UAnimationAsset>> SpeciesClips;  // 5 per species
 	TArray<int32> CurrentClip;
+	TArray<FSimFlock> Flocks;
+	UPROPERTY() TArray<TObjectPtr<UInstancedStaticMeshComponent>> FlockMeshes;
 	int64 LastDay = -1;
 	int32 LastHerd = -1;
 	uint32 StepCount = 0;
