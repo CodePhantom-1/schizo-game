@@ -6,6 +6,7 @@
 // the engine). Its own binary so the replacement touches no other suite.
 #include "sim/CApi.h"
 #include "sim/CApiVerbs.h"
+#include "sim/CApiItems.h"
 
 #include "sim/Test.hpp"
 
@@ -198,5 +199,57 @@ static bool test_a7_entry_points_do_not_throw() {
     return true;
 }
 
-SIM_MAIN(test_no_exception_escapes_the_c_boundary, test_k1_k2_entry_points_do_not_throw,
+// P0a (CApiItems.h): every entry point that builds an Id or a string from its
+// arguments, while allocation fails, returns -1 (or no-ops) instead of throwing.
+static bool test_p0a_item_entry_points_do_not_throw() {
+    SimWorld* w = sim_world_create("../db/canon", 42);
+    SIM_CHECK(w != nullptr);
+    char buf[256];
+    g_fail_alloc = true;
+    const int reason = sim_world_last_reason(w, buf, sizeof(buf));  // no allocation: reads a string
+    const int64_t cap = sim_world_capacity_g(w, kLong);
+    const int64_t carried = sim_world_carried_g(w, kLong);
+    const int enc = sim_world_encumbrance(w, kLong);
+    const int stacks = sim_world_stack_count(w, kLong);
+    const int stack = sim_world_stack_at(w, kLong, 0, buf, sizeof(buf));
+    const int def = sim_world_item_def(w, kLong, buf, sizeof(buf));
+    const int drop = sim_world_drop(w, kLong, 0, 1, kLong, 0, 0, 0, buf, sizeof(buf));
+    const int pick = sim_world_pick_up(w, kLong, kLong, 1, kLong);
+    const int witems = sim_world_world_item_count(w, kLong);
+    const int witem = sim_world_world_item_at(w, kLong, 0, buf, sizeof(buf));
+    const int addc = sim_world_add_container(w, kLong, kLong, kLong, kLong, 0);
+    const int cstacks = sim_world_container_stack_count(w, kLong);
+    const int cstack = sim_world_container_stack_at(w, kLong, 0, buf, sizeof(buf));
+    const int put = sim_world_put_in(w, kLong, kLong, 0, 1);
+    const int take = sim_world_take_out(w, kLong, kLong, 0, 1, kLong);
+    sim_world_advance_minutes(w, kLong, 30, 0);
+    const int64_t notices = sim_world_notice_count(w);
+    const int notice = sim_world_notice_at(w, 0, buf, sizeof(buf));
+    g_fail_alloc = false;
+
+    SIM_CHECK_EQ(reason, 0);
+    SIM_CHECK_EQ(cap, int64_t{-1});
+    SIM_CHECK_EQ(carried, int64_t{-1});
+    SIM_CHECK_EQ(enc, -1);
+    SIM_CHECK_EQ(stacks, -1);
+    SIM_CHECK_EQ(stack, -1);
+    SIM_CHECK_EQ(def, -1);
+    SIM_CHECK_EQ(drop, -1);
+    SIM_CHECK_EQ(pick, -1);
+    SIM_CHECK_EQ(witems, -1);
+    SIM_CHECK_EQ(witem, -1);
+    SIM_CHECK_EQ(addc, -1);
+    SIM_CHECK_EQ(cstacks, -1);
+    SIM_CHECK_EQ(cstack, -1);
+    SIM_CHECK_EQ(put, -1);
+    SIM_CHECK_EQ(take, -1);
+    SIM_CHECK_EQ(notices, int64_t{0});
+    SIM_CHECK_EQ(notice, -2);  // nothing written: no allocation needed to say so
+    sim_world_advance_days(w, 1);
+    SIM_CHECK(sim_world_day(w) >= 2);
+    sim_world_destroy(w);
+    return true;
+}
+
+SIM_MAIN(test_p0a_item_entry_points_do_not_throw, test_no_exception_escapes_the_c_boundary, test_k1_k2_entry_points_do_not_throw,
          test_a7_entry_points_do_not_throw)

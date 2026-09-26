@@ -21,15 +21,15 @@ A mechanic is **done** only when it passes the 18-point checklist in the plan (�
 
 | ID | Mechanic | Rule / done when | Source | K | C | U | Phase | Calls |
 |---|---|---|---|---|---|---|---|---|
-| FND-01 | Item stacks v2 | Stacks carry qty, quality tier, condition, owner, stolen flag, made day, bound; merge only on equal fields; the count view stays | LW §3.1, §4 | N | N | - | P0 | item_count give_item inventory |
-| FND-02 | Item catalogue columns | Every item has ui_category, weight_g, stack_max, spoil_days, icon, mesh, flags; lint enforces them | LW §3.3 | N | - | - | P0 | |
-| FND-03 | Carry capacity and encumbrance | 30 kg + 3 kg per Strength; burdened >100%, pinned >125%; silver has weight | RS §1.1, §9 | N | N | N | P0 | |
-| FND-04 | World items and containers as kernel state | Dropped goods, containers and their contents live in the kernel and are saved; Unreal spawns from them | LW §4 | N | N | N | P0 | |
-| FND-05 | The verb-result protocol | Every verb returns a code and a string-table reason key; nothing fails silently | CP §1 r5 | P | P | N | P0 | progression_refusal |
-| FND-06 | Timed actions | Activities cost game minutes, advance needs and the clock together, and can be interrupted with partial results | CL §1 | P | P | P | P0 | advance_needs |
+| FND-01 | Item stacks v2 | Stacks carry qty, quality tier, condition, owner, stolen flag, made day, bound; merge only on equal fields; the count view stays | LW §3.1, §4 | Y | Y | - | P0 | item_count give_item inventory stack_count stack_at |
+| FND-02 | Item catalogue columns | Every item has ui_category, weight_g, stack_max, spoil_days, icon, mesh, flags; lint enforces them | LW §3.3 | Y | Y | - | P0 | item_def |
+| FND-03 | Carry capacity and encumbrance | 30 kg + 3 kg per Strength; burdened >100%, pinned >125%; silver has weight | RS §1.1, §9 | Y | Y | N | P0 | capacity_g carried_g encumbrance |
+| FND-04 | World items and containers as kernel state | Dropped goods, containers and their contents live in the kernel and are saved; Unreal spawns from them | LW §4 | Y | Y | N | P0 | drop pick_up world_item_count world_item_at add_container container_stack_count container_stack_at put_in take_out |
+| FND-05 | The verb-result protocol | Every verb returns a code and a string-table reason key; nothing fails silently | CP §1 r5 | Y | Y | N | P0 | progression_refusal last_reason |
+| FND-06 | Timed actions | Activities cost game minutes, advance needs and the clock together, and can be interrupted with partial results | CL §1 | Y | Y | P | P0 | advance_needs advance_minutes |
 | FND-07 | The verb wheel | Interactables list all their verbs; tap does the first, hold opens the wheel; greyed verbs give reasons | CL §8 | - | - | P | P0 | |
 | FND-08 | The UI kit | Item list, tooltip, quantity picker, confirm, two-pane transfer, toasts, controller navigation, string tables | GD §8 | - | - | P | P0 | |
-| FND-09 | Player notice feed | Daily-tick outcomes that concern the player reach the screen and the log | LW §8 | N | N | N | P0 | event_count event_at |
+| FND-09 | Player notice feed | Daily-tick outcomes that concern the player reach the screen and the log | LW §8 | Y | Y | N | P0 | event_count event_at notice_count notice_at |
 | FND-10 | Mechanic test protocol | Kernel, C API, UE automation, console, save round trip and smoke per mechanic; the registry checks coverage | CP §1 | - | - | - | P0 | |
 | SIM-01 | World creation | A new world loads the canon, seeds markets, people, the calendar and the wild | AR §4.2 | Y | Y | Y | A | create destroy |
 | SIM-02 | Deterministic daily tick | Fixed tick order; the same seed and inputs give the same world | AR §4.2 | Y | Y | Y | A | advance_days day |
@@ -80,7 +80,7 @@ A mechanic is **done** only when it passes the 18-point checklist in the plan (�
 | BOD-16 | Stamina | Spent by sprinting, fighting, armour; recovered by rest and catching breath | RS §8 | Y | Y | P | K | stamina catch_breath |
 | BOD-17 | Rest | Resting recovers stamina and fatigue | RS §1.2 | Y | Y | N | P1 | rest |
 | BOD-18 | Sleep quality | Bed, guest bed, rough ground and rooftop change recovery; events can wake you | CP B8 | N | - | P | B | |
-| BOD-19 | Encumbrance on the body | Overload slows, drains stamina, stops sprinting | RS §1.1 | N | N | N | P0 | |
+| BOD-19 | Encumbrance on the body | Overload slows, drains stamina, stops sprinting | RS §1.1 | Y | Y | N | P0 | encumbrance |
 | BOD-20 | Death of the player | Starvation, thirst, wounds, illness, execution each lead to a defined outcome | CP B10 | P | Y | N | B | is_dead |
 | BOD-21 | Conditions HUD | Every condition visible, with a text tooltip | CP B1 | - | - | P | B | |
 
@@ -88,26 +88,26 @@ A mechanic is **done** only when it passes the 18-point checklist in the plan (�
 
 | ID | Mechanic | Rule / done when | Source | K | C | U | Phase | Calls |
 |---|---|---|---|---|---|---|---|---|
-| INV-01 | Carry and merge | Stacks merge by FND-01; overflow past stack_max starts a new stack | LW §3 | P | P | N | P1 | give_item |
-| INV-02 | Weight bar | Current/capacity on the inventory screen; burdened/pinned icon on the HUD | RS §1.1 | N | N | N | P1 | |
-| INV-03 | Inventory screen | Tab toggles; categories, sort, search, purse, weight | GD §8 | N | P | P | P1 | inventory |
-| INV-04 | Inspect | Description, weight, local value, quality, condition, freshness, owner/stolen, uses | GD §8 | N | N | N | P1 | |
+| INV-01 | Carry and merge | Stacks merge by FND-01; overflow past stack_max starts a new stack | LW §3 | Y | Y | N | P1 | give_item |
+| INV-02 | Weight bar | Current/capacity on the inventory screen; burdened/pinned icon on the HUD | RS §1.1 | Y | Y | N | P1 | carried_g capacity_g |
+| INV-03 | Inventory screen | Tab toggles; categories, sort, search, purse, weight | GD §8 | Y | Y | P | P1 | inventory stack_count stack_at |
+| INV-04 | Inspect | Description, weight, local value, quality, condition, freshness, owner/stolen, uses | GD §8 | Y | Y | N | P1 | item_def |
 | INV-05 | Item actions | Use, drop, split, give to follower, offer at a shrine, put in container; greyed with reasons | CL §8 | P | P | N | P1 | |
-| INV-06 | Split and merge stacks | 0, 1, all and over-stack amounts all behave | — | N | N | N | P1 | |
-| INV-07 | Stolen goods | Taken without leave = stolen with owner kept; honest sellers refuse; fences take at 40%; owner and guards recognise | LW §4; CL §3.3 | N | N | N | P1 | |
-| INV-08 | Bound and document items | Quest items can't be dropped or sold; documents open the reader | LW §3.3 | N | N | N | P1 | |
+| INV-06 | Split and merge stacks | 0, 1, all and over-stack amounts all behave | — | Y | N | N | P1 |  |
+| INV-07 | Stolen goods | Taken without leave = stolen with owner kept; honest sellers refuse; fences take at 40%; owner and guards recognise | LW §4; CL §3.3 | P | P | N | P1 |  |
+| INV-08 | Bound and document items | Quest items can't be dropped or sold; documents open the reader | LW §3.3 | P | P | N | P1 |  |
 | INV-09 | Spoilage | Fresh → stale → spoiled by spoil_days; spoiled food risks illness | RS §6 | N | N | N | P1 | |
 | INV-10 | Item condition | Arms and tools wear; broken items can't be used until repaired | RS §7.3 | P | P | N | P1 | |
 | INV-11 | The purse | Silver by weight, shown in shekels and grains, the same everywhere | GDp §6; D-017 | Y | Y | P | P1 | purse |
 | INV-12 | Equipment screen | 4 zones × 2 layers, hands, ammunition, clothing; totals of protection, weight, stamina and heat | RS §8 | Y | Y | N | P1 | equip unequip equipped |
 | INV-13 | Quick eat and drink | F/G pick the item that restores most without overshooting, soonest-spoiling first | — | P | Y | Y | P1 | best_food best_drink |
 | INV-14 | NPC inventories | NPCs hold stacks the same way; shops sell from them | LW §3.1 | P | P | - | P2 | |
-| INV-15 | Save and migrate inventories | Stacks, containers and world items round-trip; old saves migrate | AR §5 | P | P | P | P1 | save load save_to_buffer load_from_buffer |
-| WLD-01 | Drop | Quantity picker; lands at your feet on the ground; stays yours | LW §4 | N | N | N | P1 | |
+| INV-15 | Save and migrate inventories | Stacks, containers and world items round-trip; old saves migrate | AR §5 | Y | Y | P | P1 | save load save_to_buffer load_from_buffer |
+| WLD-01 | Drop | Quantity picker; lands at your feet on the ground; stays yours | LW §4 | Y | Y | N | P1 | drop |
 | WLD-02 | Drop into water | Floaters drift and can be recovered; the rest sink and are lost with a notice | CM §2 | N | N | N | P1 | |
-| WLD-03 | Pick up | E takes it; partial pickup when too heavy; persists | CL §8 | P | P | P | P1 | |
-| WLD-04 | Stealing a world item | Another's item shows "Steal"; seen → theft filed; unseen → flagged stolen | LW §4 | P | N | N | P1 | |
-| WLD-05 | Containers | Jars, chests, baskets, granaries, stalls, bodies: capacity, owner, lock; take, take all, put | LW §4 | N | N | N | P1 | |
+| WLD-03 | Pick up | E takes it; partial pickup when too heavy; persists | CL §8 | Y | Y | P | P1 | pick_up |
+| WLD-04 | Stealing a world item | Another's item shows "Steal"; seen → theft filed; unseen → flagged stolen | LW §4 | Y | Y | N | P1 | pick_up take_out |
+| WLD-05 | Containers | Jars, chests, baskets, granaries, stalls, bodies: capacity, owner, lock; take, take all, put | LW §4 | Y | Y | N | P1 | add_container put_in take_out container_stack_count container_stack_at |
 | WLD-06 | Locks | Key, permission, or forcing (noisy, burglary if heard) | CL §3.2 | N | N | N | P1 | |
 | WLD-07 | Loot bodies | Transfer screen; legal on bandits and battlefields, theft otherwise | RS; CL §6 | Y | Y | N | P1 | loot |
 | WLD-08 | Scavenging of dropped goods | Public goods left a day are taken by passers-by and start a rumour | LW §1 | N | N | N | P1 | |

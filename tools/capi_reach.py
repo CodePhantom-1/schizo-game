@@ -24,6 +24,11 @@ REF = re.compile(r"\b(sim_world_\w+)\b")
 # First match wins (on the name without the sim_world_ prefix); the letter is
 # the completion-plan stage that brings the call to the player.
 STAGE_BY_PATTERN = [
+    # P0a (CApiItems.h): the player's hands. Stage C carries items; B the body's minutes; P the feed.
+    (r"^(last_reason|stack_count|stack_at|item_def|carried_g|capacity_g|encumbrance|drop|pick_up|"
+     r"world_item_count|world_item_at|add_container|container_stack_count|container_stack_at|put_in|take_out)$", "C"),
+    (r"^advance_minutes$", "B"),
+    (r"^notice_(count|at)$", "P"),
     (r"festival|season|weather", "O"),
     (r"^(quest_|journal_|dialogue_|event_)", "P"),
     (r"^(npc_|hear_rumours|task_at)", "F"),

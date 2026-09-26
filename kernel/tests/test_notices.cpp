@@ -1,4 +1,4 @@
-// test_notices.cpp — FND-09: the player notice feed. MECH:FND-09 MECH:UI-03
+// test_notices.cpp — FND-09: the player notice feed. MECH:FND-09
 #include "sim/Notices.hpp"
 #include "sim/Actions.hpp"
 #include "sim/Quests.hpp"
