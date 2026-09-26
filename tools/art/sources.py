@@ -104,12 +104,12 @@ def _get(url, tries=3):
 def _tree_sha(d):
     h = hashlib.sha256()
     for root, _, files in sorted(os.walk(d)):
-        if "/.git" in root + "/":
+        if "/.git/" in root.replace(os.sep, "/") + "/":
             continue
         for f in sorted(files):
             if f != ".fetched":
                 p = os.path.join(root, f)
-                h.update(os.path.relpath(p, d).encode())
+                h.update(os.path.relpath(p, d).replace(os.sep, "/").encode())
                 h.update(manifest.sha256(p).encode())
     return h.hexdigest()
 
@@ -169,7 +169,7 @@ def fetch(row):
         os.makedirs(dest, exist_ok=True)
     author, url = ADAPTERS[row["source"]](row, dest)
     open(done, "w").write(datetime.date.today().isoformat())
-    return {"id": row["id"], "file": os.path.relpath(dest, manifest.REPO) + "/", "kind": f"source_{row['kind']}",
+    return {"id": row["id"], "file": os.path.relpath(dest, manifest.REPO).replace(os.sep, "/") + "/", "kind": f"source_{row['kind']}",
             "license": row["license"], "author": author or row["author"], "url": url,
             "acquired": datetime.date.today().isoformat(), "sha256": _tree_sha(dest), "ai": "false",
             "source_ref": row["purpose"], "tag": "A"}
