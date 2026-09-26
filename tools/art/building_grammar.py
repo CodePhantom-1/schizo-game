@@ -10,7 +10,8 @@ the same field the street builder reads) at door_x(w), so every doorway matches 
 A part: {"shape": box|prism|dome|vault|hull|gable, "at": [x, y, z] (bottom centre),
 "size": [...], "yaw": deg, "mat": "<material>/<wear>" (a trim-atlas cell), "tag", "tint": [r,g,b],
 "jitter": m, "batter": m (boxes: the top pulled in on both long faces)}. Sizes: box/gable/vault/
-hull [sx, sy, sz]; prism [r_base, r_top, h]; dome [rx, ry, h]. Building-level "soot" sources darken
+hull [sx, sy, sz] (vault: a C-section arch spanning y, open underneath; gable: ridge along x, its
+"open" (+1/-1) side's slope ends at "eave" m high); prism [r_base, r_top, h]; dome [rx, ry, h]. Building-level "soot" sources darken
 nearby vertices (ovens, furnaces, kilns).
 """
 import csv
@@ -40,7 +41,7 @@ DOOR_W = {"poor": 0.8, "modest": 0.9, "comfortable": 1.0, "elite": 1.2, "civic":
 # (fresh, worn, crumbling) odds by wealth; "cracked" is the drought blend M_Building applies.
 WEAR_ODDS = {"poor": (0.15, 0.4, 0.45), "modest": (0.35, 0.5, 0.15), "comfortable": (0.5, 0.45, 0.05),
              "elite": (0.75, 0.25, 0.0), "civic": (0.45, 0.45, 0.1), "sacred": (0.8, 0.2, 0.0)}
-TRIS = {"box": 12, "gable": 8, "prism": 32, "dome": 64, "vault": 56, "hull": 56}
+TRIS = {"box": 12, "gable": 20, "prism": 32, "dome": 64, "vault": 68, "hull": 56}
 GREEN = [0.45, 0.62, 0.32]
 CLAY = [1.05, 0.95, 0.85]
 
@@ -445,7 +446,7 @@ class Building:
                          "marker", tint=[0.6, 0.7, 1.4] if i else [1.5, 0.6, 0.5])  # dye vats
         elif t == "tannery":
             self.frame(sx, sy, self.m("goat_hair", "worn"))
-            self.frame(sx - other * 1.9, sy, self.m("textile_madder", "crumbling"))
+            self.frame(d["x"] - other * (d["width"] / 2 + 1.0), sy, self.m("textile_madder", "crumbling"))
             self.add("box", [d["x"] - other * 0.4, sy, 0.0], [1.6, 1.0, 0.05], "bitumen/fresh", "marker", tint=[0.5, 0.4, 0.3])  # soaking pit
         elif t == "oil_press":
             self.add("box", [sx, sy - self.sign * 0.3, 1.0], [2.6, 0.22, 0.22], self.m("cedar", "worn"), "marker")  # the beam press
@@ -481,9 +482,6 @@ class Building:
             self.add("box", [sx, sy, 0.0], [1.4, 0.8, 0.6], self.m("plaster", "worn"), "marker", tint=CLAY)  # the clay bin
             for i in range(5):
                 self.add("box", [sx - 0.5 + i * 0.25, sy, 0.62], [0.12, 0.18, 0.04], self.m("plaster", "fresh"), "marker", tint=CLAY, jitter=0.0)
-            if t == "archive":
-                self.add("box", [d["x"], self.sign * (self.d / 2 + 0.03), 0.0], [d["width"], 0.06, d["height"]],
-                         self.m("cedar", "fresh"), "marker", jitter=0.0)  # the sealed door
         elif t == "star_terrace":
             hw, hd = self.w / 2, self.d / 2
             z = STOREY_H + ROOF_T
@@ -513,8 +511,9 @@ class Building:
             self.add("box", [x0 + other * 1.4, sy + self.sign * 0.6, 0.9], [3.0, 0.06, 0.08], self.m("palm", "worn"), "marker")
             self.bales(*fx(-other * 1.5), 2)
         elif t == "boatyard":
-            self.add("hull", [sx, sy, 0.3], [3.6, 0.9, 0.5], self.m("reed", "worn"), "marker", yaw=self.rand(-5, 5))
-            self.add("box", [sx, sy, 0.0], [3.2, 0.2, 0.3], self.m("palm", "worn"), "marker")
+            hx = d["x"] + other * (d["width"] / 2 + 2.3)  # the boat on its trestle, clear of the door
+            self.add("hull", [hx, sy, 0.3], [3.6, 0.9, 0.5], self.m("reed", "worn"), "marker", yaw=self.rand(-5, 5))
+            self.add("box", [hx, sy, 0.0], [3.2, 0.2, 0.3], self.m("palm", "worn"), "marker")
             self.add("prism", [d["x"] - other * 1.2, sy, 0.0], [0.28, 0.3, 0.5], "bitumen/fresh", "marker")  # bitumen pots
         elif t == "keepers_house":
             self.bales(sx, sy, 3)
@@ -533,7 +532,7 @@ class Building:
             elif t == "hearing_court":
                 self.add("box", [sx, sy, 0.0], [2.0, 0.7, 0.9], self.m("cedar", "worn"), "marker")  # the judges' bench
                 for i in range(5):
-                    self.add("box", [-d["x"] * 0.5 + i * 0.12, self.sign * (self.d / 2 + 0.05), 1.7], [0.05, 0.05, 0.5],
+                    self.add("box", [d["x"] + other * (d["width"] / 2 + 1.0 + i * 0.12), self.sign * (self.d / 2 + 0.05), 1.7], [0.05, 0.05, 0.5],
                              self.m("cedar", "worn"), "marker", jitter=0.0)  # the barred window
             else:  # imperial offices, half looted: rubble and a fallen beam
                 self.add("dome", [sx, sy, 0.0], [1.1, 0.9, 0.5], self.m("mudbrick", "crumbling"), "marker", jitter=0.15)
@@ -568,25 +567,31 @@ class Building:
             # A reed platform on stilts at the lagoon's edge.
             for ix in (-1, 1):
                 for iy in (-1, 1):
-                    self.add("prism", [ix * (hw - 0.3), iy * (hd - 0.3), 0.0], [0.1, 0.1, 0.6], self.m("palm", "worn"), "stilt", jitter=0.01)
-            self.add("box", [0.0, 0.0, 0.5], [self.w, self.d, 0.12], self.m("reed", "worn"), "platform", jitter=0.02)
-            z = 0.62
+                    self.add("prism", [ix * (hw - 0.3), iy * (hd - 0.3), 0.0], [0.1, 0.1, 0.3], self.m("palm", "worn"), "stilt", jitter=0.01)
+            # Low enough to step onto (UE's MaxStepHeight is 0.45 m): the door slot is on the ground.
+            self.add("box", [0.0, 0.0, 0.28], [self.w, self.d, 0.12], self.m("reed", "worn"), "platform", jitter=0.0)
+            z = 0.4
         h = min(self.d * (0.95 if t == "mudhif" else 0.8), 5.5)
-        self.add("vault", [0.0, 0.0, z], [self.w - 0.4, self.d - 0.4, h], self.m("reed"), "vault", jitter=0.05)
+        # The barrel vault spans the depth; the doorway is a gap in it, door-wide, at door_x, so the
+        # door slot opens into the hall (the mesher's vault is a C-section shell, open underneath).
+        d = self.door
+        g0, g1 = d["x"] - d["width"] / 2, d["x"] + d["width"] / 2
+        for a, b in ((-hw + 0.2, g0), (g1, hw - 0.2)):
+            if b - a > 0.1:
+                self.add("vault", [(a + b) / 2, 0.0, z], [b - a, self.d - 0.4, h], self.m("reed"), "vault", jitter=0.05)
         step = 1.0 if t == "mudhif" else 1.3
         x = -hw + 0.5
         while x <= hw - 0.4:
-            self.add("vault", [x, 0.0, z], [0.22, self.d - 0.26, h + 0.08], self.m("reed", "worn"), "rib", tint=[0.8, 0.72, 0.6], jitter=0.02)
+            if not g0 - 0.15 < x < g1 + 0.15:
+                self.add("vault", [x, 0.0, z], [0.22, self.d - 0.26, h + 0.08], self.m("reed", "worn"), "rib", tint=[0.8, 0.72, 0.6], jitter=0.02)
             x += step
         if t == "mudhif":
-            # The two great bundled columns flanking the end door.
+            # The two great bundled columns flanking the door.
             for s in (-1, 1):
-                self.add("prism", [hw - 0.1, s * 1.1, 0.0], [0.4, 0.28, h + 0.9], self.m("reed", "worn"), "marker", jitter=0.03)
-        d = self.door
-        self.add("box", [d["x"], self.sign * (hd - 0.1), z], [d["width"], 0.3, min(d["height"], h * 0.75)], "bitumen/fresh",
-                 "window", tint=[0.18, 0.15, 0.12], jitter=0.0)
+                self.add("prism", [d["x"] + s * (d["width"] / 2 + 0.55), self.sign * (hd - 0.3), 0.0], [0.4, 0.28, h * 0.6 + 0.9],
+                         self.m("reed", "worn"), "marker", jitter=0.03)
         if t in ("reed_house", "divers_hut"):
-            sx, sy = self.front(d["x"] + (1.6 if d["x"] <= 0 else -1.6), 0.9)
+            sx, sy = self.front(d["x"] + (1 if d["x"] <= 0 else -1) * (d["width"] / 2 + 1.55), 0.9)  # clear of the door
             self.add("hull", [sx, sy, 0.0], [2.8, 0.6, 0.35], self.m("reed", "worn"), "marker", yaw=self.rand(-8, 8))  # the canoe
             self.add("prism", [sx, sy - self.sign * 0.5, 0.0], [0.28, 0.32, 0.4], self.m("reed", "fresh"), "marker")  # basket of shells
             self.frame(-sx * 0.3, sy, self.m("goat_hair", "crumbling"), 1.5)  # nets drying
@@ -595,13 +600,15 @@ class Building:
     def tent(self):
         """The black goat-hair tent [A]: a low ridge on poles, one side rolled up for the door."""
         t = self.t["id"]
-        h = 2.6 if t == "warchief_tent" else 2.0
-        self.add("gable", [0.0, 0.0, 0.0], [self.w - 0.4, self.d - 0.4, h], self.m("goat_hair"), "tent", jitter=0.06)
+        h = 3.0 if t == "warchief_tent" else 2.4
+        # The door side's cloth is propped on poles at head height: the gable's "open" leg ends at "eave".
+        g = self.add("gable", [0.0, 0.0, 0.0], [self.w - 0.4, self.d - 0.4, h], self.m("goat_hair"), "tent", jitter=0.06)
+        g["open"], g["eave"] = self.sign, max(2.0, self.door["height"] + 0.15)
+        d = self.door
         for x in (-self.w / 2 + 0.4, 0.0, self.w / 2 - 0.4):
             self.add("prism", [x, 0.0, 0.0], [0.05, 0.04, h + 0.25], self.m("palm", "worn"), "pole", jitter=0.0)
-        d = self.door
-        self.add("box", [d["x"], self.sign * (self.d / 2 - 0.35), 0.0], [d["width"], 0.12, h * 0.6], "bitumen/fresh",
-                 "window", tint=[0.18, 0.15, 0.12], jitter=0.0)
+            fx = x if abs(x - d["x"]) > d["width"] / 2 + 0.2 else d["x"] + d["width"] / 2 + 0.3
+            self.add("prism", [fx, self.sign * (self.d / 2 - 0.25), 0.0], [0.05, 0.04, 2.05], self.m("palm", "worn"), "pole", jitter=0.0)
         sx, sy = self.front(d["x"] + 1.4, 0.8)
         self.add("dome", [sx, sy, 0.0], [0.35, 0.35, 0.18], self.m("mudbrick", "crumbling"), "marker", tint=[0.6, 0.5, 0.4])  # dung fire
         self.soot.append([sx, sy, 0.3, 1.0])

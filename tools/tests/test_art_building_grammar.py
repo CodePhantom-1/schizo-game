@@ -76,6 +76,23 @@ class GrammarTest(unittest.TestCase):
                 blocks = in_band and x0 < ox1 and x1 > ox0 and z0 < d["height"] - 0.05 and z1 > 0.3
                 self.assertFalse(blocks, (s["id"], p["tag"], p["at"]))
 
+    def test_the_doorway_passage_is_clear(self):
+        """Nothing stands in the walk through the door: 0.6 m out, 1 m in, from a step (0.45 m, UE's
+        MaxStepHeight) up to the lintel."""
+        for s in self.specs:
+            d, hd = s["door"], s["d"] / 2
+            sign = 1 if d["side"] == "+y" else -1
+            px0, px1 = d["x"] - d["width"] / 2 + 0.05, d["x"] + d["width"] / 2 - 0.05
+            py0, py1 = sorted((sign * (hd + 0.6), sign * (hd - 1.0)))
+            for p in s["parts"]:
+                if p["tag"] in ("roof", "window"):
+                    continue  # overhead; wall insets
+                x0, x1, y0, y1, z0, z1 = aabb(p)
+                if p["shape"] in ("vault", "gable"):
+                    continue  # shells: their openings are checked on the mesh (check_buildings.py)
+                blocks = x0 < px1 and x1 > px0 and y0 < py1 and y1 > py0 and z0 < d["height"] - 0.05 and z1 > 0.45
+                self.assertFalse(blocks, (s["id"], p["tag"], p["at"], p["size"]))
+
     def test_door_side_comes_from_the_data(self):
         for p in PLACES:
             if bg.is_building(p):
