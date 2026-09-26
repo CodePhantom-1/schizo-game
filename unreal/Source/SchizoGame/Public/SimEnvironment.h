@@ -50,6 +50,9 @@ public:
 	/** Ground height of the terrain at (X, Y), cm. */
 	static float TerrainHeight(float X, float Y);
 
+	/** The lagoon and sea surface height, cm (the scatter floats its lilies on it). */
+	static float WaterHeight();
+
 	virtual void Tick(float DeltaSeconds) override;
 
 private:

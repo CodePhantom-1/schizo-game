@@ -9,6 +9,7 @@
 
 // The kernel's C API through SimRuntime's public include path.
 #include "SimDayNight.h"  // W6-C: the sun and sky on the sim clock
+#include "SimScatter.h"   // V-B2: the city's plants and clutter
 #include "SimNpcDirector.h"  // W6-C: the residents, spawned from kernel schedules
 #include "SimCharacter.h"  // the protagonist's body — replaces the spectator pawn
 #include "SimPlayerController.h"
@@ -127,6 +128,10 @@ void ASimGameMode::StartPlay()
 			Street.NumPlacesBuilt, Street.NumDoorSlots, Street.bKitMeshesFound ? TEXT("yes") : TEXT("no — engine cubes"));
 	}
 
+	// --- the scatter (V-B2): palms, reeds, flowers and clutter from scatter.csv, after the street
+	// (its door slots are what the scatter kept clear) and on the environment's terrain.
+	ASimScatter::BuildScatter(World);
+
 	// The first readable thing: a clay tablet just inside the Moon Gate (notes L198).
 	const FSimCityPlace* GatePlace = SimCityData::Find(TEXT("moon_gate_place"));
 	const FVector Inside = GatePlace ? FRotator(0.f, GatePlace->YawDeg - 90.f, 0.f).Vector() : FVector::ForwardVector;
@@ -224,7 +229,7 @@ namespace
 void ASimGameMode::TickShots(float DeltaSeconds)
 {
 	// Development capture: -SimShots=<dir> [-SimShotHours=7,12,17.5,21]
-	// [-SimShotViews=player,street,...] walks every hour x view, saves a PNG
+	// [-SimShotViews=player,street,...] [-SimShotDrought=<stage>] walks every hour x view, saves a PNG
 	// per pair and quits. The clock is slowed so each frame holds its hour.
 	UWorld* World = GetWorld();
 	if (World == nullptr || ShotStage < 0)
@@ -285,6 +290,13 @@ void ASimGameMode::TickShots(float DeltaSeconds)
 		if (IConsoleVariable* Rate = IConsoleManager::Get().FindConsoleVariable(TEXT("sim.DaysPerRealMinute")))
 		{
 			Rate->Set(100000.f, ECVF_SetByCode);
+		}
+		// -SimShotDrought=<stage>: shoot the city at that drought (V-B2: the scatter's withering);
+		// an -ExecCmds sim.Drought runs before the kernel world exists and does nothing.
+		int32 ShotDrought = -1;
+		if (FParse::Value(FCommandLine::Get(), TEXT("SimShotDrought="), ShotDrought) && ShotDrought >= 0)
+		{
+			USimWorldSubsystem::SetSimDroughtFor(World, ShotDrought);
 		}
 		FActorSpawnParameters Params;
 		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;

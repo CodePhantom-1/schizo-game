@@ -5,7 +5,8 @@ and authors MPC_World and M_Scatter. Headless, from the repo root (the script pa
         -run=pythonscript -script="%CD%/tools/art/ue_import_scatter.py"
 
 MPC_World: scalars Wither (0..1, the drought) and Bloom (0..1), driven by ASimScatter.
-M_Scatter: BaseColor = lerp(VertexColor.rgb, straw (palette reed_2), MPC_World.Wither x VertexColor.a);
+M_Scatter: BaseColor = lerp(VertexColor.rgb ^ 2.2, straw (palette reed_2), MPC_World.Wither x VertexColor.a)
+(the mesh build stores vertex colours sRGB-encoded, ToFColor(true): the power decodes them to linear);
 Roughness 0.9; two-sided; used with instanced static meshes; World Position Offset wind =
 sin(Time x 1.7 + WorldPosition.x x 0.01) x 3 cm x saturate(local z / 300 cm) x VertexColor.a, so it
 sways leaves only and never stones or props (their A is 0). Each mesh: slot 0 = M_Scatter; trees, the
@@ -95,7 +96,9 @@ def scatter_material(mpc):
     m.set_editor_property("two_sided", True)
     m.set_editor_property("used_with_instanced_static_meshes", True)
     E = lambda cls, x, y: MEL.create_material_expression(m, cls, x, y)  # noqa: E731
-    C = MEL.connect_material_expressions
+    def C(a, out, b, into):  # a pin name that does not exist connects nothing and says nothing: fail loudly
+        if not MEL.connect_material_expressions(a, out, b, into):
+            raise RuntimeError(f"M_Scatter: could not connect {a.get_name()}.{out!r} -> {b.get_name()}.{into!r}")
 
     # Colour: the leaves turn to straw as the drought (MPC_World.Wither) rises; A masks leaves only.
     vc = E(unreal.MaterialExpressionVertexColor, -900, 0)
@@ -107,8 +110,12 @@ def scatter_material(mpc):
     amount = E(unreal.MaterialExpressionMultiply, -650, 300)
     C(wither, "", amount, "A")
     C(vc, "A", amount, "B")
+    # VertexColor's RGB output pin is named "" (then R, G, B, A): "RGB" silently connects nothing.
+    decode = E(unreal.MaterialExpressionPower, -700, 0)
+    decode.set_editor_property("const_exponent", 2.2)
+    C(vc, "", decode, "Base")
     lerp = E(unreal.MaterialExpressionLinearInterpolate, -450, 100)
-    C(vc, "RGB", lerp, "A")
+    C(decode, "", lerp, "A")
     C(straw, "", lerp, "B")
     C(amount, "", lerp, "Alpha")
     rough = E(unreal.MaterialExpressionConstant, -450, 300)

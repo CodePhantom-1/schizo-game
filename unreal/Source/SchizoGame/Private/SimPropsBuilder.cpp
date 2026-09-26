@@ -319,6 +319,10 @@ int32 USimPropsBuilder::PlaceStreetProps()
 	for (const FSimDoorSlotInfo& Slot : Slots)
 	{
 		const FName Id = Slot.PlaceId;
+		if (ASimStreetBuilder::bUseBuildingMeshes && ASimStreetBuilder::TryBuildingMesh(Id) != nullptr)
+		{
+			continue;  // a generated building carries its own trade markers (V-B1); the scatter dresses its yard
+		}
 		const FVector Outward = FRotator(0.f, Slot.OutwardYawDeg, 0.f).Vector();
 		const FVector Right = FRotator(0.f, Slot.OutwardYawDeg + 90.f, 0.f).Vector();
 		const FVector& S = Slot.Location;  // on the ground, 1 m outside the wall

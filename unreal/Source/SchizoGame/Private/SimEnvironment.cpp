@@ -321,6 +321,11 @@ void ASimEnvironment::Build()
 		Blocks->GetInstanceCount(), NightLights.Num(), FPlatformTime::Seconds() - T0);
 }
 
+float ASimEnvironment::WaterHeight()
+{
+	return WaterZ;
+}
+
 float ASimEnvironment::TerrainHeight(float X, float Y)
 {
 	const float D = CityDist(X, Y);

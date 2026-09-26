@@ -9,6 +9,8 @@
 set -uo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 UE_ROOT="${UE_ROOT:-$HOME/UnrealEngine}"
+# Linux build, or a Windows install run from Git Bash (Tommy's box).
+if [[ -e "$UE_ROOT/Engine/Binaries/Win64/UnrealEditor-Cmd.exe" ]]; then UE_BIN="$UE_ROOT/Engine/Binaries/Win64"; UE_EXE=.exe; UE_STDOUT="-stdout -FullStdOutLogOutput"; else UE_BIN="$UE_ROOT/Engine/Binaries/Linux"; UE_EXE=; UE_STDOUT=; fi
 FILTER="${1:-Sim.}"  # UE RunTests matches nothing for dotted filters, so it gets the first segment and the path check does the rest
 
 if [[ -n "${UE_TEST_LOG:-}" ]]; then
@@ -16,8 +18,8 @@ if [[ -n "${UE_TEST_LOG:-}" ]]; then
 	RC="${UE_TEST_RC:-0}"
 else
 	LOG="$(mktemp -t ue_test.XXXXXX.log)"
-	timeout 1800 "$UE_ROOT/Engine/Binaries/Linux/UnrealEditor-Cmd" "$REPO/unreal/SchizoGame.uproject" \
-		-nullrhi -unattended -nosplash -ExecCmds="Automation RunTests ${FILTER%%.*}" \
+	timeout 1800 "$UE_BIN/UnrealEditor-Cmd$UE_EXE" "$REPO/unreal/SchizoGame.uproject" \
+		-nullrhi -unattended -nosplash $UE_STDOUT -ExecCmds="Automation RunTests ${FILTER%%.*}" \
 		-TestExit="Automation Test Queue Empty" -log > "$LOG" 2>&1
 	RC=$?
 fi

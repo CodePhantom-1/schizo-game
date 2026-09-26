@@ -9,7 +9,7 @@ transforms applied, scale its longest side to `size_m` (the packs are toy scale;
 source size), put the origin at the bottom centre, and recolour: every face takes its material's
 colour (a textured material: the texture sampled at the face's UV centre — KayKit packs one atlas),
 snapped to the nearest art/palette.csv colour, written to the CORNER colour attribute `Col` (linear,
-as glTF COLOR_0 wants). A = 1 on green-dominant faces of `leafy` rows (M_Scatter browns them with the
+as glTF COLOR_0 wants; UE's mesh build stores it sRGB-encoded, so M_Scatter decodes it with a 2.2 power). A = 1 on green-dominant faces of `leafy` rows (M_Scatter browns them with the
 drought), else 0. Materials are dropped for one slot `M_Scatter`; flat shading; export SM_F_<id>.glb
 and upsert its manifest row. A missing source prints `FAIL <id>: missing <path>`, exports nothing for
 that row, and the run exits 1.
@@ -152,9 +152,9 @@ def recolour(obj, leafy, row_id=""):
         n = names[p.index]
         r, g, b = PALETTE[n]
         a = 1.0 if leafy and g > r and g > b else 0.0
-        lin = (*LINEAR[n], a)
+        c = (*LINEAR[n], a)
         for li in p.loop_indices:
-            col.data[li].color = lin
+            col.data[li].color = c
     me.color_attributes.active_color = col
     return sorted(set(names.values()))
 
