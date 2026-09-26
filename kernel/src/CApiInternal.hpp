@@ -10,4 +10,5 @@
 struct SimWorld {
     sim::WorldState world;
     std::string w4a_refusal;  // W4-A: why the last progression verb refused ("" = it didn't)
+    std::string last_reason;  // P0a: the refusal key of the last CApiItems verb ("" = it didn't)
 };
