@@ -1,0 +1,20 @@
+id,name,group,habitats,seasons,withers,meshes,per_100m2,scale_min,scale_max,tag,source_ref
+date_palm,Date palm,tree,yard;garden;shore;street_edge,all,1,palm_tall;palm_short;palm_bend;palm_detailed,0.35,0.85,1.25,A,world-art-plan §7 (trees); INVENTED density
+palm_offshoot,Date-palm offshoot,shrub,garden;yard,all,1,palm_short,0.25,0.35,0.55,A,world-art-plan §7 (seedling offshoots)
+dead_palm,Dead palm trunk,tree,yard;tombs,all,0,palm_dead,0.04,0.8,1.1,A,world-art-plan §7 (dead and dry)
+tamarisk,Tamarisk,shrub,shore;yard;tombs,all,1,tamarisk,0.25,0.8,1.3,A,world-art-plan §7 (trees)
+pomegranate,Pomegranate bush,shrub,garden,all,1,bush_large;bush,0.4,0.8,1.1,A,world-art-plan §7 (gardens)
+phragmites,Giant reed,water,shore;water,all,1,reed_clump,6.0,0.8,1.4,A,world-art-plan §7 (water and marsh)
+cattail,Cattail,water,shore;water,all,1,cattail,2.5,0.8,1.2,A,world-art-plan §7 (water and marsh)
+water_lily,Water lily,water,water,rains;sowing;harvest,0,lily_large;lily_small;kk_waterlily_a;kk_waterlily_b,3.0,0.8,1.3,A,world-art-plan §7 (quiet water)
+desert_grass,Desert grass,grass,wall_foot;tombs;camp;street_edge,all,1,grass;grass_large;grass_leafs,3.0,0.7,1.2,A,world-art-plan §7 (wild and desert)
+saltbush,Saltbush,shrub,tombs;camp;wall_foot,all,1,saltbush;bush_small,1.0,0.7,1.2,A,world-art-plan §7 (wild and desert)
+poppy,Spring poppy,flower,tombs;camp;wall_foot;garden,rains;sowing,0,flower_red_a;flower_red_b;flower_red_c,2.0,0.8,1.2,A,world-art-plan §7 (spring wildflowers)
+anemone,Spring anemone,flower,tombs;garden,rains;sowing,0,flower_purple_a;flower_yellow_a,1.0,0.8,1.2,A,world-art-plan §7 (spring wildflowers)
+stones,Loose stones,prop,wall_foot;street_edge;tombs;camp,all,0,stone_small_a;stone_small_b;rock_small_a;kk_rock_c,1.5,0.6,1.4,A,world-art-plan §6 (scattered stones)
+jars,Storage jars,prop,yard;street_edge,all,0,pot_large;pot_small,0.6,0.9,1.2,A,world-art-plan §5 (household)
+sacks,Grain sacks,prop,yard;open,all,0,kk_sack,0.4,0.9,1.1,A,world-art-plan §5 (food as objects)
+water_buckets,Leather buckets,prop,yard;shore,all,0,kk_bucket_water,0.2,0.9,1.1,A,world-art-plan §5 (household)
+roof_ladder,Roof ladder,prop,yard,all,0,kk_ladder,0.1,1.0,1.0,A,world-art-plan §5; wb (sleeping on the roof)
+spear_rack,Spear rack,prop,camp,all,0,kk_weaponrack,0.2,1.0,1.0,A,world-art-plan §5
+log_pile,Palm-log pile,prop,yard;open,all,0,log;log_stack,0.15,0.8,1.1,A,world-art-plan §5 (fuel)
