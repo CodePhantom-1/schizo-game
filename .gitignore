@@ -41,3 +41,6 @@ kernel/Testing/
 unreal/Plugins/*/Binaries/
 unreal/Plugins/*/Intermediate/
 .claude/
+
+# local execution ledgers (docs/superpowers/plans/STAGE-V-ROADMAP.md: copied into the plan's Status when a batch is done)
+.superpowers/
