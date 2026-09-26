@@ -50,6 +50,13 @@ public:
 	 */
 	static float MoonOrbitAngle(int32 DayOfMonth, float Hour, int32 DaysPerMonth = 30);
 
+	/**
+	 * V-B5: the weather over Tommy's clear-day look (ASimAtmosphere drives it). Each 0..1; all 0 = his values
+	 * exactly. Dust thickens the haze (x8) and turns it ochre; Rain and Overcast grey it and dim the sun; Fog
+	 * thickens it (x4). The haze never starts nearer than 3 m (the player's own feet stay clear).
+	 */
+	void SetWeatherBlend(float Dust, float Rain, float Overcast, float Fog = 0.f);
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -65,6 +72,7 @@ private:
 	UPROPERTY() TObjectPtr<UVolumetricCloudComponent> Clouds;
 	UPROPERTY() TObjectPtr<UExponentialHeightFogComponent> Haze;
 	UPROPERTY() TObjectPtr<UPostProcessComponent> Grade;
+	float WeatherDust = 0.f, WeatherRain = 0.f, WeatherOvercast = 0.f, WeatherFog = 0.f;
 
 	float LastLoggedHour = -1.f;
 };

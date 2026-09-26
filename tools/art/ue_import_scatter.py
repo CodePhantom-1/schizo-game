@@ -74,7 +74,7 @@ def world_collection():
     # against the old ids (M_Terrain) then fails to compile (V-B3).
     params = list(mpc.get_editor_property("scalar_parameters"))
     have = {str(p.get_editor_property("parameter_name")) for p in params}
-    for name in ("Wither", "Bloom"):
+    for name in ("Wither", "Bloom", "Wet", "Dust", "Festival", "Shimmer"):  # V-B5 added the last four
         if name not in have:
             p = unreal.CollectionScalarParameter()
             p.set_editor_property("parameter_name", name)
@@ -169,8 +169,23 @@ def scatter_material(mpc):
     C(cm3, "", wpo, "A")
     C(dir_, "", wpo, "B")
 
-    MEL.connect_material_property(lerp, "", unreal.MaterialProperty.MP_BASE_COLOR)
-    MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
+    # V-B5 wetness: MPC_World.Wet darkens the albedo to x0.7 and glosses the roughness to 0.4 (0: unchanged).
+    wet = E(unreal.MaterialExpressionCollectionParameter, -450, 450)
+    wet.set_editor_property("collection", mpc)
+    wet.set_editor_property("parameter_name", "Wet")
+    dark = E(unreal.MaterialExpressionLinearInterpolate, -300, 400)
+    dark.set_editor_property("const_a", 1.0)
+    dark.set_editor_property("const_b", 0.7)
+    C(wet, "", dark, "Alpha")
+    wet_base = E(unreal.MaterialExpressionMultiply, -150, 100)
+    C(lerp, "", wet_base, "A")
+    C(dark, "", wet_base, "B")
+    gloss = E(unreal.MaterialExpressionLinearInterpolate, -300, 300)
+    C(rough, "", gloss, "A")
+    gloss.set_editor_property("const_b", 0.4)
+    C(wet, "", gloss, "Alpha")
+    MEL.connect_material_property(wet_base, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(gloss, "", unreal.MaterialProperty.MP_ROUGHNESS)
     MEL.connect_material_property(wpo, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
     MEL.recompile_material(m)
     EAL.save_loaded_asset(m)

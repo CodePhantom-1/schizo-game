@@ -25,6 +25,9 @@ namespace
 	constexpr float kMoonTiltDeg = 55.f;
 	// EV floor at night: higher = darker nights (the eye cannot adapt below it).
 	constexpr float kNightExposureFloor = 2.0f;
+	// V-B5: Tommy's clear-day haze (FindOrSpawnSky), the base the weather scales.
+	constexpr float kHazeDensity = 0.022f;
+	constexpr float kHazeStart = 600.f;
 
 	/** Unit vector toward a body on the tilted day circle; Phase 0 = rising in the east. */
 	FVector BodyDir(float Phase, float TiltDeg) { return SimCompass::SunDir(Phase, TiltDeg); }
@@ -137,10 +140,10 @@ void ASimDayNight::FindOrSpawnSky()
 	// --- the drought haze: warm dust, god rays through it ----------------------
 	Haze = NewObject<UExponentialHeightFogComponent>(this, TEXT("Haze"));
 	Haze->SetupAttachment(RootComponent);
-	Haze->SetFogDensity(0.022f);
+	Haze->SetFogDensity(kHazeDensity);
 	Haze->SetFogHeightFalloff(0.09f);
 	Haze->SetFogMaxOpacity(0.97f);
-	Haze->SetStartDistance(600.f);
+	Haze->SetStartDistance(kHazeStart);
 	Haze->SetDirectionalInscatteringExponent(7.f);
 	Haze->SetVolumetricFog(true);
 	Haze->SetVolumetricFogScatteringDistribution(0.72f);
@@ -220,8 +223,10 @@ void ASimDayNight::ApplyHour(float Hour)
 	const float SunUp = FMath::SmoothStep(-0.06f, 0.1f, Sz);
 	const float MoonUp = FMath::SmoothStep(-0.05f, 0.15f, Mz) * (1.f - SunUp);
 
+	// V-B5 weather: dust and cloud dim the sun (1 on a clear day).
+	const float WeatherSun = 1.f - 0.55f * WeatherOvercast - 0.5f * WeatherDust;
 	Sun->SetWorldRotation((-S).Rotation());
-	Sun->SetIntensity(kSunLux * SunUp);
+	Sun->SetIntensity(kSunLux * SunUp * WeatherSun);
 	Sun->SetCastShadows(SunUp > 0.01f);
 	Moon->SetWorldRotation((-M).Rotation());
 	Moon->SetIntensity(kMoonLux * MoonUp * MoonLit);
@@ -232,7 +237,12 @@ void ASimDayNight::ApplyHour(float Hour)
 	const float Golden = FMath::SmoothStep(-0.1f, 0.05f, Sz) * (1.f - FMath::SmoothStep(0.1f, 0.35f, Sz));
 	FLinearColor FogC = LerpC(FLinearColor(0.010f, 0.016f, 0.034f), FLinearColor(0.34f, 0.29f, 0.22f), Day);
 	FogC = LerpC(FogC, FLinearColor(0.42f, 0.24f, 0.12f), Golden * 0.7f);
+	// V-B5 weather: rain and cloud grey the haze, a dust storm turns it ochre and thick; clear = unchanged.
+	FogC = LerpC(FogC, FLinearColor(0.2f, 0.21f, 0.22f) * FMath::Max(0.25f, Day), FMath::Max(WeatherRain, WeatherOvercast) * 0.6f);
+	FogC = LerpC(FogC, FLinearColor(0.55f, 0.38f, 0.18f) * FMath::Max(0.3f, Day), WeatherDust);
 	Haze->SetFogInscatteringColor(FogC);
+	Haze->SetFogDensity(kHazeDensity * (1.f + 7.f * WeatherDust + 3.f * WeatherFog + WeatherRain));
+	Haze->SetStartDistance(FMath::Max(300.f, kHazeStart * (1.f - 0.5f * FMath::Max(WeatherDust, WeatherFog))));
 	Haze->SetDirectionalInscatteringColor(LerpC(FLinearColor(0.02f, 0.03f, 0.06f), FLinearColor(0.9f, 0.55f, 0.28f), Day));
 	if (Fill != nullptr)
 	{
@@ -256,6 +266,14 @@ void ASimDayNight::ApplyHour(float Hour)
 		UE_LOG(LogSimDayNight, Log, TEXT("Sky: hour %.2f, sun elevation %.0f deg, moon %.0f deg."), Hour,
 			FMath::RadiansToDegrees(FMath::Asin(S.Z)), FMath::RadiansToDegrees(FMath::Asin(M.Z)));
 	}
+}
+
+void ASimDayNight::SetWeatherBlend(float Dust, float Rain, float Overcast, float Fog)
+{
+	WeatherDust = FMath::Clamp(Dust, 0.f, 1.f);
+	WeatherRain = FMath::Clamp(Rain, 0.f, 1.f);
+	WeatherOvercast = FMath::Clamp(Overcast, 0.f, 1.f);
+	WeatherFog = FMath::Clamp(Fog, 0.f, 1.f);
 }
 
 void ASimDayNight::Tick(float DeltaSeconds)

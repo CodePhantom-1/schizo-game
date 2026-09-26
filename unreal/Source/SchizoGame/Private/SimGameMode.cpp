@@ -12,6 +12,7 @@
 #include "SimDayNight.h"  // W6-C: the sun and sky on the sim clock
 #include "SimScatter.h"   // V-B2: the city's plants and clutter
 #include "SimFauna.h"    // V-B4: the animals
+#include "SimAtmosphere.h"  // V-B5: the weather
 #include "SimNpcDirector.h"  // W6-C: the residents, spawned from kernel schedules
 #include "SimCharacter.h"  // the protagonist's body — replaces the spectator pawn
 #include "SimPlayerController.h"
@@ -135,6 +136,8 @@ void ASimGameMode::StartPlay()
 	ASimScatter::BuildScatter(World);
 	// --- the fauna (V-B4): herds by the kernel's head count, beasts at their places, the night's jackals.
 	ASimFauna::BuildFauna(World);
+	// --- the atmosphere (V-B5): the weather, the drought and the festival over Tommy's sky.
+	ASimAtmosphere::BuildAtmosphere(World);
 
 	// The first readable thing: a clay tablet just inside the Moon Gate (notes L198).
 	const FSimCityPlace* GatePlace = SimCityData::Find(TEXT("moon_gate_place"));

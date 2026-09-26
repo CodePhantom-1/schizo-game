@@ -15,6 +15,7 @@ tiling detail: BaseColor = lerp(VertexColor.rgb, DryColour, Dry) x Noise x Detai
            -> the detail swaps to Cracked, or Salt where a low-frequency world noise > 0.6, and the
               colour leans to the cracked field colour (salt: the salt bloom)
   Furrows: on Irrigated cells, a stripe every 90 cm along X darkens the detail by up to 12%.
+  Wetness (V-B5): MPC_World.Wet darkens the colour to x0.7 and the roughness to 0.4.
 T_Ground is linear (not sRGB): 0.5 must stay 0.5 so x 2 leaves Tommy's colour as it is.
 """
 import os
@@ -227,8 +228,16 @@ def build(tex, mpc):
     C(detailed, "", x2, "A")
     rough = const(0.92, -300, 250)
     spec = const(0.25, -300, 350)
-    MEL.connect_material_property(x2, "", unreal.MaterialProperty.MP_BASE_COLOR)
-    MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
+    # V-B5 wetness: MPC_World.Wet darkens to x0.7 and glosses to roughness 0.4 (0: Tommy's look unchanged).
+    wet = E(unreal.MaterialExpressionCollectionParameter, -300, 500, collection=mpc, parameter_name="Wet")
+    dark = E(unreal.MaterialExpressionLinearInterpolate, -150, 450, const_a=1.0, const_b=0.7)
+    C(wet, "", dark, "Alpha")
+    wet_base = op(unreal.MaterialExpressionMultiply, x2, dark, 0, 0)
+    gloss = E(unreal.MaterialExpressionLinearInterpolate, -150, 300, const_b=0.4)
+    C(rough, "", gloss, "A")
+    C(wet, "", gloss, "Alpha")
+    MEL.connect_material_property(wet_base, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(gloss, "", unreal.MaterialProperty.MP_ROUGHNESS)
     MEL.connect_material_property(spec, "", unreal.MaterialProperty.MP_SPECULAR)
     MEL.recompile_material(m)
     EAL.save_loaded_asset(m)
