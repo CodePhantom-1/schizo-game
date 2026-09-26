@@ -6,7 +6,8 @@ Things you need to know before you pull and work, newest first. Delete a note on
 
 1. **The game has menus now** (main menu, pause, save/load, settings, journal, tablet reader). They're C++ Slate in `unreal/Source/SchizoGame/Private/UI/`, with no UMG assets, so they build headless. The colours are in `Public/UI/SimUiStyle.h` if you want to restyle them in the D-023 look.
 2. **`Config/DefaultInput.ini` is committed in the engine's own normalised form.** The editor kept rewriting it. If you add a mapping, run the editor once and commit the file as it rewrites it.
-3. **For screenshots:** `-SimNoMenu` skips the menu, and `-SimShotScreens=MainMenu,Settings` captures screens.
+3. **The world art plan (Stage V)** is in `docs/world-art-plan.md`; there is also a readable page at https://claude.ai/artifact/H2cUHe42ZJcvxhm2APxQwd. It covers every building type and trade, the materials with their wear states, terrain relief, regional flora and fauna, and atmosphere. It builds on your environment and style, so tell us where you disagree.
+4. **For screenshots:** `-SimNoMenu` skips the menu, and `-SimShotScreens=MainMenu,Settings` captures screens.
 
 ## 2026-09-25
 
