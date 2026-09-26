@@ -65,3 +65,42 @@
 ### Task 6: records and push
 
 - [ ] `docs/notes-for-tommy.md` (his `SimDayNight` gained `SetWeatherBlend`; neutral values unchanged; the new console commands `sim.Weather`, `sim.Zodiac`), HANDOFF "Stage V batch 5", `docs/proposals/invented-ledger-atmosphere.md`, `docs/credits.md` regenerated, `tools/art/README.md`, completion-plan progress. Fresh-context review → fix pass → push → CI green.
+
+## Status (2026-09-26): tasks 1–4 and 6 done, task 5 (sound) half done — deferred by the designer (on Tommy's Windows box)
+
+| Task | Commits | Verified by |
+|---|---|---|
+| 1 atmosphere driver | 61ef05c | `Sim.Atmosphere.Targets/Easing` (63 % in 60 s, never a snap, half dry after one in-game hour); clear noon vs before: `imgdiff.py` 0.59 % against a 0.57 % run-to-run floor; `vb5_rain_17.50_street.png`, `vb5_sandstorm_12.00_street.png` |
+| 2 rain, dust, smoke | ff4f3e6 | `Sim.Atmosphere.Fx` (1,500 streaks, 800 motes, 5 puffs per smoke.csv row, the schedule, every fire out in the rain), `test_art_smoke.py`, `building_grammar.py --check-smoke` in CI; smoke shot |
+| 3 night sky | 1dbddab | `test_art_stars.py` (≥ 1,500 stars under mag 5, Polaris 31 ± 1° north at any hour, the turn equals the true sky, Aldebaran/Regulus/Antares/Spica within 6° of the ecliptic, ≤ 20,000 tris), `Sim.Atmosphere.Sky`; `vb5_sky_00.00_south.png` (zodiac on), `vb5_sky_00.00_north.png` (Polaris at the centre) |
+| 4 drought and festival | bee3b77 | `Sim.Terrain.CanalDrought` (stage 4: 120 cm lower; lagoon, river, sea unchanged), `Sim.Scatter` festival checks (up on a festival day, down the next, never blocking); `vb5_festival_drought0_*`, `vb5_nextday_drought4_*` (canal, precinct at noon and 20:00) |
+| 5 sound | f6edbdc (part 1) | part 1: `art/sounds.csv` (34 rows, every zone a bed, six animal cues), the Freesound adapter (`test_art_sources.py`, offline). **Part 2 deferred by the designer:** fetch with `FREESOUND_API_KEY`, licence gate + credits, `ue_import_sounds.py`, `USimAmbience`, `Sim.Ambience` |
+| 6 records | (this) | HANDOFF, notes for Tommy, `invented-ledger-atmosphere.md`, completion-plan, `tools/art/README.md` "Atmosphere", roadmap; `ue_test.sh` 78/78, `ue_smoke.sh` all ok |
+
+The review was done inline against the plan's tests and shots, not by a separate fresh-context agent.
+
+**Rulings made during execution** (each: what — why — cost if wrong):
+- T1: an actor (`ASimAtmosphere`, spawned after the fauna), not `USimAtmosphereSubsystem` — the pattern of `ASimScatter` and `ASimFauna`, testable in a fresh world — none.
+- T1: Tommy's `ASimDayNight` gained one entry point, `SetWeatherBlend(Dust, Rain, Overcast, Fog)`; with all zeros his values are untouched (imgdiff within the run-to-run noise) — none.
+- T1: MPC_World's parameters are only ever added, never replaced (replacing re-ids them and breaks M_Terrain) — none.
+- T1: `M_Building` has no wet term yet — a separate session is fixing its colour pin bug (task_39bf96a2); add the term after it lands — wet streets beside dry walls in the rain.
+- T2: rain and dust are instanced cards moved by World Position Offset in a box riding with the camera, not Niagara — no Niagara assets to author headless, testable instance counts — less rich than particles.
+- T2: the smoke sources are a tracked `Content/Sim/smoke.csv` written by `building_grammar.py` (`--check-smoke` in CI) — the same data-first rule as scatter.csv — none.
+- T3: the sky is `Content/Sim/stars.csv` drawn as instanced cards (`/Engine/BasicShapes/Plane`, `M_Star`), not a Blender-exported dome mesh — no glTF axis guesswork: the Python test proves the very rotation the C++ applies (`SIDEREAL_SIGN`) — none.
+- T3: the dome lives in `ASimAtmosphere`, not in Tommy's `SimDayNight` — keeps his file to the one blend call — none.
+- T3: Spica instead of Fomalhaut in the ecliptic test — Fomalhaut lies about 21° off the ecliptic; the plan's list was a slip — none.
+- T3: `M_Star` is additive and unfogged (`use_translucency_vertex_fog` off) — at 900 m the height fog swallowed it — none.
+- T3: the sky's day is the kernel's day (`GetSimDayFor`) — none.
+- T4: the canal water is its own mesh, moved down on a drought change, not rebuilt — the same result for no rebuild — none.
+- T4: festival rows use the season token `festival` in `flora.csv` (the flora test allows it only with the `festival` habitat); festival props never collide — they stand hidden most days — none.
+- T4: the lamps glow by a colour key in `M_Scatter` (the palette's new `flame_0`, sRGB R − B > 0.75, no other palette colour comes near) — no second material slot on the scatter meshes — a future palette colour that red may glow.
+- T5: the wishlist's licence column is the accepted set (CC0, CC BY 4.0, CC BY 3.0); the manifest records the actual one per sound. HQ previews (ogg), not the originals (those need OAuth) — lower fidelity.
+
+**Deferred minors:**
+- **Task 5 part 2 (sound)** waits for the designer: set `FREESOUND_API_KEY` (freesound.org/apiv2/apply; `setx FREESOUND_API_KEY "<key>"` on Windows), then `python3 tools/art/sources.py --sounds`, the licence gate and credits, `ue_import_sounds.py`, `SimAmbience` and `Sim.Ambience` per the plan above, a `-nullrhi` smoke run.
+- Heat shimmer is only an MPC parameter; no screen distortion yet.
+- The GPU cost of the effects was not measured (`stat gpu`).
+- The festival lamps are small at the precinct shot's distance; the banners hang still (no wind term: their A is 0).
+- The canal water jumps 30 cm on a drought change (no easing).
+- The Milky Way's blobs read as soft cloud up close; a band texture would be finer.
+- `docs/capi-reach.md` was stale from T1 to T4 (the new weather and festival calls); regenerated in T4.

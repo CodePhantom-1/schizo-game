@@ -10,8 +10,8 @@ The designer's brief (2026-09-26): make the world alive, beautiful, vibrant and 
 | 2 — flora and street life (packs + code plants, scattered from data) | [batch2](2026-09-26-stage-v-batch2-flora-props.md) | **Done** (on Tommy's Windows box). Read its *Status* section: rulings, deferred minors (incl. a batch-1 `M_Building` colour bug). |
 | 3 — terrain (textured ground, landforms, countryside scatter) | [batch3](2026-09-26-stage-v-batch3-terrain.md) | **Done** (on Tommy's Windows box). Read its *Status* section. |
 | 4 — fauna (herds, city animals, birds, night predators) | [batch4](2026-09-26-stage-v-batch4-fauna.md) | **Done** (on Tommy's Windows box). Read its *Status* section. |
-| 5 — atmosphere and sound (weather, smoke, stars, drought, ambience) | [batch5](2026-09-26-stage-v-batch5-atmosphere-sound.md) | **Next.** Edits Tommy's `SimDayNight`. One human step: a Freesound API key. |
-| 6 — props library (every item a mesh; the reference board) | [batch6](2026-09-26-stage-v-batch6-props-library.md) | After 2 (can run beside 3–5). Coordinate with Stage C (items). |
+| 5 — atmosphere and sound (weather, smoke, stars, drought, ambience) | [batch5](2026-09-26-stage-v-batch5-atmosphere-sound.md) | **Done except sound** (on Tommy's Windows box). Read its *Status* section. Task 5 part 2 (the sound) waits for the designer's `FREESOUND_API_KEY`. |
+| 6 — props library (every item a mesh; the reference board) | [batch6](2026-09-26-stage-v-batch6-props-library.md) | **Next.** After 2 (can run beside 3–5). Coordinate with Stage C (items). |
 | 7 — other cities + performance | [batch7](2026-09-26-stage-v-batch7-regions-performance.md) | Last. |
 
 Order matters because each batch consumes the previous one's interfaces (named in each plan's **Interfaces** blocks): 2 creates `MPC_World`, `M_Scatter`, `ASimScatter`, `flora.csv`, `scatter_meshes.csv`; 3 adds `GroundKind`, `M_Terrain`, the countryside scatter; 4 adds `fauna.csv` and `USimFaunaSubsystem` (with `OnAnimalCue` for 5's sounds); 5 adds `USimAtmosphereSubsystem` driving `MPC_World`.

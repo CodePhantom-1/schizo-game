@@ -150,3 +150,11 @@ Both lost pieces rebuilt and merged; 40/40 kernel tests. Divine wrath (`sim/Divi
 - **Invented choices:** `docs/proposals/invented-ledger-fauna.md`. Rulings and deferred minors: the batch 4 plan's Status section.
 - **Licence:** the animal models are QAL (no redistribution): keep this repo private, or replace them before it goes public.
 - **Next:** batch 5 — atmosphere and sound ([plan](docs/superpowers/plans/2026-09-26-stage-v-batch5-atmosphere-sound.md)); `ASimFauna::OnAnimalCue` is its hook for barks, lifts and flights.
+
+## Stage V batch 5 (2026-09-26) — atmosphere (done on Tommy's Windows box; sound deferred)
+- **Engine:** `ASimAtmosphere` reads the kernel's weather, drought, hour and festival, eases toward a target state (60 s; wet ground dries over two game hours) and drives `MPC_World` (Wet, Dust, Festival, Shimmer, Rain) and Tommy's `ASimDayNight::SetWeatherBlend`. It draws rain and dust around the camera, smoke from every soot source on the fire schedule, and the night sky: 1,604 real stars, the zodiac's figures (`sim.Zodiac 1`) and the Milky Way, turning by sidereal time at 31° N. The drought lowers the canals 30 cm a stage; festival days put up banners, garlands and lamps at the temple. Console: `sim.Weather <clear|hot|scorching|sandstorm|rain|fog|auto>`, `sim.Zodiac 0/1`. Shot views `smoke`, `south`, `north`, `precinct`, `canal`.
+- **Tests:** `Sim.Atmosphere.Targets/Easing/Fx/Sky`, `Sim.Terrain.CanalDrought`, the `Sim.Scatter` festival checks, `test_art_stars.py`, `test_art_smoke.py`; `ue_test.sh` 78/78, `ue_smoke.sh` all ok. Review: `art/review/crescent/vb5_*.png`.
+- **Pipeline:** `fx_gen.py` → `ue_make_fx_materials.py` (`/Game/Art/FX`), `star_dome.py` (the Yale Bright Star Catalogue, public domain, fetched by `sources.py bsc5`). Commands: `tools/art/README.md` "Atmosphere".
+- **Invented choices:** `docs/proposals/invented-ledger-atmosphere.md`. Rulings and deferred minors: the batch 5 plan's Status section.
+- **Sound is not done:** the wishlist (`art/sounds.csv`) and the Freesound adapter are in; the fetch, import and `SimAmbience` wait for the designer's `FREESOUND_API_KEY` (Task 5 part 2 in the plan).
+- **Next:** batch 5 Task 5 part 2 when the key is set; batch 6 — the props library ([plan](docs/superpowers/plans/2026-09-26-stage-v-batch6-props-library.md)).

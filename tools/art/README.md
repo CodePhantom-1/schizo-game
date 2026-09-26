@@ -351,3 +351,19 @@ UnrealEditor-Cmd "$PWD/unreal/SchizoGame.uproject" \
 - **What lives where** is `db/canon/fauna.csv` (species, habitats — flora habitats and `@typology` places —, hours, group sizes, herd shares, model; `test_art_fauna.py` holds §10: no chickens, camels or horses in ordinary use).
 - **`ASimFauna`** (built after the scatter) populates each sim day: the herds from the kernel's `herd_head` (one animal per ten head), the rest at their places and streets; each animal a skeletal mesh on an idle/graze/walk/flee/sleep machine round its home; flocks as boids in instanced meshes (`M_Bird` flaps by per-instance `FlapHz`). `Sim.Fauna.*` tests it; `-SimFaunaLineup` with `-SimShotViews=lineup` stands one of each species in the street for review.
 - The farm pack's FBX materials carry alpha 0: `fauna_variants.py` forces every material opaque.
+
+## Atmosphere (Stage V batch 5): weather, smoke, the night sky, the festival
+
+```
+blender -b --factory-startup -P tools/art/fx_gen.py                       # 1. the weather's cards -> art/generated/fx/SM_FX_{Rain,Dust,Smoke}.glb
+python3 tools/art/building_grammar.py                                     # 2. (also) Content/Sim/smoke.csv, the soot sources (--check-smoke in CI)
+python3 tools/art/sources.py bsc5 && python3 tools/art/star_dome.py        # 3. the Yale Bright Star Catalogue -> Content/Sim/stars.csv (stars, zodiac, Milky Way)
+UnrealEditor-Cmd "$PWD/unreal/SchizoGame.uproject" \
+    -run=pythonscript -script="$PWD/tools/art/ue_make_fx_materials.py"      # 4. /Game/Art/FX: SM_FX_*, M_Rain, M_Dust, M_Smoke, M_Star
+blender -b --factory-startup -P tools/art/scatter_mesh.py -- --only banner  # 5. festival props (banner, garland, lamp_cluster), then ue_import_scatter.py
+```
+
+- **`ASimAtmosphere`** maps the kernel's weather, drought and festival to `MPC_World` (Wet, Dust, Festival, Shimmer, Rain) and `ASimDayNight::SetWeatherBlend`; `sim.Weather <id|auto>` overrides the weather, `sim.Zodiac 1` shows the zodiac. `tools/art/imgdiff.py before after` measures a view against an earlier shot (the clear day must stay within the run-to-run noise).
+- The stars' rotation is proven in Python (`test_art_stars.py`: `SIDEREAL_SIGN`) — if you change the frame in `star_dome.py`, the C++ turn in `ASimAtmosphere::ApplySky` must follow.
+- Festival rows in `flora.csv` use the season `festival`; `ASimScatter` shows them only on a festival day. `M_Scatter` makes the palette's `flame_0` glow while `MPC_World.Festival` is up.
+- **Sound (not yet fetched):** `art/sounds.csv` is the wishlist; `python3 tools/art/sources.py --sounds` needs `FREESOUND_API_KEY` set by a person (freesound.org/apiv2/apply) and keeps only CC0 and Attribution sounds.
