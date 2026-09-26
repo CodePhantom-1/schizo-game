@@ -31,6 +31,18 @@ int64_t sim_world_capacity_g(const SimWorld* world, const char* actor);
 int64_t sim_world_carried_g(const SimWorld* world, const char* actor);
 int sim_world_encumbrance(const SimWorld* world, const char* actor);
 
+// INV-03/04: the actor's stacks, in their fixed (normalized) order. A record is
+// "item;qty;quality;condition;owner;stolen;made_day;bound" (quality 0 poor ..
+// 3 masterwork; condition 0..100; owner "" = the holder's; bools 0/1). The
+// index is what the stack verbs below take. count: -1 on null, 0 for an
+// unseen actor. at: -2 for a bad index; buffer convention.
+int sim_world_stack_count(const SimWorld* world, const char* actor);
+int sim_world_stack_at(const SimWorld* world, const char* actor, int index, char* out, int cap);
+
+// FND-02: an item's physical columns as "ui_category;weight_g;stack_max;
+// spoil_days;flags" (flags '|'-joined). -2 for an unknown or OPEN item.
+int sim_world_item_def(const SimWorld* world, const char* item, char* out, int cap);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

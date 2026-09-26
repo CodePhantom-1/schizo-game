@@ -37,6 +37,19 @@ auto guard(F&& f) -> decltype(f()) {
     }
 }
 
+// "item;qty;quality;condition;owner;stolen;made_day;bound" — shared by
+// stacks, world items and containers.
+std::string stack_record(const ItemStack& s) {
+    return s.item + ';' + std::to_string(s.qty) + ';' + std::to_string(s.quality) + ';' +
+           std::to_string(s.condition) + ';' + s.owner + ';' + (s.stolen ? "1" : "0") + ';' +
+           std::to_string(s.made_day) + ';' + (s.bound ? "1" : "0");
+}
+
+const Inventory* inventory_of(const SimWorld* world, const char* actor) {
+    const auto it = world->world.inventories.find(Id(actor));
+    return it == world->world.inventories.end() ? nullptr : &it->second;
+}
+
 }  // namespace
 
 extern "C" {
@@ -66,6 +79,36 @@ int sim_world_encumbrance(const SimWorld* world, const char* actor) {
     return guard([&] {
         if (world == nullptr || actor == nullptr) return -1;
         return encumbrance(world->world, Id(actor));
+    });
+}
+
+int sim_world_stack_count(const SimWorld* world, const char* actor) {
+    return guard([&] {
+        if (world == nullptr || actor == nullptr) return -1;
+        const Inventory* inv = inventory_of(world, actor);
+        return inv ? static_cast<int>(inv->stacks.size()) : 0;
+    });
+}
+
+int sim_world_stack_at(const SimWorld* world, const char* actor, int index, char* out, int cap) {
+    return guard([&] {
+        if (world == nullptr || actor == nullptr || out == nullptr || cap <= 0) return -1;
+        const Inventory* inv = inventory_of(world, actor);
+        if (inv == nullptr || index < 0 || static_cast<std::size_t>(index) >= inv->stacks.size()) return -2;
+        return write_req(out, cap, stack_record(inv->stacks[static_cast<std::size_t>(index)]));
+    });
+}
+
+int sim_world_item_def(const SimWorld* world, const char* item, char* out, int cap) {
+    return guard([&] {
+        if (world == nullptr || item == nullptr || out == nullptr || cap <= 0) return -1;
+        const std::optional<ItemDef> d = item_def(world->world.db, Id(item));
+        if (!d) return -2;
+        std::string flags;
+        for (const std::string& f : d->flags) flags += (flags.empty() ? "" : "|") + f;
+        return write_req(out, cap, d->ui_category + ';' + std::to_string(d->weight_g) + ';' +
+                                       std::to_string(d->stack_max) + ';' + std::to_string(d->spoil_days) +
+                                       ';' + flags);
     });
 }
 
