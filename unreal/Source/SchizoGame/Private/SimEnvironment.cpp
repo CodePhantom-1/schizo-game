@@ -22,7 +22,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogSimEnvironment, Log, All);
 namespace
 {
 	// --- the city: the crescent round the lagoon (AA4, D-025; cm; +X east,
-	// +Y north; the old Moon Gate's spot is the origin). The frame and the
+	// +Y south, north is -Y (D-026: UE is left-handed); the old Moon Gate's spot is the origin). The frame and the
 	// monuments' places are read from the canon (SimCityData) in Build().
 	constexpr float WallH = 950.f;
 	constexpr float WaterZ = -120.f;
@@ -51,10 +51,10 @@ namespace
 		if (const FSimCityPlace* S = SimCityData::Find(TEXT("sea_gate_place"))) { SeaGatePos = S->Center; SeaGateYaw = S->YawDeg - 90.f; }
 	}
 
-	/** Degrees of P round the crescent's centre (0 = east, 90 = north), in (-180, 180]. */
+	/** Degrees of P round the crescent's centre (0 = east, 90 = +Y = south), in (-180, 180]. */
 	float CityAngle(float X, float Y) { return FMath::RadiansToDegrees(FMath::Atan2(Y - CityO.Y, X - CityO.X)); }
 	float CityRadius(float X, float Y) { return FVector2D(X - CityO.X, Y - CityO.Y).Size(); }
-	/** True between the horns, going over the north (the built crescent). */
+	/** True between the horns, going over the south (+Y) (the built crescent). */
 	bool InCrescentArc(float A) { const float A360 = A < HornE ? A + 360.f : A; return A360 <= HornW; }
 	/** Point on the crescent: angle (deg) and radius from the centre. */
 	FVector2D CityPoint(float ADeg, float R) { const float A = FMath::DegreesToRadians(ADeg); return CityO + FVector2D(FMath::Cos(A), FMath::Sin(A)) * R; }
@@ -169,7 +169,7 @@ namespace
 		}
 		else
 		{
-			const float Desert = FMath::Max(Smooth(62000.f, 90000.f, -X), Smooth(44000.f, 60000.f, -Y));
+			const float Desert = FMath::Max(Smooth(62000.f, 90000.f, -X), Smooth(44000.f, 60000.f, Y));
 			C = FMath::Lerp(SimHash01(Seed, 5) < 0.3f ? SimRGB(150, 132, 84) : SimRGB(180, 150, 104),
 				SimRGB(206, 172, 120), Desert);
 			if (H > 12000.f)
@@ -327,10 +327,10 @@ float ASimEnvironment::TerrainHeight(float X, float Y)
 	const float N = Perlin(X / 9000.f, Y / 9000.f) * 0.6f + Perlin(X / 3100.f, Y / 3100.f) * 0.3f + Perlin(X / 900.f, Y / 900.f) * 0.1f;
 	float H = 40.f + (N * 0.5f + 0.5f) * FMath::Lerp(60.f, 450.f, Smooth(0.f, 60000.f, D));
 
-	// Dunes: the desert west beyond the fields and south beyond the river;
-	// a gentler rolling steppe north.
-	float Desert = FMath::Max(Smooth(62000.f, 90000.f, -X), Smooth(44000.f, 60000.f, -Y));
-	Desert = FMath::Max(Desert, Smooth(40000.f, 70000.f, Y) * 0.45f);
+	// Dunes: the desert west beyond the fields and south (+Y, D-026) behind the
+	// crescent; a gentler rolling steppe north beyond the river.
+	float Desert = FMath::Max(Smooth(62000.f, 90000.f, -X), Smooth(44000.f, 60000.f, Y));
+	Desert = FMath::Max(Desert, Smooth(40000.f, 70000.f, -Y) * 0.45f);
 	const float Ridge = 1.f - FMath::Abs(Perlin(X / 6500.f + 3.1f, Y / 2600.f - 1.7f));
 	H += Desert * Ridge * Ridge * 1600.f;
 
@@ -342,7 +342,7 @@ float ASimEnvironment::TerrainHeight(float X, float Y)
 	// The walled city and a 40 m apron stand on flat ground.
 	H = FMath::Lerp(0.f, H, Smooth(0.f, 4000.f, D));
 
-	// The lagoon of the two waters inside the crescent, with a channel south to the
+	// The lagoon of the two waters inside the crescent, with a channel north to the
 	// river (the fresh water) and one east to the sea (the salt) (D-025).
 	{
 		const float R = CityRadius(X, Y);
@@ -374,7 +374,7 @@ float ASimEnvironment::TerrainHeight(float X, float Y)
 			H = FMath::Lerp(H, -260.f, 1.f - Smooth(260.f, 520.f, FMath::Abs(X - CanalX)));
 		}
 	}
-	// The river, south of the walls, running east to the sea.
+	// The river, north of the walls, running east to the sea.
 	H = FMath::Lerp(H, -480.f, 1.f - Smooth(2200.f, 5200.f, FMath::Abs(Y - RiverY(X))));
 	// The sea.
 	const float Cx = CoastX(Y);
@@ -515,7 +515,7 @@ void ASimEnvironment::BuildWalls(FSimMeshKit& K, FSimMeshKit& Glow)
 		if (bTowerB) { Tower(B); }
 	};
 	// --- the crescent's walls (AA4, D-025): the outer arc from the western horn over the
-	// north to the eastern horn, bulging round the Prophet's citadel; the horns closed
+	// south (+Y) to the eastern horn, bulging round the Prophet's citadel; the horns closed
 	// radially down to the lagoon; the two gates stand in the outer wall.
 	auto Gap = [](const FVector2D& P, const FVector2D& G) { return (P - G).Size() < 1150.f; };
 	auto ArcWall = [&](float A0, float A1, float R)
@@ -1019,7 +1019,7 @@ void ASimEnvironment::BuildFar(FSimMeshKit& K)
 	for (int32 i = 0; i < 16; ++i)
 	{
 		const float X = -2400000.f + 4800000.f * (i + R.Range(0.1f, 0.9f)) / 16.f;
-		const float Y = R.Range(1400000.f, 2200000.f);
+		const float Y = -R.Range(1400000.f, 2200000.f);  // north is -Y (D-026)
 		const float H = R.Range(160000.f, 380000.f);
 		K.Mountain(FVector(X, Y, -30000.f), H * R.Range(1.6f, 2.4f), H, 9 + (i % 4), 300 + i,
 			SimRGB(84, 86, 94), SimRGB(206, 210, 220), R.Range(0.66f, 0.78f));
@@ -1027,7 +1027,7 @@ void ASimEnvironment::BuildFar(FSimMeshKit& K)
 	// Desert mesas west and south.
 	for (int32 i = 0; i < 14; ++i)
 	{
-		const float A = FMath::DegreesToRadians(R.Range(150.f, 290.f));
+		const float A = FMath::DegreesToRadians(R.Range(70.f, 210.f));  // west and south (+Y)
 		const float Dist = R.Range(250000.f, 700000.f);
 		const FVector At(15000.f + FMath::Cos(A) * Dist, 3000.f + FMath::Sin(A) * Dist, -5000.f);
 		const float Hw = R.Range(8000.f, 40000.f);

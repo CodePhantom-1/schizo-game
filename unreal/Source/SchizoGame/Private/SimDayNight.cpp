@@ -2,6 +2,7 @@
 // source): the sun rides a tilted circle (rises east over the sea, peaks
 // 62 degrees up in the south at noon, sets west), the moon the opposite one.
 #include "SimDayNight.h"
+#include "SimCompass.h"
 
 #include "SimWorldSubsystem.h"
 
@@ -26,11 +27,7 @@ namespace
 	constexpr float kNightExposureFloor = 2.0f;
 
 	/** Unit vector toward a body on the tilted day circle; Phase 0 = rising in the east. */
-	FVector BodyDir(float Phase, float TiltDeg)
-	{
-		const float T = FMath::DegreesToRadians(TiltDeg);
-		return FVector(FMath::Cos(Phase), -FMath::Sin(Phase) * FMath::Cos(T), FMath::Sin(Phase) * FMath::Sin(T));
-	}
+	FVector BodyDir(float Phase, float TiltDeg) { return SimCompass::SunDir(Phase, TiltDeg); }
 
 	FLinearColor LerpC(const FLinearColor& A, const FLinearColor& B, float T)
 	{

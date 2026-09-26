@@ -3,7 +3,7 @@
 // db/canon/places.csv (every building's footprint, from tools/city_layout.py)
 // and city_districts.csv's crescent_frame row (the centre, the lagoon edge,
 // the wall). Loaded once from the staged canon (Content/Sim/canon). Units are
-// centimetres (the canon's metres × 100); +X east, +Y north.
+// centimetres (the canon's metres × 100); +X east, +Y south (D-026: north is -Y, UE is left-handed).
 #pragma once
 
 #include "CoreMinimal.h"

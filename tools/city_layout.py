@@ -10,7 +10,7 @@ quarter's remaining frontage with homes of its wealth. Every existing
 places.csv row keeps its id (schedules and people point at them).
 
 Writes db/canon/places.csv with footprint columns: x_m, y_m (centre, metres;
-+x east, +y north, the old Moon Gate at the origin), yaw_deg (the building's
++x east, +y south (north is -y, D-026), the old Moon Gate at the origin), yaw_deg (the building's
 width runs along yaw), w_m, d_m, typology, wealth, quarter.
 
 Usage: python3 tools/city_layout.py [--check]   (--check: exit 1 if places.csv would change)
@@ -166,7 +166,7 @@ FILL = {
 # monuments stand where the design puts them; the rest flow after.
 PIN = {
     "moon_gate_place": (185.0, 175.0),        # in the outer wall by the western horn, facing the land road
-    "temple_front_place": (90.0, 140.0),      # the northern belly
+    "temple_front_place": (90.0, 140.0),      # the southern belly (+y, D-026)
     "great_lighthouse_place": (-15.0, 215.0), # out on the mole, at the sea
     "sea_gate_place": (8.0, 175.0),           # in the outer wall, facing the quay and the sea
 }

@@ -44,7 +44,7 @@ def main(out):
             ax.annotate(p["name"], (float(p["x_m"]), float(p["y_m"])), fontsize=7, ha="center", va="center",
                         color="#1d1712", bbox=dict(boxstyle="round,pad=0.2", fc="#ffffffcc", ec="none"))
     ax.set_xlim(-60, 520)
-    ax.set_ylim(-170, 330)
+    ax.set_ylim(330, -170)  # north (-y, D-026) up: the map matches the 3D world
     ax.set_aspect("equal")
     ax.set_title("The City of the Moon — the crescent (metres; north up)", fontsize=12)
     handles = [plt.Line2D([], [], marker="s", ls="", color=c, label=g) for g, c in COLOURS.items()]
