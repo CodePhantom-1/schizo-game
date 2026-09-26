@@ -1,0 +1,85 @@
+{
+    "totalResults": 1,
+    "nextPageHttp": null,
+    "currentPageHttp": "https://ambientcg.com/api/v3/assets?id=bricks100&sort=popular&limit=100&include=downloads",
+    "previousPageHttp": null,
+    "assets": [
+        {
+            "id": "Bricks100",
+            "downloads": [
+                {
+                    "attributes": "1K-JPG",
+                    "extension": "zip",
+                    "url": "https://ambientcg.com/get?file=Bricks100_1K-JPG.zip",
+                    "size": 4827385
+                },
+                {
+                    "attributes": "2K-JPG",
+                    "extension": "zip",
+                    "url": "https://ambientcg.com/get?file=Bricks100_2K-JPG.zip",
+                    "size": 14462424
+                },
+                {
+                    "attributes": "4K-JPG",
+                    "extension": "zip",
+                    "url": "https://ambientcg.com/get?file=Bricks100_4K-JPG.zip",
+                    "size": 52195471
+                },
+                {
+                    "attributes": "8K-JPG",
+                    "extension": "zip",
+                    "url": "https://ambientcg.com/get?file=Bricks100_8K-JPG.zip",
+                    "size": 186673122
+                },
+                {
+                    "attributes": "12K-JPG",
+                    "extension": "zip",
+                    "url": "https://ambientcg.com/get?file=Bricks100_12K-JPG.zip",
+                    "size": 370711517
+                },
+                {
+                    "attributes": "16K-JPG",
+                    "extension": "zip",
+                    "url": "https://ambientcg.com/get?file=Bricks100_16K-JPG.zip",
+                    "size": 631596041
+                },
+                {
+                    "attributes": "1K-PNG",
+                    "extension": "zip",
+                    "url": "https://ambientcg.com/get?file=Bricks100_1K-PNG.zip",
+                    "size": 9307549
+                },
+                {
+                    "attributes": "2K-PNG",
+                    "extension": "zip",
+                    "url": "https://ambientcg.com/get?file=Bricks100_2K-PNG.zip",
+                    "size": 32404486
+                },
+                {
+                    "attributes": "4K-PNG",
+                    "extension": "zip",
+                    "url": "https://ambientcg.com/get?file=Bricks100_4K-PNG.zip",
+                    "size": 124386769
+                },
+                {
+                    "attributes": "8K-PNG",
+                    "extension": "zip",
+                    "url": "https://ambientcg.com/get?file=Bricks100_8K-PNG.zip",
+                    "size": 478872381
+                },
+                {
+                    "attributes": "12K-PNG",
+                    "extension": "zip",
+                    "url": "https://ambientcg.com/get?file=Bricks100_12K-PNG.zip",
+                    "size": 1029933196
+                },
+                {
+                    "attributes": "16K-PNG",
+                    "extension": "zip",
+                    "url": "https://ambientcg.com/get?file=Bricks100_16K-PNG.zip",
+                    "size": 1716146101
+                }
+            ]
+        }
+    ]
+}

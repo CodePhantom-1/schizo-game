@@ -1,0 +1,21 @@
+id,source,asset,res,kind,license,author,purpose
+ph_clay_block_wall,polyhaven,clay_block_wall,2k,texture,CC0-1.0,,sun-dried mudbrick courses (trim atlas mudbrick)
+ph_clay_plaster,polyhaven,clay_plaster,2k,texture,CC0-1.0,,mud plaster over brick (trim atlas plaster)
+ph_patterned_clay_plaster,polyhaven,patterned_clay_plaster,2k,texture,CC0-1.0,,hand-smoothed plaster variation (plaster wear)
+ph_damaged_plaster,polyhaven,damaged_plaster,2k,texture,CC0-1.0,,flaking plaster showing courses (worn state)
+ph_worn_cracked_plaster,polyhaven,worn_cracked_plaster,2k,texture,CC0-1.0,,crumbling plaster (crumbling state)
+ph_mud_cracked_dry,polyhaven,mud_cracked_dry_riverbed_002,2k,texture,CC0-1.0,,drought-cracked mud (cracked state; terrain drought)
+ph_dry_mud_field,polyhaven,dry_mud_field_001,2k,texture,CC0-1.0,,packed earth yards and streets
+ph_brown_mud_dry,polyhaven,brown_mud_dry,2k,texture,CC0-1.0,,floodplain soil (terrain)
+ph_reed_roof,polyhaven,reed_roof_04,2k,texture,CC0-1.0,,bundled reed (huts mudhif mats)
+ph_thatch_roof,polyhaven,thatch_roof_angled,2k,texture,CC0-1.0,,reed and frond thatch (shelters)
+ph_palm_bark,polyhaven,palm_bark,2k,texture,CC0-1.0,,date-palm trunks beams and rafters
+ph_sandstone_brick,polyhaven,sandstone_brick_wall_01,2k,texture,CC0-1.0,,dressed stone (thresholds statue bases elite plinths)
+ph_slumped_mortar_brick,polyhaven,slumped_mortar_brick,2k,texture,CC0-1.0,,fired brick with thick mortar (footings drains the gate)
+ph_bitumen,polyhaven,bitumen,2k,texture,CC0-1.0,,bitumen damp courses hulls and mortar
+ph_wood_planks,polyhaven,wood_planks,2k,texture,CC0-1.0,,imported cedar doors and lintels
+ph_dry_ground_rocks,polyhaven,dry_ground_rocks,2k,texture,CC0-1.0,,stony steppe (terrain)
+ph_coast_sand,polyhaven,coast_sand_01,2k,texture,CC0-1.0,,beach and lagoon shore (terrain)
+ph_rock_boulder_dry,polyhaven,rock_boulder_dry,2k,texture,CC0-1.0,,desert rock and mesas (terrain)
+kenney_nature_kit,kenney,nature-kit,,model_pack,CC0-1.0,,low-poly palms crops rocks cliffs tents (props flora; stylized before use)
+kaykit_medieval_hexagon,git,KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0,,model_pack,CC0-1.0,Kay Lousberg (KayKit),low-poly buildings props and nature pieces (props; stylized before use)

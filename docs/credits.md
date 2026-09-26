@@ -8,6 +8,16 @@ Generated from `art/assets.csv` by `tools/art/license_gate.py --write-credits`. 
 
 ## CC0 1.0 (public domain)
 
+- Amal Kumar (https://polyhaven.com)
+- Charlotte Baglioni (https://polyhaven.com)
+- Dario Barresi, Dimitrios Savva (https://polyhaven.com)
+- Dimitrios Savva (https://polyhaven.com)
+- Dimitrios Savva, Rico Cilliers (https://polyhaven.com)
+- Dimitrios Savva, Rob Tuytel (https://polyhaven.com)
+- Kay Lousberg (KayKit) (https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0)
+- Kenney (https://kenney.nl/assets/nature-kit)
+- Rico Cilliers, Rob Tuytel (https://polyhaven.com)
+- Rob Tuytel (https://polyhaven.com)
 - ambientCG (https://ambientcg.com)
 
 ## AI-generated content (Steam disclosure: pre-generated)
