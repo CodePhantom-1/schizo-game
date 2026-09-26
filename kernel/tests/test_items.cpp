@@ -1,4 +1,4 @@
-// test_items.cpp — FND-01: item stacks. MECH:FND-01 MECH:INV-01 MECH:INV-06 MECH:INV-15
+// test_items.cpp — FND-01/02: item stacks and the catalogue. MECH:FND-01 MECH:FND-02 MECH:INV-01 MECH:INV-06 MECH:INV-15
 #include "sim/Items.hpp"
 #include "sim/Snapshot.hpp"
 #include "sim/World.hpp"
@@ -125,7 +125,27 @@ static bool test_legacy_count_rows_still_load() {
     return true;
 }
 
-SIM_MAIN(test_add_merges_and_counts, test_zero_and_negative_are_no_ops,
+static bool test_item_defs_from_canon() {
+    WorldState w;
+    w.init("../db/canon", 1);
+    const std::optional<ItemDef> bread = item_def(w.db, "bread");
+    SIM_CHECK(bread.has_value());
+    SIM_CHECK_EQ(bread->ui_category, std::string("food"));
+    SIM_CHECK_EQ(bread->weight_g, 250);
+    SIM_CHECK_EQ(bread->stack_max, 20);
+    SIM_CHECK_EQ(bread->spoil_days, 3);
+    SIM_CHECK_EQ(item_def(w.db, "copper_dagger")->weight_g, 300);  // arms.csv weight
+    SIM_CHECK(item_def(w.db, "clay_liver_model")->has_flag("document"));
+    SIM_CHECK(!item_def(w.db, "clay_liver_model")->has_flag("fixture"));
+    SIM_CHECK(item_def(w.db, "quern")->has_flag("fixture"));
+    SIM_CHECK(!item_def(w.db, "no_such_item").has_value());
+    SIM_CHECK_EQ(stack_weight_g(w.db, ItemStack{"bread", 4}), 1000);
+    SIM_CHECK_EQ(stack_weight_g(w.db, ItemStack{"water", 3}), 3000);   // carried water weighs
+    SIM_CHECK_EQ(stack_weight_g(w.db, ItemStack{"no_such_item", 9}), 0);
+    return true;
+}
+
+SIM_MAIN(test_item_defs_from_canon, test_add_merges_and_counts, test_zero_and_negative_are_no_ops,
          test_take_never_overdraws_and_takes_oldest_first, test_split_a_stack,
          test_set_count_moves_to_the_target,
          test_saturates_instead_of_overflowing, test_snapshot_round_trip_keeps_every_field,

@@ -2,6 +2,7 @@
 #include "sim/Items.hpp"
 
 #include <algorithm>
+#include <sstream>
 #include <tuple>
 
 namespace sim {
@@ -9,6 +10,11 @@ namespace {
 
 auto key(const ItemStack& s) {
     return std::tie(s.item, s.owner, s.stolen, s.bound, s.quality, s.made_day, s.condition);
+}
+
+int to_int(const std::string& s, int fallback) {
+    if (s.empty() || s.size() > 9 || s.find_first_not_of("0123456789") != std::string::npos) return fallback;
+    return std::stoi(s);
 }
 
 int saturate(long long n) { return static_cast<int>(std::min<long long>(n, kMaxStackQty)); }
@@ -99,6 +105,32 @@ std::optional<ItemStack> take_from_stack(Inventory& inv, std::size_t index, int 
     s.qty -= part.qty;
     normalize(inv);
     return part;
+}
+
+bool ItemDef::has_flag(const std::string& f) const {
+    for (const std::string& x : flags)
+        if (x.substr(0, x.find(':')) == f) return true;
+    return false;
+}
+
+std::optional<ItemDef> item_def(const Db& db, const Id& item) {
+    const std::optional<Row> row = db.find("items", item);
+    if (!row || row->get("tag") == "OPEN") return std::nullopt;
+    ItemDef d;
+    d.id = item;
+    d.ui_category = row->get("ui_category");
+    d.weight_g = to_int(row->get("weight_g"), 0);
+    d.stack_max = std::max(1, to_int(row->get("stack_max"), 1));
+    d.spoil_days = to_int(row->get("spoil_days"), 0);
+    std::stringstream ss(row->get("flags"));
+    for (std::string f; std::getline(ss, f, '|');)
+        if (!f.empty()) d.flags.push_back(f);
+    return d;
+}
+
+long long stack_weight_g(const Db& db, const ItemStack& s) {
+    const std::optional<ItemDef> d = item_def(db, s.item);
+    return d ? static_cast<long long>(d->weight_g) * s.qty : 0;
 }
 
 }  // namespace sim

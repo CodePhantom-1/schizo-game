@@ -14,7 +14,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: canon lint
-        run: python3 tools/canon_lint.py
+        run: python3 tools/canon_lint.py && python3 -m unittest tools/tests/test_canon_lint_items.py
       - name: coverage
         run: python3 tools/coverage_check.py
       - name: staged canon matches db/canon

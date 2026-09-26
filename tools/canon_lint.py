@@ -7,6 +7,8 @@ Fails (exit 1) on any canon row that is:
   - duplicate id within a table
   - a CANON or A row with an empty source_ref
   - any field count mismatch against the table header
+  - an items.csv row without its physical columns (FND-02: ui_category,
+    weight_g, stack_max, spoil_days, flags)
 OPEN rows are reported (they cannot ship) but do not fail the lint.
 """
 import csv
@@ -16,6 +18,26 @@ from pathlib import Path
 CANON = Path(__file__).resolve().parent.parent / "db" / "canon"
 VALID_TAGS = {"CANON", "A", "INVENTED", "OPEN"}
 REQUIRED = {"id", "tag", "source_ref"}
+UI_CATEGORIES = {"food", "drink", "ingredient", "material", "tool", "weapon", "ammunition",
+                 "armour", "shield", "clothing", "ritual", "document", "trade_good",
+                 "station_part", "animal", "medicine", "treasure"}
+ITEM_FLAGS = {"bound", "document", "floats", "fixture", "animal", "container"}
+
+
+def item_row_errors(where: str, row: dict) -> list[str]:
+    """FND-02: the physical columns every item row must carry."""
+    errs = []
+    rid = row.get("id", "")
+    if row.get("ui_category") not in UI_CATEGORIES:
+        errs.append(f"{where}: item '{rid}' ui_category '{row.get('ui_category')}' not in {sorted(UI_CATEGORIES)}")
+    for col, lo in (("weight_g", 0), ("stack_max", 1), ("spoil_days", 0)):
+        v = row.get(col) or ""
+        if not v.isdigit() or int(v) < lo:
+            errs.append(f"{where}: item '{rid}' {col} '{v}' must be an integer >= {lo}")
+    for flag in filter(None, (row.get("flags") or "").split("|")):
+        if flag.split(":")[0] not in ITEM_FLAGS:
+            errs.append(f"{where}: item '{rid}' unknown flag '{flag}'")
+    return errs
 
 
 def main() -> int:
@@ -65,6 +87,8 @@ def main() -> int:
                     errors.append(f"{where}: {tag} row '{rid}' has no source_ref")
                 if tag == "OPEN":
                     open_rows.append(f"{table.name}: {rid}")
+                elif table.name == "items.csv":
+                    errors.extend(item_row_errors(where, row))
             print(f"{table.name:<24} {rows:>3} rows  header ok")
 
     print()

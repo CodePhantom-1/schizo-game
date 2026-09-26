@@ -59,4 +59,19 @@ int set_count(Inventory& inv, const Id& item, int n);
 // Takes up to qty units from one stack (by index in the normalized order).
 std::optional<ItemStack> take_from_stack(Inventory& inv, std::size_t index, int qty);
 
+// --- FND-02: the catalogue's physical columns (items.csv) -------------------
+struct ItemDef {
+    Id id;
+    std::string ui_category;  // the fixed UI enum canon_lint checks
+    int weight_g = 0;         // grams per unit
+    int stack_max = 1;
+    int spoil_days = 0;       // 0 = never spoils
+    std::vector<std::string> flags;  // bound | document | floats | fixture | animal | container[:<g>]
+    bool has_flag(const std::string& f) const;  // matches the part before ':'
+};
+// nullopt for an unknown or OPEN row.
+std::optional<ItemDef> item_def(const Db& db, const Id& item);
+// weight_g x qty; 0 for an unknown item.
+long long stack_weight_g(const Db& db, const ItemStack& s);
+
 }  // namespace sim
