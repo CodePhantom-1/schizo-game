@@ -29,7 +29,9 @@ sys.path.insert(0, HERE)
 import kit_common as kc  # noqa: E402
 
 REPO = os.path.dirname(os.path.dirname(HERE))
-CELLS = json.load(open(os.path.join(REPO, "art", "generated", "tex", "trim_cells.json")))
+_CELLS_PATH = os.path.join(REPO, "art", "generated", "tex", "trim_cells.json")
+# The trim atlas exists only after trim_atlas.py; importing this module for contact_sheet() must not need it.
+CELLS = json.load(open(_CELLS_PATH)) if os.path.exists(_CELLS_PATH) else {"grid": 8, "cells": {}}
 GRID = CELLS["grid"]
 TILE_M = {"plaster": 2.0, "whitewash": 2.0, "packed_earth": 2.0, "stone": 1.5}  # else 1 m
 EARTH = {"mudbrick": 1.0, "plaster": 1.0, "whitewash": 1.0, "packed_earth": 1.0, "cone_mosaic": 1.0,

@@ -1,37 +1,37 @@
-id,source,file,leafy,max_tris
-palm_tall,kenney_nature_kit,Models/GLTF format/tree_palmTall.glb,1,1500
-palm_short,kenney_nature_kit,Models/GLTF format/tree_palmShort.glb,1,1500
-palm_bend,kenney_nature_kit,Models/GLTF format/tree_palmBend.glb,1,1500
-palm_detailed,kenney_nature_kit,Models/GLTF format/tree_palmDetailedTall.glb,1,1500
-bush,kenney_nature_kit,Models/GLTF format/plant_bush.glb,1,800
-bush_large,kenney_nature_kit,Models/GLTF format/plant_bushLarge.glb,1,800
-bush_small,kenney_nature_kit,Models/GLTF format/plant_bushSmall.glb,1,800
-grass,kenney_nature_kit,Models/GLTF format/grass.glb,1,300
-grass_large,kenney_nature_kit,Models/GLTF format/grass_large.glb,1,300
-grass_leafs,kenney_nature_kit,Models/GLTF format/grass_leafs.glb,1,300
-lily_large,kenney_nature_kit,Models/GLTF format/lily_large.glb,0,300
-lily_small,kenney_nature_kit,Models/GLTF format/lily_small.glb,0,300
-flower_red_a,kenney_nature_kit,Models/GLTF format/flower_redA.glb,0,300
-flower_red_b,kenney_nature_kit,Models/GLTF format/flower_redB.glb,0,300
-flower_red_c,kenney_nature_kit,Models/GLTF format/flower_redC.glb,0,300
-flower_purple_a,kenney_nature_kit,Models/GLTF format/flower_purpleA.glb,0,300
-flower_yellow_a,kenney_nature_kit,Models/GLTF format/flower_yellowA.glb,0,300
-stone_small_a,kenney_nature_kit,Models/GLTF format/stone_smallA.glb,0,300
-stone_small_b,kenney_nature_kit,Models/GLTF format/stone_smallB.glb,0,300
-rock_small_a,kenney_nature_kit,Models/GLTF format/rock_smallA.glb,0,300
-pot_large,kenney_nature_kit,Models/GLTF format/pot_large.glb,0,600
-pot_small,kenney_nature_kit,Models/GLTF format/pot_small.glb,0,600
-log,kenney_nature_kit,Models/GLTF format/log.glb,0,600
-log_stack,kenney_nature_kit,Models/GLTF format/log_stack.glb,0,600
-kk_sack,kaykit_medieval_hexagon,addons/kaykit_medieval_hexagon_pack/Assets/gltf/decoration/props/sack.gltf,0,600
-kk_bucket_water,kaykit_medieval_hexagon,addons/kaykit_medieval_hexagon_pack/Assets/gltf/decoration/props/bucket_water.gltf,0,600
-kk_ladder,kaykit_medieval_hexagon,addons/kaykit_medieval_hexagon_pack/Assets/gltf/decoration/props/ladder.gltf,0,600
-kk_weaponrack,kaykit_medieval_hexagon,addons/kaykit_medieval_hexagon_pack/Assets/gltf/decoration/props/weaponrack.gltf,0,600
-kk_rock_c,kaykit_medieval_hexagon,addons/kaykit_medieval_hexagon_pack/Assets/gltf/decoration/nature/rock_single_C.gltf,0,600
-kk_waterlily_a,kaykit_medieval_hexagon,addons/kaykit_medieval_hexagon_pack/Assets/gltf/decoration/nature/waterlily_A.gltf,0,300
-kk_waterlily_b,kaykit_medieval_hexagon,addons/kaykit_medieval_hexagon_pack/Assets/gltf/decoration/nature/waterlily_B.gltf,0,300
-reed_clump,code,reed_clump,1,1200
-cattail,code,cattail,1,800
-tamarisk,code,tamarisk,1,1500
-saltbush,code,saltbush,1,800
-palm_dead,code,palm_dead,0,600
+id,source,file,leafy,max_tris,size_m
+palm_tall,kenney_nature_kit,Models/GLTF format/tree_palmTall.glb,1,1500,10
+palm_short,kenney_nature_kit,Models/GLTF format/tree_palmShort.glb,1,1500,5
+palm_bend,kenney_nature_kit,Models/GLTF format/tree_palmBend.glb,1,1500,9
+palm_detailed,kenney_nature_kit,Models/GLTF format/tree_palmDetailedTall.glb,1,1500,12
+bush,kenney_nature_kit,Models/GLTF format/plant_bush.glb,1,800,1.4
+bush_large,kenney_nature_kit,Models/GLTF format/plant_bushLarge.glb,1,800,1.8
+bush_small,kenney_nature_kit,Models/GLTF format/plant_bushSmall.glb,1,800,0.9
+grass,kenney_nature_kit,Models/GLTF format/grass.glb,1,300,0.6
+grass_large,kenney_nature_kit,Models/GLTF format/grass_large.glb,1,300,0.8
+grass_leafs,kenney_nature_kit,Models/GLTF format/grass_leafs.glb,1,300,0.4
+lily_large,kenney_nature_kit,Models/GLTF format/lily_large.glb,0,300,1.2
+lily_small,kenney_nature_kit,Models/GLTF format/lily_small.glb,0,300,0.7
+flower_red_a,kenney_nature_kit,Models/GLTF format/flower_redA.glb,0,300,0.5
+flower_red_b,kenney_nature_kit,Models/GLTF format/flower_redB.glb,0,300,0.5
+flower_red_c,kenney_nature_kit,Models/GLTF format/flower_redC.glb,0,300,0.45
+flower_purple_a,kenney_nature_kit,Models/GLTF format/flower_purpleA.glb,0,300,0.4
+flower_yellow_a,kenney_nature_kit,Models/GLTF format/flower_yellowA.glb,0,300,0.35
+stone_small_a,kenney_nature_kit,Models/GLTF format/stone_smallA.glb,0,300,0.5
+stone_small_b,kenney_nature_kit,Models/GLTF format/stone_smallB.glb,0,300,0.5
+rock_small_a,kenney_nature_kit,Models/GLTF format/rock_smallA.glb,0,300,0.9
+pot_large,kenney_nature_kit,Models/GLTF format/pot_large.glb,0,600,0.7
+pot_small,kenney_nature_kit,Models/GLTF format/pot_small.glb,0,600,0.55
+log,kenney_nature_kit,Models/GLTF format/log.glb,0,600,2.5
+log_stack,kenney_nature_kit,Models/GLTF format/log_stack.glb,0,600,2
+kk_sack,kaykit_medieval_hexagon,addons/kaykit_medieval_hexagon_pack/Assets/gltf/decoration/props/sack.gltf,0,600,0.8
+kk_bucket_water,kaykit_medieval_hexagon,addons/kaykit_medieval_hexagon_pack/Assets/gltf/decoration/props/bucket_water.gltf,0,600,0.4
+kk_ladder,kaykit_medieval_hexagon,addons/kaykit_medieval_hexagon_pack/Assets/gltf/decoration/props/ladder.gltf,0,600,3.2
+kk_weaponrack,kaykit_medieval_hexagon,addons/kaykit_medieval_hexagon_pack/Assets/gltf/decoration/props/weaponrack.gltf,0,600,1.8
+kk_rock_c,kaykit_medieval_hexagon,addons/kaykit_medieval_hexagon_pack/Assets/gltf/decoration/nature/rock_single_C.gltf,0,600,0.7
+kk_waterlily_a,kaykit_medieval_hexagon,addons/kaykit_medieval_hexagon_pack/Assets/gltf/decoration/nature/waterlily_A.gltf,0,300,0.6
+kk_waterlily_b,kaykit_medieval_hexagon,addons/kaykit_medieval_hexagon_pack/Assets/gltf/decoration/nature/waterlily_B.gltf,0,300,0.8
+reed_clump,code,reed_clump,1,1200,
+cattail,code,cattail,1,800,
+tamarisk,code,tamarisk,1,1500,
+saltbush,code,saltbush,1,800,
+palm_dead,code,palm_dead,0,600,
