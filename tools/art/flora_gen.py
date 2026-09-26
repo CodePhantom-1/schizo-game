@@ -189,5 +189,20 @@ def palm_dead():
     return b.finish()
 
 
+def sherd_scatter():
+    """Potsherds on a tell: 12 small flat shards, red-brown and buff, strewn over about 1.5 m."""
+    b = Builder("sherd_scatter")
+    r = b.rng
+    for _ in range(12):
+        cx, cy, size, yaw = r.uniform(-0.7, 0.7), r.uniform(-0.7, 0.7), r.uniform(0.05, 0.12), r.uniform(0, 2 * math.pi)
+        pts = []
+        for k in range(4):  # an irregular quad, lying almost flat
+            a = yaw + k * math.pi / 2 + r.uniform(-0.3, 0.3)
+            d = size * r.uniform(0.6, 1.0)
+            pts.append((cx + d * math.cos(a), cy + d * math.sin(a), r.uniform(0.0, 0.015)))
+        b.face(pts, r.choice(["ochre_1", "brick_1", "ochre_2"]))
+    return b.finish()
+
+
 BUILDERS = {"reed_clump": reed_clump, "cattail": cattail, "tamarisk": tamarisk, "saltbush": saltbush,
-            "palm_dead": palm_dead}
+            "palm_dead": palm_dead, "sherd_scatter": sherd_scatter}

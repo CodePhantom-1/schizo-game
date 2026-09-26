@@ -40,11 +40,13 @@ def linear_to_srgb(c):
 MATERIAL_MAP = {
     "leafsGreen": "leaf_1", "leafsDark": "leaf_0", "grass": "leaf_2",
     "woodBark": "palm_2", "woodBarkDark": "ochre_0", "woodInner": "reed_3", "wood": "ochre_1",
-    "_defaultMat": "ochre_1", "stone": "stone_2", "dirt": "mud_4",
+    "_defaultMat": "ochre_1", "stone": "stone_2", "dirt": "mud_4", "dirtDark": "mud_2",
     "colorRed": "madder_1", "colorWhite": "cream_0", "colorPurple": "indigo_1", "colorYellow": "saffron_1",
 }
-# Whole-row colours where the atlas sample reads wrong (KayKit's lilies snap to lagoon water).
-ROW_COLOUR = {"kk_waterlily_a": "leaf_0", "kk_waterlily_b": "leaf_0"}
+# Whole-row colours where the source colour reads wrong (KayKit's lilies snap to lagoon water).
+ROW_COLOUR = {"kk_waterlily_a": "leaf_0", "kk_waterlily_b": "leaf_0",
+              # Kenney's wheat: green shoots; the ripe stage's "_defaultMat" would read as terracotta
+              "crops_wheat_a": "leaf_1", "crops_wheat_b": "reed_3"}
 
 
 def nearest(rgb):

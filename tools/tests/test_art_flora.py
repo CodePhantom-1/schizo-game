@@ -7,7 +7,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 FLORA = ROOT / "db" / "canon" / "flora.csv"
 MESHES = ROOT / "art" / "scatter_meshes.csv"
 
-HABITATS = {"shore", "water", "yard", "garden", "street_edge", "open", "wall_foot", "roof", "precinct", "tombs", "camp"}
+HABITATS = {"shore", "water", "yard", "garden", "street_edge", "open", "wall_foot", "roof", "precinct", "tombs", "camp",
+            "levee", "field", "bank", "desert", "tell_top"}  # the last five: the countryside (ASimScatter)
 GROUPS = {"tree", "shrub", "grass", "water", "flower", "crop", "prop"}
 # world-art-plan §10 guard rails: substring test on the source file name
 BANNED = ("barrel", "crate", "cactus", "pine", "oak", "mushroom", "windmill", "watermill", "chicken")

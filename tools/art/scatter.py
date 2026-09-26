@@ -39,6 +39,8 @@ GARDEN_WEALTH = {"comfortable", "elite", "sacred"}
 OPEN_GROUND = {"market_square", "brickyard", "wharf"}
 GATES = {"city_gate", "sea_gate"}
 TENT_TYPES = {"migrant_tent", "warchief_tent"}
+# Placed in the game by ASimScatter::ScatterCountryside from the terrain's ground kinds (V-B3), not here.
+COUNTRYSIDE = {"levee", "field", "bank", "desert", "tell_top"}
 
 
 def read(canon, name):
@@ -202,7 +204,7 @@ def regions(world, habitat):
         return [r for p in places if p["quarter"] == "garden_of_tombs" for r in _ring(p, 8.0)]
     if habitat == "camp":
         return [r for p in places if p["typology"] in TENT_TYPES for r in _ring(p, 5.0)]
-    return []  # roof: nothing grows there yet
+    return []  # roof: nothing grows there yet; the countryside habitats are ASimScatter's
 
 
 def instances(world, flora, habitat):

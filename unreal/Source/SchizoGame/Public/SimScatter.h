@@ -16,6 +16,8 @@ struct FSimScatterResult
 	int32 NumInstances = 0;
 	int32 NumMeshes = 0;         // meshes that stand (imported and in scatter.csv)
 	int32 NumMissingMeshes = 0;  // meshes scatter.csv names that are not imported (their rows skipped)
+	int32 NumCountryside = 0;    // V-B3: instances on the land round the crescent (not in NumInstances)
+	TMap<FString, int32> CountrysideByHabitat;  // levee, field, bank, desert, tell_top
 };
 
 UCLASS()
@@ -46,6 +48,17 @@ public:
 
 private:
 	FSimScatterResult Build();
+
+	/** V-B3: the countryside from the terrain's ground kinds (fields, levees, banks, desert, tells), seeded by
+	 *  SimHash01 on a jittered 4 m grid, clear of the road west and Tommy's palms. */
+	void ScatterCountryside(FSimScatterResult& R);
+
+	/** The HISM for a mesh and season set (city or countryside), made on first use; INDEX_NONE if not imported. */
+	int32 HismFor(const FString& Mesh, const FString& SeasonsCsv, bool bCountry);
+
+	TMap<FString, int32> HismByKey;
+	TMap<FString, FString> MeshGroupOf;
+	TSet<FString> MissingMeshes, StandingMeshes;
 
 	UPROPERTY() TArray<TObjectPtr<UHierarchicalInstancedStaticMeshComponent>> Hisms;
 	/** Each HISM's seasons (parallel to Hisms): empty = all year. */

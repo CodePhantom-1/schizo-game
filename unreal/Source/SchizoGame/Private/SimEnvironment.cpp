@@ -83,6 +83,15 @@ namespace
 		return R > LagoonR + 2600.f && R < LagoonR + 4400.f && InCrescentArc(CityAngle(X, Y));
 	}
 
+	/** Tommy's countryside palms (BuildCountryside), recorded for the scatter to keep clear of (V-B3). */
+	TArray<FVector2D> GCountryPalms;
+
+	void PlantPalm(FSimMeshKit& Plants, const FVector& Base, float Height, uint32 Seed)
+	{
+		GCountryPalms.Add(FVector2D(Base));
+		Plants.Palm(Base, Height, Seed);
+	}
+
 	/** The open land before any landform or mask: rolling ground, dunes, far hills (Tommy's). */
 	float BaseHeight(float X, float Y)
 	{
@@ -494,6 +503,16 @@ FLinearColor ASimEnvironment::SampleTerrainColor(float X, float Y, float H, floa
 ESimGround ASimEnvironment::GroundKind(float X, float Y, float H, float Nz, uint32 Seed)
 {
 	return GroundKindOf(X, Y, H, Nz, Seed);
+}
+
+const TArray<FVector2D>& ASimEnvironment::GetCountryPalms()
+{
+	return GCountryPalms;
+}
+
+float ASimEnvironment::LeveeAt(float X, float Y)
+{
+	return LeveeWeight(X, Y);
 }
 
 TArray<FSimTell> ASimEnvironment::GetTells()
@@ -1036,6 +1055,7 @@ void ASimEnvironment::BuildCity(FSimMeshKit& Plants, FSimMeshKit& Windows)
 void ASimEnvironment::BuildCountryside(FSimMeshKit& K, FSimMeshKit& Plants)
 {
 	int32 Palms = 0, ReedClumps = 0, Tufts = 0, Rocks = 0;
+	GCountryPalms.Reset();  // V-B3: the scatter keeps 3 m clear of every palm planted here
 	// The road west: palms either side, a bridge over the cross canal.
 	for (float X = -2600.f; X > -90000.f; X -= 1800.f)
 	{
@@ -1044,7 +1064,7 @@ void ASimEnvironment::BuildCountryside(FSimMeshKit& K, FSimMeshKit& Plants)
 			if (SimHash01(FMath::RoundToInt(X), FMath::RoundToInt(Side) + 5) < 0.7f && FMath::Abs(X - CanalX) > 900.f)
 			{
 				const float Y = Side * (800.f + 250.f * SimHash01(FMath::RoundToInt(X), 9));
-				Plants.Palm(FVector(X, Y, TerrainHeight(X, Y) - 10.f), 850.f + 350.f * SimHash01(FMath::RoundToInt(X), FMath::RoundToInt(Side) + 7), FMath::RoundToInt(-X) * 3 + (Side > 0));
+				PlantPalm(Plants, FVector(X, Y, TerrainHeight(X, Y) - 10.f), 850.f + 350.f * SimHash01(FMath::RoundToInt(X), FMath::RoundToInt(Side) + 7), FMath::RoundToInt(-X) * 3 + (Side > 0));
 				++Palms;
 			}
 		}
@@ -1075,7 +1095,7 @@ void ASimEnvironment::BuildCountryside(FSimMeshKit& K, FSimMeshKit& Plants)
 						{
 							continue;
 						}
-						Plants.Palm(FVector(Pxw, Pyw, TerrainHeight(Pxw, Pyw) - 10.f), R.Range(700.f, 1200.f), Px * 1000 + Py * 7 + FMath::RoundToInt(Ox + Oy));
+						PlantPalm(Plants, FVector(Pxw, Pyw, TerrainHeight(Pxw, Pyw) - 10.f), R.Range(700.f, 1200.f), Px * 1000 + Py * 7 + FMath::RoundToInt(Ox + Oy));
 						++Palms;
 					}
 				}
@@ -1115,7 +1135,7 @@ void ASimEnvironment::BuildCountryside(FSimMeshKit& K, FSimMeshKit& Plants)
 				}
 				else if (H > 0.93f)
 				{
-					Plants.Palm(FVector(P.X, P.Y + Side * 250.f, TerrainHeight(P.X, P.Y + Side * 250.f) - 10.f), 950.f, FMath::RoundToInt(X) + 555);
+					PlantPalm(Plants, FVector(P.X, P.Y + Side * 250.f, TerrainHeight(P.X, P.Y + Side * 250.f) - 10.f), 950.f, FMath::RoundToInt(X) + 555);
 					++Palms;
 				}
 			}
@@ -1142,7 +1162,7 @@ void ASimEnvironment::BuildCountryside(FSimMeshKit& K, FSimMeshKit& Plants)
 			else if (H > 0.95f)
 			{
 				const float Py = RiverY(X) + Side * (Off + 1200.f);
-				Plants.Palm(FVector(X, Py, TerrainHeight(X, Py) - 10.f), 1000.f, FMath::RoundToInt(X) + 999);
+				PlantPalm(Plants, FVector(X, Py, TerrainHeight(X, Py) - 10.f), 1000.f, FMath::RoundToInt(X) + 999);
 				++Palms;
 			}
 		}

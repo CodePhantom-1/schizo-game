@@ -79,6 +79,12 @@ public:
 	/** The five tells (seeded; clear of the road, the river, the fields and the sea). */
 	static TArray<FSimTell> GetTells();
 
+	/** Where BuildCountryside planted its palms (empty until the environment is built). */
+	static const TArray<FVector2D>& GetCountryPalms();
+
+	/** 1 on the crest of a levee beside the river or a canal, 0 away from it. */
+	static float LeveeAt(float X, float Y);
+
 	/** The river's centreline Y at X, cm (it runs east to the sea, north of the walls). */
 	static float RiverCentreY(float X);
 

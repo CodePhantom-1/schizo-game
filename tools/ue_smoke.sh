@@ -7,7 +7,7 @@ set -uo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 UE_ROOT="${UE_ROOT:-$HOME/UnrealEngine}"
 # Linux build, or a Windows install run from Git Bash (Tommy's box).
-if [[ -e "$UE_ROOT/Engine/Binaries/Win64/UnrealEditor-Cmd.exe" ]]; then UE_BIN="$UE_ROOT/Engine/Binaries/Win64"; UE_EXE=.exe; UE_STDOUT="-stdout -FullStdOutLogOutput"; else UE_BIN="$UE_ROOT/Engine/Binaries/Linux"; UE_EXE=; UE_STDOUT=; fi
+if [[ -e "$UE_ROOT/Engine/Binaries/Win64/UnrealEditor-Cmd.exe" ]]; then UE_BIN="$UE_ROOT/Engine/Binaries/Win64"; UE_EXE=.exe; UE_STDOUT="-stdout -FullStdOutLogOutput"; UE_QUIT="-SimQuitAfter=100"; else UE_BIN="$UE_ROOT/Engine/Binaries/Linux"; UE_EXE=; UE_STDOUT=; UE_QUIT=; fi
 LOG="$(mktemp -t ue_smoke.XXXXXX.log)"
 timeout 600 "$UE_BIN/UnrealEditor$UE_EXE" "$REPO/unreal/SchizoGame.uproject" -game -nullrhi -unattended $UE_STDOUT -SimNoMenu \
 	-ExecCmds="sim.Dump, sim.Accept the_outsiders_first_days, sim.Quests active, sim.Talk the captain of the prisoner transport, sim.AdvanceDays 1, sim.AdvanceHours 12, sim.Dump, sim.SaveSlot smoke_a Smoke test, sim.AdvanceDays 3, sim.LoadSlot smoke_a, sim.Dump, sim.AdvanceDays 5, sim.NewGame, sim.Dump, sim.LoadSlot no_such_slot, sim.DeleteSlot smoke_a, quit" -log > "$LOG" 2>&1
@@ -36,8 +36,9 @@ need 'Shell: toast There is no such save' "a failed load tells the player"
 never 'Fatal error|Assertion failed|Ensure condition failed|=== Handled ensure' "no crash, assert or ensure"
 # A plain boot (no -SimNoMenu) shows the loading notice, then the main menu over the city.
 LOG2="$(mktemp -t ue_smoke_menu.XXXXXX.log)"
-# No quit: it runs until the menu has had time to appear, then the timeout ends it (rc 124).
-timeout 120 "$UE_BIN/UnrealEditor$UE_EXE" "$REPO/unreal/SchizoGame.uproject" -game -nullrhi -unattended $UE_STDOUT \
+# No quit: it runs until the menu has had time to appear, then the timeout ends it (rc 124). On Windows
+# a killed editor trips an engine shutdown ensure, so there the game quits itself first (-SimQuitAfter).
+timeout 120 "$UE_BIN/UnrealEditor$UE_EXE" "$REPO/unreal/SchizoGame.uproject" -game -nullrhi -unattended $UE_STDOUT $UE_QUIT \
 	-log > "$LOG2" 2>&1
 TEXT2="$(tr -d '\0' < "$LOG2")"
 grep -qa 'Shell: open Loading' <<<"$TEXT2" && echo "ok   the loading notice opens on boot" || { echo "MISS the loading notice on boot"; fail=1; }

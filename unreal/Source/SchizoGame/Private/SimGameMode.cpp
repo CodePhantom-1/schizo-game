@@ -2,6 +2,7 @@
 // residents and the sun (W6-C), the verbs and HUD (W6-A, via the player
 // controller), and the sim clock on screen.
 #include "SimGameMode.h"
+#include "Containers/Ticker.h"
 #include "SimCityData.h"
 #include "UI/SimShellSubsystem.h"
 #include "SimGameUserSettings.h"
@@ -298,6 +299,12 @@ void ASimGameMode::TickShots(float DeltaSeconds)
 		{
 			USimWorldSubsystem::SetSimDroughtFor(World, ShotDrought);
 		}
+		// -SimShotAdvanceDays=<n>: shoot a later season (V-B3: sowing is day 91, harvest day 181).
+		int32 ShotDays = 0;
+		if (FParse::Value(FCommandLine::Get(), TEXT("SimShotAdvanceDays="), ShotDays) && ShotDays > 0)
+		{
+			USimWorldSubsystem::AdvanceSimDaysFor(World, ShotDays);
+		}
 		FActorSpawnParameters Params;
 		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 		ShotCamera = World->SpawnActor<ACameraActor>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
@@ -406,6 +413,27 @@ void ASimGameMode::TickShots(float DeltaSeconds)
 
 void ASimGameMode::TickBoot(float DeltaSeconds)
 {
+	// -SimQuitAfter=<seconds>: an unattended run ends itself cleanly (the Windows smoke test; a killed
+	// editor trips an engine plugin's shutdown ensure there). On the core ticker: the menu pauses the world.
+	{
+		static bool bQuitArmed = false;
+		float QuitAfter = 0.f;
+		if (!bQuitArmed && FParse::Value(FCommandLine::Get(), TEXT("SimQuitAfter="), QuitAfter) && QuitAfter > 0.f)
+		{
+			bQuitArmed = true;
+			const double Deadline = FPlatformTime::Seconds() + QuitAfter;
+			FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([Deadline, QuitAfter](float)
+			{
+				if (FPlatformTime::Seconds() < Deadline)
+				{
+					return true;
+				}
+				UE_LOG(LogSimGameMode, Log, TEXT("SimQuitAfter: %.0f s up, quitting."), QuitAfter);
+				FPlatformMisc::RequestExit(false);
+				return false;
+			}));
+		}
+	}
 	UWorld* World = GetWorld();
 	const bool bWorldReady = World != nullptr && USimWorldSubsystem::GetSimHourFor(World) >= 0.f;
 	// The player's settings go to the sim the moment it exists (day length, needs severity...).

@@ -70,14 +70,19 @@ def world_collection():
         "MPC_World", DEST, unreal.MaterialParameterCollection, unreal.MaterialParameterCollectionFactoryNew())
     if mpc is None:
         raise RuntimeError("MPC_World could not be created")
-    params = []
+    # Add only what is missing: replacing the list gives every parameter a new id, and a material authored
+    # against the old ids (M_Terrain) then fails to compile (V-B3).
+    params = list(mpc.get_editor_property("scalar_parameters"))
+    have = {str(p.get_editor_property("parameter_name")) for p in params}
     for name in ("Wither", "Bloom"):
-        p = unreal.CollectionScalarParameter()
-        p.set_editor_property("parameter_name", name)
-        p.set_editor_property("default_value", 0.0)
-        params.append(p)
-    mpc.set_editor_property("scalar_parameters", params)
-    EAL.save_loaded_asset(mpc)
+        if name not in have:
+            p = unreal.CollectionScalarParameter()
+            p.set_editor_property("parameter_name", name)
+            p.set_editor_property("default_value", 0.0)
+            params.append(p)
+    if len(params) != len(have):
+        mpc.set_editor_property("scalar_parameters", params)
+        EAL.save_loaded_asset(mpc)
     return mpc
 
 

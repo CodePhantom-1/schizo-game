@@ -74,7 +74,7 @@ class ScatterTest(unittest.TestCase):
                 self.assertEqual(self.group[r["mesh"]], {"water"}, f"{r['mesh']} in the lagoon at ({x},{y})")
 
     def test_every_habitat_yields(self):
-        used = {h for f in self.flora for h in f["habitats"].split(";")}
+        used = {h for f in self.flora for h in f["habitats"].split(";")} - scatter.COUNTRYSIDE
         got = scatter.habitat_counts(CANON)
         for h in used:
             self.assertGreater(got.get(h, 0), 0, h)
