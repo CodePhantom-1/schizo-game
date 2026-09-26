@@ -3,7 +3,7 @@
   python3 tools/art/sources.py [id ...]     # fetch all (or the named) rows; skips what is already fetched
 
 Adapters: polyhaven (API, texture maps), ambientcg (API v3, zip), kenney (pack page, zip),
-git (a shallow clone, e.g. the KayKit packs on GitHub). Each checks the licence the source states
+git (a shallow clone, e.g. the KayKit packs on GitHub), url (a plain file; the row states its licence). Each checks the licence the source states
 against the row's expected licence and fails on any mismatch, then records one manifest row per
 fetched item (licence, author, url, date, a tree sha256). Plain Python + urllib; raw files are
 gitignored (art/source/), only the manifest is tracked.
@@ -156,7 +156,22 @@ def fetch_git(row, dest):
     return row["author"], url
 
 
-ADAPTERS = {"polyhaven": fetch_polyhaven, "ambientcg": fetch_ambientcg, "kenney": fetch_kenney, "git": fetch_git}
+def fetch_url(row, dest):
+    """A plain file (e.g. the Yale Bright Star Catalogue, public domain): the row states the licence (checked by
+    hand once, recorded in art/sources.csv); a .gz is unpacked beside itself."""
+    import gzip  # noqa: PLC0415
+    url = row["asset"]
+    data = _get(url)
+    name = os.path.basename(url)
+    if name.endswith(".gz"):
+        data, name = gzip.decompress(data), name[:-3]
+    with open(os.path.join(dest, name), "wb") as f:
+        f.write(data)
+    return row["author"], url
+
+
+ADAPTERS = {"polyhaven": fetch_polyhaven, "ambientcg": fetch_ambientcg, "kenney": fetch_kenney, "git": fetch_git,
+            "url": fetch_url}
 
 
 def fetch(row):

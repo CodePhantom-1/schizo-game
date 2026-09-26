@@ -85,5 +85,12 @@ class ManifestTest(unittest.TestCase):
         self.assertEqual(license_gate.check(manifest.load(manifest.PATH)), [])
 
 
+
+class PublicDomainTest(unittest.TestCase):
+    def test_public_domain_is_allowed(self):
+        self.assertIn("LicenseRef-PublicDomain", license_gate.ALLOWED)
+        self.assertEqual(license_gate.check([{"id": "bsc5", "license": "LicenseRef-PublicDomain", "author": "",
+                                              "url": "", "ai": "false", "source_ref": "", "kind": "source_catalogue"}]), [])
+
 if __name__ == "__main__":
     unittest.main()

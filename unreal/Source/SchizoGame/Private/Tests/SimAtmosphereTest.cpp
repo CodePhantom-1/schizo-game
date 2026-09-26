@@ -111,4 +111,49 @@ bool FSimAtmosphereFx::RunTest(const FString&)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimAtmosphereSky, "Sim.Atmosphere.Sky",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+bool FSimAtmosphereSky::RunTest(const FString&)
+{
+	// The pure parts: the turn, the pole, the night.
+	TestEqual(TEXT("a sidereal day gains ~1 degree a day"), ASimAtmosphere::SiderealAngle(1, 0.f), 0.9856f, 0.001f);
+	TestEqual(TEXT("an hour turns the sky ~15 degrees"), ASimAtmosphere::SiderealAngle(0, 1.f), 15.041f, 0.001f);
+	TestEqual(TEXT("the pole stands 31 degrees up"), static_cast<float>(FMath::RadiansToDegrees(FMath::Asin(ASimAtmosphere::CelestialPole().Z))), 31.f, 0.01f);
+	const FSimAtmosphere Clear = ASimAtmosphere::Target(TEXT("clear"), 0, TEXT("rains"), 0.f, false);
+	TestEqual(TEXT("no stars at noon"), ASimAtmosphere::NightFactor(12.f, Clear), 0.f);
+	TestEqual(TEXT("every star at midnight"), ASimAtmosphere::NightFactor(0.f, Clear), 1.f, 0.001f);
+	TestTrue(TEXT("the rain's cloud hides them"), ASimAtmosphere::NightFactor(0.f, ASimAtmosphere::Target(TEXT("rain"), 0, TEXT("rains"), 0.f, false)) < 0.35f);
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, TEXT("SimAtmosphereSkyTest"));
+	FWorldContext& Ctx = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Ctx.SetCurrentWorld(World);
+	ASimAtmosphere* A = ASimAtmosphere::BuildAtmosphere(World);
+	if (TestNotNull(TEXT("the atmosphere"), A) && TestNotNull(TEXT("the stars (run star_dome.py + ue_make_fx_materials.py if null)"), A->GetStars()))
+	{
+		TestTrue(FString::Printf(TEXT(">= 1,500 stars (%d)"), A->GetStars()->GetInstanceCount()), A->GetStars()->GetInstanceCount() >= 1500);
+		TestTrue(TEXT("the zodiac's figures"), A->GetZodiac()->GetInstanceCount() > 50);
+		TestTrue(TEXT("<= 20,000 triangles"), 2 * (A->GetStars()->GetInstanceCount() + A->GetZodiac()->GetInstanceCount() + A->GetMilkyWay()->GetInstanceCount()) <= 20000);
+		const int32 Polaris = A->StarIndex(424);
+		TestTrue(TEXT("Polaris is in the sky"), Polaris != INDEX_NONE);
+		const FVector Cam(1234.f, -567.f, 890.f);
+		const TPair<int32, float> Nights[] = {{0, 0.f}, {37, 23.3f}, {211, 2.5f}};
+		for (const TPair<int32, float>& N : Nights)
+		{
+			A->ApplySky(Clear, N.Key, N.Value, Cam);
+			FTransform T;
+			A->GetStars()->GetInstanceTransform(Polaris, T, true);
+			const FVector D = (T.GetLocation() - Cam).GetSafeNormal();
+			TestEqual(FString::Printf(TEXT("day %d %.1f h: Polaris 31 +- 1 degrees up"), N.Key, N.Value), static_cast<float>(FMath::RadiansToDegrees(FMath::Asin(D.Z))), 31.f, 1.f);
+			TestTrue(TEXT("...in the north (-Y)"), D.Y < -0.8f && FMath::Abs(D.X) < 0.03f);
+		}
+		TestTrue(TEXT("stars at night"), A->GetStars()->IsVisible());
+		TestFalse(TEXT("the zodiac waits for sim.Zodiac 1"), A->GetZodiac()->IsVisible());
+		A->ApplySky(Clear, 0, 12.f, Cam);
+		TestFalse(TEXT("no stars by day"), A->GetStars()->IsVisible());
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
 #endif

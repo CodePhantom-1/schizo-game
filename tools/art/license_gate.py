@@ -21,6 +21,7 @@ ALLOWED = {
     "LicenseRef-QAL-1.0": "Quaternius Asset License 1.0 (no redistribution of the files)",
     "LicenseRef-Fab-Standard": "Fab Standard License (no redistribution of the files)",
     "LicenseRef-Sonniss": "Sonniss GDC bundle licence (royalty-free, no attribution)",
+    "LicenseRef-PublicDomain": "public domain (no rights reserved: e.g. the Yale Bright Star Catalogue)",
 }
 ATTRIBUTION = {"CC-BY-4.0", "CC-BY-3.0"}
 CREDITS = os.path.join(manifest.REPO, "docs", "credits.md")
@@ -53,7 +54,7 @@ def credits_md(rows):
         out += [f"- {r['id']} by {r['author']} ({r['url']}), {ALLOWED[r['license']]}"
                 + (", modified" if r["kind"] not in ("reference",) else "") for r in attrib]
         out.append("")
-    for lic in ("LicenseRef-QAL-1.0", "LicenseRef-Fab-Standard", "LicenseRef-Sonniss", "CC0-1.0"):
+    for lic in ("LicenseRef-QAL-1.0", "LicenseRef-Fab-Standard", "LicenseRef-Sonniss", "CC0-1.0", "LicenseRef-PublicDomain"):
         who = sorted({(r["author"] or "unknown", r["url"].split("/a/")[0] if "/a/" in r["url"] else r["url"])
                       for r in rows if r["license"] == lic})
         if who:

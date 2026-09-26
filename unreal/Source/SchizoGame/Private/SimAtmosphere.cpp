@@ -18,6 +18,8 @@
 #include "EngineUtils.h"
 #include "HAL/IConsoleManager.h"
 #include "Kismet/KismetMaterialLibrary.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "Materials/MaterialInterface.h"
 #include "Materials/MaterialParameterCollection.h"
 #include "Misc/PackageName.h"
 
@@ -37,6 +39,12 @@ namespace
 			ASimAtmosphere::WeatherOverride = (Args.Num() == 0 || Args[0] == TEXT("auto")) ? NAME_None : FName(*Args[0]);
 			UE_LOG(LogSimAtmosphere, Log, TEXT("sim.Weather: %s"), ASimAtmosphere::WeatherOverride.IsNone() ? TEXT("the kernel's") : *ASimAtmosphere::WeatherOverride.ToString());
 		}));
+
+	TAutoConsoleVariable<int32> CVarZodiac(TEXT("sim.Zodiac"), 0,
+		TEXT("sim.Zodiac 1 — draw the twelve zodiac figures among the stars (the D-025 astrology UI will switch it later)"));
+
+	constexpr float kSkyLatitudeDeg = 31.f;  // the city's latitude: the pole stands this high in the north
+	constexpr float kStarGain = 12.f;        // the stars' emissive at full night (night exposure floor EV 2)
 
 	float Approach(float From, float To, float Dt, float Tau)
 	{
@@ -66,6 +74,7 @@ ASimAtmosphere* ASimAtmosphere::BuildAtmosphere(UWorld* World)
 	if (A != nullptr)
 	{
 		A->BuildFx();
+		A->BuildSky();
 	}
 	return A;
 }
@@ -189,6 +198,122 @@ void ASimAtmosphere::ApplyFx(const FSimAtmosphere& State, float Hour, FVector Ca
 	}
 }
 
+float ASimAtmosphere::SiderealAngle(int32 Day, float Hour)
+{
+	return static_cast<float>(FMath::Fmod(Day * 360.9856 + Hour * 15.041, 360.0));
+}
+
+FVector ASimAtmosphere::CelestialPole()
+{
+	const float Phi = FMath::DegreesToRadians(kSkyLatitudeDeg);
+	return FVector(0.f, -FMath::Cos(Phi), FMath::Sin(Phi));  // SimCompass: north is -Y
+}
+
+float ASimAtmosphere::NightFactor(float Hour, const FSimAtmosphere& State)
+{
+	// The sun's height on ASimDayNight's day circle (62 degrees at noon): the stars come out as it sinks below.
+	const float SunZ = FMath::Sin((Hour - 6.f) / 12.f * PI) * FMath::Sin(FMath::DegreesToRadians(62.f));
+	const float Dark = 1.f - FMath::SmoothStep(-0.2f, 0.02f, SunZ);
+	return Dark * (1.f - State.Overcast) * (1.f - 0.85f * State.Dust) * (1.f - State.Fog);
+}
+
+void ASimAtmosphere::BuildSky()
+{
+	UStaticMesh* Plane = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Plane.Plane"));
+	UMaterialInterface* Mat = FPackageName::DoesPackageExist(TEXT("/Game/Art/FX/M_Star"))
+		? LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Art/FX/M_Star.M_Star")) : nullptr;
+	TArray<FString> Lines;
+	FFileHelper::LoadFileToStringArray(Lines, *FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Sim/stars.csv")));
+	if (Plane == nullptr || Mat == nullptr || Lines.Num() < 2)
+	{
+		UE_LOG(LogSimAtmosphere, Log, TEXT("atmosphere: no night sky — run tools/art/star_dome.py and ue_make_fx_materials.py."));
+		return;
+	}
+	SkyRoot = NewObject<USceneComponent>(this, TEXT("Sky"));
+	SkyRoot->SetupAttachment(RootComponent);
+	SkyRoot->SetMobility(EComponentMobility::Movable);
+	SkyRoot->RegisterComponent();
+	AddInstanceComponent(SkyRoot);
+	StarMat = UMaterialInstanceDynamic::Create(Mat, this);
+	StarMat->SetScalarParameterValue(TEXT("Night"), 0.f);
+	auto Make = [this, Plane](const TCHAR* Name)
+	{
+		UInstancedStaticMeshComponent* I = NewObject<UInstancedStaticMeshComponent>(this, Name);
+		I->SetupAttachment(SkyRoot);
+		I->SetMobility(EComponentMobility::Movable);
+		I->SetStaticMesh(Plane);
+		I->SetMaterial(0, StarMat);
+		I->NumCustomDataFloats = 4;
+		I->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		I->SetCastShadow(false);
+		I->RegisterComponent();
+		AddInstanceComponent(I);
+		return I;
+	};
+	StarIsm = Make(TEXT("Stars"));
+	ZodiacIsm = Make(TEXT("Zodiac"));
+	MilkyIsm = Make(TEXT("MilkyWay"));
+	// kind,hr,con,ra,dec,x,y,z,x2,y2,z2,size,r,g,b — unit vectors at sidereal angle 0, sizes in cm.
+	for (int32 l = 1; l < Lines.Num(); ++l)
+	{
+		TArray<FString> F;
+		Lines[l].ParseIntoArray(F, TEXT(","), false);
+		if (F.Num() < 15)
+		{
+			continue;
+		}
+		auto V = [&F](int32 i) { return FVector(FCString::Atof(*F[i]), FCString::Atof(*F[i + 1]), FCString::Atof(*F[i + 2])); };
+		const FVector A = V(5), B = V(8);
+		const float Size = FCString::Atof(*F[11]) / 100.f;  // the plane is 1 m
+		const bool bZodiac = F[0] == TEXT("zodiac");
+		const TArray<float> Custom = {FCString::Atof(*F[12]), FCString::Atof(*F[13]), FCString::Atof(*F[14]), bZodiac ? 1.f : 0.f};
+		UInstancedStaticMeshComponent* Into = bZodiac ? ZodiacIsm : F[0] == TEXT("milky") ? MilkyIsm : StarIsm;
+		FTransform T;
+		if (bZodiac)
+		{
+			// A thin card from star to star, facing the eye (its +Z toward the dome's centre).
+			const FVector Mid = (A + B) * 0.5f * SkyRadius;
+			T = FTransform(FRotationMatrix::MakeFromZX(-Mid, B - A).ToQuat(), Mid, FVector((B - A).Size() * SkyRadius / 100.f, Size, 1.f));
+		}
+		else
+		{
+			T = FTransform(FRotationMatrix::MakeFromZ(-A).ToQuat(), A * SkyRadius, FVector(Size, Size, 1.f));
+		}
+		const int32 I = Into->AddInstance(T);
+		Into->SetCustomData(I, Custom, false);
+		if (Into == StarIsm)
+		{
+			StarByHr.Add(FCString::Atoi(*F[1]), I);
+		}
+	}
+	StarIsm->MarkRenderStateDirty();
+	ZodiacIsm->MarkRenderStateDirty();
+	MilkyIsm->MarkRenderStateDirty();
+	UE_LOG(LogSimAtmosphere, Log, TEXT("atmosphere: %d stars, %d zodiac segments, %d Milky Way blobs."),
+		StarIsm->GetInstanceCount(), ZodiacIsm->GetInstanceCount(), MilkyIsm->GetInstanceCount());
+}
+
+void ASimAtmosphere::ApplySky(const FSimAtmosphere& State, int32 Day, float Hour, FVector Camera)
+{
+	if (SkyRoot == nullptr)
+	{
+		return;
+	}
+	const float Night = NightFactor(Hour, State);
+	const bool bShow = Night > 0.005f;
+	StarIsm->SetVisibility(bShow);
+	MilkyIsm->SetVisibility(bShow);
+	ZodiacIsm->SetVisibility(bShow && CVarZodiac.GetValueOnGameThread() != 0);
+	if (!bShow)
+	{
+		return;
+	}
+	StarMat->SetScalarParameterValue(TEXT("Night"), Night * kStarGain);
+	// tools/art/star_dome.py bakes the sky at sidereal angle 0; the turn about the pole is +angle in UE's mirror
+	// of the real sky's frame (SIDEREAL_SIGN, proved by tools/tests/test_art_stars.py).
+	const FQuat Turn(CelestialPole(), FMath::DegreesToRadians(SiderealAngle(Day, Hour)));
+	SkyRoot->SetWorldLocationAndRotation(Camera, Turn);
+}
 
 FSimAtmosphere ASimAtmosphere::Target(FName WeatherId, int32 Drought, const FString& Season, float Hour, bool bFestival)
 {
@@ -280,6 +405,9 @@ void ASimAtmosphere::Tick(float DeltaSeconds)
 		}
 	}
 	ApplyFx(Live, Hour, Cam);
+	int32 Year = 1, Month = 1, Dom = 1;
+	USimWorldSubsystem::GetSimDateFor(World, Year, Month, Dom);
+	ApplySky(Live, ((Year - 1) * 12 + (Month - 1)) * 30 + (Dom - 1), Hour, Cam);
 }
 
 void ASimAtmosphere::Apply()

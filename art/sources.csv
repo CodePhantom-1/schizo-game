@@ -19,3 +19,4 @@ ph_coast_sand,polyhaven,coast_sand_01,2k,texture,CC0-1.0,,beach and lagoon shore
 ph_rock_boulder_dry,polyhaven,rock_boulder_dry,2k,texture,CC0-1.0,,desert rock and mesas (terrain)
 kenney_nature_kit,kenney,nature-kit,,model_pack,CC0-1.0,,low-poly palms crops rocks cliffs tents (props flora; stylized before use)
 kaykit_medieval_hexagon,git,KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0,,model_pack,CC0-1.0,Kay Lousberg (KayKit),low-poly buildings props and nature pieces (props; stylized before use)
+bsc5,url,https://cdsarc.cds.unistra.fr/ftp/V/50/catalog.gz,,catalogue,LicenseRef-PublicDomain,Hoffleit & Warren (Yale Bright Star Catalogue 5th rev. ed.; CDS V/50),the night sky's stars (tools/art/star_dome.py)

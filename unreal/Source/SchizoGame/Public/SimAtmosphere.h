@@ -56,6 +56,24 @@ public:
 	/** Shows and places the effects for a state, an hour and the camera (Tick; tests call it directly). */
 	void ApplyFx(const FSimAtmosphere& State, float Hour, FVector Camera);
 
+	/** The night sky (V-B5 T3): Content/Sim/stars.csv (tools/art/star_dome.py) as instanced cards 900 m out —
+	 *  stars, the zodiac's figures (sim.Zodiac 1), the Milky Way; nothing if M_Star is not imported. */
+	void BuildSky();
+	/** Centres the dome on the camera, turns it to the sky of that day and hour, fades it in at night. */
+	void ApplySky(const FSimAtmosphere& State, int32 Day, float Hour, FVector Camera);
+	/** The sky's turn in degrees: Day x 360.9856 + Hour x 15.041 (a sidereal day is 4 minutes short). Pure. */
+	static float SiderealAngle(int32 Day, float Hour);
+	/** The celestial pole: 31 degrees up in the north (-Y). The dome turns about it. */
+	static FVector CelestialPole();
+	/** 0 by day, 1 in a clear night; cloud, dust and fog hide the stars. Pure. */
+	static float NightFactor(float Hour, const FSimAtmosphere& State);
+	static constexpr float SkyRadius = 90000.f;
+	UInstancedStaticMeshComponent* GetStars() const { return StarIsm; }
+	UInstancedStaticMeshComponent* GetZodiac() const { return ZodiacIsm; }
+	UInstancedStaticMeshComponent* GetMilkyWay() const { return MilkyIsm; }
+	/** The instance index of a catalogue star (Yale HR number) in GetStars(), or INDEX_NONE. */
+	int32 StarIndex(int32 Hr) const { const int32* I = StarByHr.Find(Hr); return I != nullptr ? *I : INDEX_NONE; }
+
 	static constexpr int32 RainCount = 1500;
 	static constexpr int32 DustCount = 800;
 	static constexpr int32 PuffsPerSource = 5;
@@ -78,6 +96,12 @@ private:
 	UPROPERTY() TObjectPtr<UInstancedStaticMeshComponent> RainIsm;
 	UPROPERTY() TObjectPtr<UInstancedStaticMeshComponent> DustIsm;
 	UPROPERTY() TObjectPtr<UInstancedStaticMeshComponent> SmokeIsm;
+	UPROPERTY() TObjectPtr<USceneComponent> SkyRoot;
+	UPROPERTY() TObjectPtr<UInstancedStaticMeshComponent> StarIsm;
+	UPROPERTY() TObjectPtr<UInstancedStaticMeshComponent> ZodiacIsm;
+	UPROPERTY() TObjectPtr<UInstancedStaticMeshComponent> MilkyIsm;
+	UPROPERTY() TObjectPtr<class UMaterialInstanceDynamic> StarMat;
+	TMap<int32, int32> StarByHr;
 	TArray<FString> SmokeTypology;
 	TArray<bool> SmokeLit;
 };

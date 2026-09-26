@@ -231,6 +231,8 @@ namespace
 		{ TEXT("harbor"),   FVector(48000.f, -13000.f, 2400.f),   FVector(41300.f, 4400.f, 500.f),  false },
 		{ TEXT("lineup"),   FVector(12900.f, 10300.f, 260.f),     FVector(14600.f, 10900.f, 80.f),  false },  // -SimFaunaLineup
 		{ TEXT("smoke"),    FVector(7300.f, 2800.f, 450.f),       FVector(8700.f, 4500.f, 700.f),   false },  // the smithy's chimney
+		{ TEXT("south"),    FVector(24000.f, 3000.f, 700.f),      FVector(24000.f, 13000.f, 4700.f), false },  // the night sky: the zodiac
+		{ TEXT("north"),    FVector(24000.f, 3000.f, 700.f),      FVector(24000.f, -7000.f, 6700.f), false },  // the pole, 31 degrees up
 	};
 
 }

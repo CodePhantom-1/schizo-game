@@ -22,6 +22,10 @@ Generated from `art/assets.csv` by `tools/art/license_gate.py --write-credits`. 
 - Rob Tuytel (https://polyhaven.com)
 - ambientCG (https://ambientcg.com)
 
+## public domain (no rights reserved: e.g. the Yale Bright Star Catalogue)
+
+- Hoffleit & Warren (Yale Bright Star Catalogue 5th rev. ed.; CDS V/50) (https://cdsarc.cds.unistra.fr/ftp/V/50/catalog.gz)
+
 ## AI-generated content (Steam disclosure: pre-generated)
 
 - none

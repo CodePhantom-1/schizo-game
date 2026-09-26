@@ -29,6 +29,8 @@ art/generated/
 art/source/characters/
 # Quaternius animal bases (QAL: no redistribution of the files) — tools/art/fetch_fauna.py
 art/source/fauna/
+# the Yale Bright Star Catalogue (public domain) — tools/art/sources.py bsc5
+art/source/bsc5/
 
 # raw downloads from tools/art/sources.py (art/sources.csv) — re-fetchable from
 # the manifest (licence, url, date and a tree sha256 live in art/assets.csv).

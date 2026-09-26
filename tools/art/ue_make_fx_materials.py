@@ -9,6 +9,8 @@ All three: translucent, unlit, two-sided, instanced; the motion is World Positio
   M_Dust   ochre motes drifting 30 m across the box on the wind; opacity 0.5 x Dust
   M_Smoke  grey puffs rising 6 m and drifting 1.5 m as they fade, a soft round card; opacity 0.8 x
            per-instance custom data 0 (the source is lit: ASimAtmosphere's schedule)
+  M_Star   the night sky (tools/art/star_dome.py): additive, unfogged; colour from custom data 0..2, a soft dot or
+           (custom data 3) a flat segment, x the Night parameter
 Every instance's phase is PerInstanceRandom, so a field never moves in step.
 """
 import os
@@ -61,11 +63,11 @@ def import_card(name, mat):
     return sm
 
 
-def material(name, mpc, build):
+def material(name, mpc, build, blend=unreal.BlendMode.BLEND_TRANSLUCENT):
     path = f"{DEST}/{name}"
     wipe(path)
     m = unreal.AssetToolsHelpers.get_asset_tools().create_asset(name, DEST, unreal.Material, unreal.MaterialFactoryNew())
-    m.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
+    m.set_editor_property("blend_mode", blend)
     m.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
     m.set_editor_property("two_sided", True)
     m.set_editor_property("used_with_instanced_static_meshes", True)
@@ -107,8 +109,10 @@ def material(name, mpc, build):
 
     colour, opacity, wpo = build(E, C, param, phase, vec3)
     MEL.connect_material_property(colour, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
-    MEL.connect_material_property(opacity, "", unreal.MaterialProperty.MP_OPACITY)
-    MEL.connect_material_property(wpo, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
+    if opacity is not None:
+        MEL.connect_material_property(opacity, "", unreal.MaterialProperty.MP_OPACITY)
+    if wpo is not None:
+        MEL.connect_material_property(wpo, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
     MEL.recompile_material(m)
     EAL.save_loaded_asset(m)
     return m
@@ -176,6 +180,40 @@ def smoke(E, C, param, phase, vec3):
     return col, op, vec3(drift, zero, rise, -700, 500)
 
 
+def star(E, C, param, phase, vec3):
+    """The night sky's cards (V-B5 T3): colour from per-instance custom data 0..2 (stars.csv), a soft round dot
+    unless custom data 3 (the zodiac's segments: flat), x the Night parameter (ASimAtmosphere: 0 by day)."""
+    rgb = vec3(E(unreal.MaterialExpressionPerInstanceCustomData, -1400, 0, data_index=0),
+               E(unreal.MaterialExpressionPerInstanceCustomData, -1400, 80, data_index=1),
+               E(unreal.MaterialExpressionPerInstanceCustomData, -1400, 160, data_index=2), -1200, 60)
+    uv = E(unreal.MaterialExpressionTextureCoordinate, -1400, 300)
+    centre = E(unreal.MaterialExpressionConstant2Vector, -1400, 400, r=0.5, g=0.5)
+    dist = E(unreal.MaterialExpressionDistance, -1250, 350)
+    C(uv, "", dist, "A")
+    C(centre, "", dist, "B")
+    x2 = E(unreal.MaterialExpressionMultiply, -1100, 350, const_b=2.0)
+    C(dist, "", x2, "A")
+    soft = E(unreal.MaterialExpressionOneMinus, -950, 350)
+    C(x2, "", soft, "")
+    sat = E(unreal.MaterialExpressionSaturate, -850, 350)
+    C(soft, "", sat, "")
+    dot = E(unreal.MaterialExpressionMultiply, -750, 350)  # squared: a bright core, a soft edge
+    C(sat, "", dot, "A")
+    C(sat, "", dot, "B")
+    flat = E(unreal.MaterialExpressionPerInstanceCustomData, -900, 480, data_index=3)
+    shape = E(unreal.MaterialExpressionLinearInterpolate, -600, 400, const_b=1.0)
+    C(dot, "", shape, "A")
+    C(flat, "", shape, "Alpha")
+    night = E(unreal.MaterialExpressionScalarParameter, -600, 550, parameter_name="Night", default_value=0.0)
+    lit = E(unreal.MaterialExpressionMultiply, -450, 450)
+    C(shape, "", lit, "A")
+    C(night, "", lit, "B")
+    col = E(unreal.MaterialExpressionMultiply, -300, 200)
+    C(rgb, "", col, "A")
+    C(lit, "", col, "B")
+    return col, None, None
+
+
 def main():
     mpc = unreal.load_asset("/Game/Art/Scatter/MPC_World")
     if mpc is None:
@@ -190,11 +228,21 @@ def main():
         EAL.save_loaded_asset(mpc)
     EAL.make_directory(DEST)
     mats = {"Rain": material("M_Rain", mpc, rain), "Dust": material("M_Dust", mpc, dust), "Smoke": material("M_Smoke", mpc, smoke)}
+    # The stars (V-B5 T3): additive, and neither the height fog nor the sky's aerial perspective may veil them
+    # (the dome is 900 m out: the haze would swallow it); drawn on /Engine/BasicShapes/Plane.
+    m = material("M_Star", mpc, star, unreal.BlendMode.BLEND_ADDITIVE)
+    for prop, value in (("use_translucency_vertex_fog", False), ("apply_cloud_fogging", False)):
+        try:
+            m.set_editor_property(prop, value)
+        except Exception as e:  # noqa: BLE001 — a renamed flag is a warning, not a failure
+            unreal.log_warning(f"M_Star: {prop}: {e}")
+    MEL.recompile_material(m)
+    EAL.save_loaded_asset(m)
     for name, mat in mats.items():
         sm = import_card(name, mat)
         EAL.save_loaded_asset(sm)
     wipe(f"{DEST}/_staging", directory=True)  # only the cards' placeholder materials live there
-    unreal.log("ue_make_fx_materials: SM_FX_Rain/Dust/Smoke + M_Rain/M_Dust/M_Smoke in /Game/Art/FX")
+    unreal.log("ue_make_fx_materials: SM_FX_Rain/Dust/Smoke + M_Rain/M_Dust/M_Smoke/M_Star in /Game/Art/FX")
 
 
 main()
