@@ -21,14 +21,16 @@ TYPES = {t["id"]: t for t in rows("building_types.csv")}
 
 
 def aabb(p):
-    """Axis-aligned bounds of a part (yaw ignored beyond a conservative radius)."""
+    """Axis-aligned bounds of a part (the exact bounds of its yawed footprint box)."""
     (x, y, z), (sx, sy, sz) = p["at"], p["size"]
-    if p["shape"] in ("prism", "dome"):
+    if p["shape"] == "prism":  # [r_base, r_top, h]
         sx = sy = 2 * max(sx, sy)
-    if p.get("yaw"):
-        r = math.hypot(sx, sy) / 2
-        return x - r, x + r, y - r, y + r, z, z + sz
-    return x - sx / 2, x + sx / 2, y - sy / 2, y + sy / 2, z, z + sz
+    elif p["shape"] == "dome":  # [rx, ry, h]
+        sx, sy = 2 * sx, 2 * sy
+    a = math.radians(p.get("yaw") or 0)
+    c, s = abs(math.cos(a)), abs(math.sin(a))
+    hx, hy = (c * sx + s * sy) / 2, (s * sx + c * sy) / 2
+    return x - hx, x + hx, y - hy, y + hy, z, z + sz
 
 
 class GrammarTest(unittest.TestCase):

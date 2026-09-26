@@ -10,7 +10,7 @@ the same field the street builder reads) at door_x(w), so every doorway matches 
 A part: {"shape": box|prism|dome|vault|hull|gable, "at": [x, y, z] (bottom centre),
 "size": [...], "yaw": deg, "mat": "<material>/<wear>" (a trim-atlas cell), "tag", "tint": [r,g,b],
 "jitter": m, "batter": m (boxes: the top pulled in on both long faces)}. Sizes: box/gable/vault/
-hull [sx, sy, sz]; prism [r_base, r_top, h]; dome [r, r, h]. Building-level "soot" sources darken
+hull [sx, sy, sz]; prism [r_base, r_top, h]; dome [rx, ry, h]. Building-level "soot" sources darken
 nearby vertices (ovens, furnaces, kilns).
 """
 import csv
@@ -623,11 +623,6 @@ def spec(place, btype):
     tris = sum(TRIS[p["shape"]] for p in b.parts)
     return {"id": b.id, "typology": place["typology"], "wealth": b.wealth, "w": b.w, "d": b.d,
             "wear": b.wear, "door": b.door, "parts": b.parts, "soot": b.soot, "tris_est": tris}
-
-
-def fallback_type(btype, types):
-    home = {"poor": "home_hut", "modest": "home_modest", "comfortable": "home_courtyard", "elite": "home_elite"}
-    return types.get(home.get(btype.get("wealth"), "home_modest"), btype)
 
 
 def all_specs(places, types):
