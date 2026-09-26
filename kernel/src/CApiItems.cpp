@@ -3,6 +3,7 @@
 #include "sim/CApiItems.h"
 
 #include "sim/ItemActions.hpp"
+#include "sim/Needs.hpp"
 
 #include <cstring>
 #include <sstream>
@@ -220,6 +221,15 @@ int sim_world_take_out(SimWorld* world, const char* actor, const char* container
         return finish(world, take_out(world->world, Id(actor), Id(container), index_or_max(stack_index), qty,
                                       split_ids(witnesses_semicolon)));
     });
+}
+
+void sim_world_advance_minutes(SimWorld* world, const char* actor, int minutes, int sleeping) {
+    try {
+        if (world == nullptr || actor == nullptr) return;
+        advance_needs_minutes(world->world.needs, Id(actor), minutes, sleeping != 0);
+    } catch (...) {
+        return;
+    }
 }
 
 }  // extern "C"

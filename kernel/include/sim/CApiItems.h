@@ -74,6 +74,12 @@ int sim_world_put_in(SimWorld* world, const char* actor, const char* container, 
 int sim_world_take_out(SimWorld* world, const char* actor, const char* container, int stack_index,
                        int qty, const char* witnesses_semicolon);
 
+// FND-06: a timed action of `minutes` for the actor: minutes add up toward
+// whole hours (carried across saves), and each whole hour advances hunger,
+// thirst and fatigue like sim_world_advance_needs (sleeping != 0: asleep).
+// minutes <= 0 or a null argument does nothing.
+void sim_world_advance_minutes(SimWorld* world, const char* actor, int minutes, int sleeping);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

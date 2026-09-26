@@ -152,7 +152,29 @@ static bool test_huge_hours_saturate_not_wrap() {
     return true;
 }
 
-SIM_MAIN(test_decay_over_hours, test_refused_drink_creates_no_actor, test_bread_is_food, test_sleeping_restores_fatigue, test_eat_reduces_hunger,
+// FND-06: timed actions advance needs by the minute. MECH:FND-06
+static bool test_minutes_add_up_to_hours() {
+    NeedsState s;
+    advance_needs_minutes(s, "player", 40, false);
+    SIM_CHECK_EQ(needs_of(s, "player").hunger, 0);   // no whole hour yet
+    advance_needs_minutes(s, "player", 30, false);   // 70 minutes: one hour
+    NeedsState one;
+    advance_needs(one, "player", 1, false);
+    SIM_CHECK_EQ(needs_of(s, "player").hunger, needs_of(one, "player").hunger);
+    SIM_CHECK_EQ(needs_of(s, "player").thirst, needs_of(one, "player").thirst);
+    SIM_CHECK_EQ(s.minute_carry["player"], 10);
+    advance_needs_minutes(s, "player", -5, false);   // ignored
+    advance_needs_minutes(s, "player", 0, false);
+    SIM_CHECK_EQ(s.minute_carry["player"], 10);
+    advance_needs_minutes(s, "player", 170, false);  // 10 + 170 = 3 hours exactly
+    NeedsState four;
+    advance_needs(four, "player", 4, false);
+    SIM_CHECK_EQ(needs_of(s, "player").hunger, needs_of(four, "player").hunger);
+    SIM_CHECK_EQ(s.minute_carry["player"], 0);
+    return true;
+}
+
+SIM_MAIN(test_minutes_add_up_to_hours, test_decay_over_hours, test_refused_drink_creates_no_actor, test_bread_is_food, test_sleeping_restores_fatigue, test_eat_reduces_hunger,
           test_drink_reduces_thirst, test_refuses_non_food_non_drink, test_effect_thresholds,
           test_clamping_0_100, test_determinism, test_per_actor_independent,
          test_huge_hours_saturate_not_wrap)

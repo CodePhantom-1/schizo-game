@@ -33,6 +33,9 @@ struct NeedsState {
     // designed rate: every waking climb is scaled by it. A setting, not world
     // state: never saved — the engine re-applies it after every new world/load.
     int severity_pct = 100;
+    // FND-06 (P0a): minutes toward the next whole hour per actor (0..59), so
+    // timed actions shorter than an hour still add up. Saved (NEEDS_MINUTES).
+    std::map<Id, int> minute_carry;
 };
 
 // Returns the actor's Needs, creating a fresh (0/0/0) entry the first time
@@ -51,6 +54,11 @@ void advance_needs(NeedsState& s, const Id& actor, int hours, bool sleeping,
 // Eats an item by its db/canon/items.csv id. Only categories the parent doc's
 // diet covers (see Needs.cpp's kHungerRestoreByCategory) count as food;
 // anything else is refused with a reason and hunger is untouched.
+// FND-06: adds minutes to the actor's carry and advances needs once for the
+// whole hours reached; minutes <= 0 do nothing.
+void advance_needs_minutes(NeedsState& s, const Id& actor, int minutes, bool sleeping,
+                           double severity = 1.0);
+
 bool eat(const Db& db, NeedsState& s, const Id& actor, const Id& item_id,
           std::string* reason = nullptr);
 

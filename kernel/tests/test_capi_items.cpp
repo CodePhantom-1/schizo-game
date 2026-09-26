@@ -1,8 +1,9 @@
-// test_capi_items.cpp — the CApiItems surface. MECH:FND-05 MECH:FND-03 MECH:INV-03 MECH:INV-04 MECH:WLD-01 MECH:WLD-03 MECH:WLD-05
+// test_capi_items.cpp — the CApiItems surface. MECH:FND-05 MECH:FND-03 MECH:INV-03 MECH:INV-04 MECH:WLD-01 MECH:WLD-03 MECH:WLD-05 MECH:FND-06
 #include "sim/CApi.h"
 #include "sim/Test.hpp"
 
 #include <cstring>
+#include <vector>
 #include <string>
 
 static bool test_last_reason_starts_empty_and_null_is_minus_one() {
@@ -110,6 +111,33 @@ static bool test_bound_drop_reports_its_reason() {
     return true;
 }
 
-SIM_MAIN(test_last_reason_starts_empty_and_null_is_minus_one, test_carrying_through_c,
+static SimWorld* reload(SimWorld* w) {
+    const int len = sim_world_save_to_buffer(w, nullptr, 0);
+    std::vector<char> buf(static_cast<std::size_t>(len) + 1);
+    sim_world_save_to_buffer(w, buf.data(), len + 1);
+    SimWorld* back = sim_world_load_from_buffer("../db/canon", buf.data());
+    sim_world_destroy(w);
+    return back;
+}
+
+static bool test_minutes_carry_through_a_save() {
+    SimWorld* w = sim_world_create("../db/canon", 3);
+    SimWorld* hour = sim_world_create("../db/canon", 3);
+    sim_world_advance_needs(hour, "player", 1, 0);
+    sim_world_advance_minutes(w, "player", 40, 0);
+    SIM_CHECK_EQ(sim_world_hunger(w, "player"), 0);
+    w = reload(w);
+    SIM_CHECK(w != nullptr);
+    sim_world_advance_minutes(w, "player", 20, 0);  // 40 before the save + 20 after = an hour
+    SIM_CHECK_EQ(sim_world_hunger(w, "player"), sim_world_hunger(hour, "player"));
+    SIM_CHECK(sim_world_hunger(w, "player") > 0);
+    sim_world_advance_minutes(nullptr, "player", 20, 0);  // no crash
+    sim_world_advance_minutes(w, nullptr, 20, 0);
+    sim_world_destroy(w);
+    sim_world_destroy(hour);
+    return true;
+}
+
+SIM_MAIN(test_minutes_carry_through_a_save, test_last_reason_starts_empty_and_null_is_minus_one, test_carrying_through_c,
          test_stacks_and_defs_read_back, test_world_items_and_containers_through_c,
          test_bound_drop_reports_its_reason)

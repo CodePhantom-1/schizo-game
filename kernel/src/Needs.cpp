@@ -153,6 +153,15 @@ std::vector<std::string> need_effects(const Needs& n) {
     return out;
 }
 
+void advance_needs_minutes(NeedsState& s, const Id& actor, int minutes, bool sleeping, double severity) {
+    if (minutes <= 0) return;
+    int& carry = s.minute_carry[actor];
+    const long long total = static_cast<long long>(carry) + minutes;
+    carry = static_cast<int>(total % 60);
+    const long long hours = total / 60;
+    if (hours > 0) advance_needs(s, actor, static_cast<int>(std::min<long long>(hours, 1000000)), sleeping, severity);
+}
+
 int hunger_restore_of(const Db& db, const Id& item_id) {
     const std::optional<Row> item = db.find("items", item_id);
     return item ? hunger_restore_for_category(item->get("category")) : 0;

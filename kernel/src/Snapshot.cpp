@@ -476,6 +476,10 @@ std::string save_world(const WorldState& w) {
             for (const ItemStack& s : c.contents.stacks) wr.line(stack_fields(s));
         }
     }
+    {
+        wr.line({"NEEDS_MINUTES", s64(static_cast<std::int64_t>(w.needs.minute_carry.size()))});
+        for (const auto& [actor, m] : w.needs.minute_carry) wr.line({actor, s64(m)});
+    }
     // --- end P0a
 
     return wr.str();
@@ -1082,6 +1086,15 @@ void load_world(WorldState& out, const std::string& canon_dir, const std::string
                     add_stack(c.contents, stack_from(sf, 0, "container"));
                 }
                 w.world_items.containers.emplace(c.id, std::move(c));
+            }
+        }
+        // FND-06: minutes toward each actor's next whole hour (absent before P0a).
+        if (!rd.at_end() && rd.peek_tag() == "NEEDS_MINUTES") {
+            const std::size_t n = rd.section("NEEDS_MINUTES");
+            for (std::size_t i = 0; i < n; ++i) {
+                std::vector<std::string> f = rd.next();
+                if (f.size() != 2) throw std::runtime_error("snapshot: bad needs-minutes row");
+                w.needs.minute_carry[f[0]] = static_cast<int>(Reader::parse_i64(f[1]));
             }
         }
         // --- end P0a
