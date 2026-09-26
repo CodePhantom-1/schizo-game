@@ -190,6 +190,9 @@ private:
 
 	// --- registries (static: one street per process at this slice; a
 	// second BuildQuarter in a fresh world rebuilds them) ---
+	/** The building being laid out: every piece and door slot goes through this frame (AA5). */
+	FTransform CurrentFrame = FTransform::Identity;
+
 	static TMap<FName, FVector> PlaceLocations;
 	static TMap<FName, FSimDoorSlotInfo> DoorSlots;
 	static TArray<FName> PlaceOrder;

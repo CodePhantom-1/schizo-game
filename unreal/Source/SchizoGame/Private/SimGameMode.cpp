@@ -2,6 +2,7 @@
 // residents and the sun (W6-C), the verbs and HUD (W6-A, via the player
 // controller), and the sim clock on screen.
 #include "SimGameMode.h"
+#include "SimCityData.h"
 #include "UI/SimShellSubsystem.h"
 #include "SimGameUserSettings.h"
 #include "SimWorldSubsystem.h"
@@ -126,16 +127,26 @@ void ASimGameMode::StartPlay()
 			Street.NumPlacesBuilt, Street.NumDoorSlots, Street.bKitMeshesFound ? TEXT("yes") : TEXT("no — engine cubes"));
 	}
 
-	// The first readable thing: a clay tablet by the gate (notes L198).
-	// (GateLocation already sits at ground z=100 for the pivot-centred cube;
-	// +40 more floats it at reading height without burying the bottom half.)
-	if (World->SpawnActor<ASimTablet>(Street.GateLocation + FVector(300, 0, 40), FRotator(0, 90, 0)) == nullptr)
+	// The first readable thing: a clay tablet just inside the Moon Gate (notes L198).
+	const FSimCityPlace* GatePlace = SimCityData::Find(TEXT("moon_gate_place"));
+	const FVector Inside = GatePlace ? FRotator(0.f, GatePlace->YawDeg - 90.f, 0.f).Vector() : FVector::ForwardVector;
+	if (World->SpawnActor<ASimTablet>(Street.GateLocation + Inside * 900.f + FVector(0, 0, 40), (-Inside).Rotation()) == nullptr)
 	{
 		UE_LOG(LogSimGameMode, Warning, TEXT("tablet spawn failed"));
 	}
 
-	// A PlayerStart so the pawn has somewhere to be: facing through the gate.
-	StreetStart = World->SpawnActor<APlayerStart>(Street.GateLocation + FVector(1100, 0, 50), FRotator(0, 180, 0));
+	// AA6 (D-009): the game begins where the prisoner does — outside the quayside
+	// prison barracks, facing the street; the Moon Gate is the fallback.
+	FSimDoorSlotInfo Barracks;
+	if (ASimStreetBuilder::GetDoorSlot(TEXT("prison_barracks_place"), Barracks))
+	{
+		const FVector Out = FRotator(0.f, Barracks.OutwardYawDeg, 0.f).Vector();
+		StreetStart = World->SpawnActor<APlayerStart>(Barracks.Location + Out * 250.f + FVector(0, 0, 90), Out.Rotation());
+	}
+	if (StreetStart == nullptr)
+	{
+		StreetStart = World->SpawnActor<APlayerStart>(Street.GateLocation + Inside * 1100.f + FVector(0, 0, 50), (-Inside).Rotation());
+	}
 	if (StreetStart == nullptr)
 	{
 		UE_LOG(LogSimGameMode, Warning, TEXT("PlayerStart spawn failed — the pawn will start at the default."));
@@ -195,15 +206,19 @@ namespace
 		FVector Target;  // ZeroVector + bPlayer = the player's own camera
 		bool bPlayer;
 	};
+	// Camera presets for the crescent (AA4): the whole city from the air, the gate from
+	// the road, the ziggurat across the lagoon, the ring street, the harbour.
 	const FSimShotView GShotViews[] = {
-		{ TEXT("player"),   FVector::ZeroVector,                 FVector::ZeroVector,              true },
-		{ TEXT("street"),   FVector(2600.f, -260.f, 175.f),      FVector(12000.f, 1200.f, 500.f),  false },
-		{ TEXT("gate"),     FVector(-4200.f, -1600.f, 260.f),    FVector(0.f, 0.f, 900.f),         false },
-		{ TEXT("fields"),   FVector(-1800.f, 1200.f, 1100.f),    FVector(-30000.f, -4000.f, 0.f),  false },
-		{ TEXT("zig"),      FVector(16200.f, -2600.f, 260.f),    FVector(22000.f, 3000.f, 1500.f), false },
-		{ TEXT("overview"), FVector(-9000.f, -14000.f, 6500.f),  FVector(16000.f, 5000.f, 0.f),    false },
-		{ TEXT("harbor"),   FVector(33000.f, -9000.f, 2400.f),   FVector(48500.f, 6000.f, 2500.f), false },
+		{ TEXT("player"),   FVector::ZeroVector,                  FVector::ZeroVector,              true },
+		{ TEXT("aerial"),   FVector(24000.f, -30000.f, 19000.f),  FVector(24000.f, 5000.f, 0.f),    false },
+		{ TEXT("street"),   FVector(11900.f, 9000.f, 180.f),      FVector(17000.f, 14100.f, 300.f), false },
+		{ TEXT("gate"),     FVector(1200.f, -900.f, 300.f),       FVector(6570.f, 470.f, 900.f),    false },
+		{ TEXT("fields"),   FVector(3000.f, 1200.f, 1100.f),      FVector(-30000.f, -4000.f, 0.f),  false },
+		{ TEXT("zig"),      FVector(24000.f, 3000.f, 700.f),      FVector(24000.f, 16000.f, 1500.f), false },
+		{ TEXT("overview"), FVector(-9000.f, -14000.f, 6500.f),   FVector(24000.f, 4000.f, 0.f),    false },
+		{ TEXT("harbor"),   FVector(48000.f, -13000.f, 2400.f),   FVector(41300.f, 4400.f, 500.f),  false },
 	};
+
 }
 
 void ASimGameMode::TickShots(float DeltaSeconds)

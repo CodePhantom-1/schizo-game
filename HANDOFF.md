@@ -109,3 +109,9 @@ Both lost pieces rebuilt and merged; 40/40 kernel tests. Divine wrath (`sim/Divi
 - **UI tech:** Slate in C++ (unreal/Source/SchizoGame/Private/UI/), a screen stack in USimShellSubsystem; `-SimShotScreens=MainMenu,Pause,…` captures each screen; `-SimNoMenu` for unattended runs.
 - **Known gaps:** the camera and the menus were not checked on screen by a person yet (the windowed launch stalls while the desktop session is idle/locked) — play it once; the placeholder street goods reset on New Game but not on Load (world items become kernel state in Stage C).
 - **Next:** Stage AA — the crescent city (agree docs/city-of-the-moon.md with Tommy first).
+
+## Stage AA (2026-09-26) — the crescent city stands (D-025)
+- **Data:** `building_types.csv` (70 types), `city_districts.csv` (the crescent frame + quarters), `places.csv` with 121 footprints from `tools/city_layout.py` (tested: no overlaps, clusters on their ground, nothing in the sea; CI checks it's current); `tools/plot_city.py` → `art/review/city_plan.png`.
+- **Engine:** `SimCityData` reads the crescent; `SimStreetBuilder` builds every building in its own frame, doors to the ring street; `SimEnvironment` builds the lagoon with channels to river and sea, the arc walls with the citadel bulge, both gates in the wall, the ziggurat on the belly, the lighthouse mole from the east horn, lit windows and street palms from the places; the game starts outside the quayside prison barracks (AA6).
+- **Screenshots without a screen:** `-RenderOffscreen` renders even while the desktop is locked: `UnrealEditor … -game -RenderOffscreen -SimShots=<dir> -SimShotViews=aerial,zig,gate,street,harbor`. Views in `art/review/crescent/`.
+- **Next:** Stage V1–V3 — the material library, house kit v2 and the typology catalogue, so buildings stop being plain boxes.

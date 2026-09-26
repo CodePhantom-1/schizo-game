@@ -1,5 +1,6 @@
 // SimStreetBuilder.cpp — see SimStreetBuilder.h.
 #include "SimStreetBuilder.h"
+#include "SimCityData.h"
 
 #include "Components/DirectionalLightComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
@@ -189,40 +190,19 @@ void ASimStreetBuilder::LoadKitMeshes()
 
 TArray<FSimPlaceRow> ASimStreetBuilder::LoadPlaces()
 {
+	// AA5: every place of the crescent (SimCityData reads places.csv's footprints).
 	TArray<FSimPlaceRow> Rows;
-	const FString Path = FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Sim/canon/places.csv"));
-	TArray<FString> Lines;
-	if (!FFileHelper::LoadFileToStringArray(Lines, *Path))
+	for (const FSimCityPlace& P : SimCityData::Places())
 	{
-		UE_LOG(LogSimStreetBuilder, Error, TEXT("places.csv missing at %s — run tools/stage_canon_for_ue.py."), *Path);
-		return Rows;
-	}
-	// header: id,city,district,kind,building_id,owner_person_id,name,...
-	// Only this wave's slice district is laid out; the other districts
-	// (Lighthouse Wharf, Beyond the Moon Gate) belong to later scenes.
-	for (int32 i = 1; i < Lines.Num(); ++i)
-	{
-		if (Lines[i].IsEmpty())
-		{
-			continue;
-		}
-		TArray<FString> F = SplitCsvLine(Lines[i]);
-		if (F.Num() < 7)
-		{
-			continue;
-		}
 		FSimPlaceRow Row;
-		Row.Id = FName(*F[0]);
-		Row.City = F[1];
-		Row.District = F[2];
-		Row.Kind = F[3];
-		Row.BuildingId = F[4];
-		Row.OwnerPersonId = F[5];
-		Row.Name = F[6];
-		if (Row.City == TEXT("city_of_the_moon") && Row.District == TEXT("Moon Gate Quarter"))
-		{
-			Rows.Add(Row);
-		}
+		Row.Id = P.Id;
+		Row.City = TEXT("city_of_the_moon");
+		Row.District = P.Quarter;
+		Row.Kind = P.Kind;
+		Row.BuildingId = P.BuildingId;
+		Row.OwnerPersonId = P.OwnerPersonId;
+		Row.Name = P.Name;
+		Rows.Add(Row);
 	}
 	return Rows;
 }
@@ -446,7 +426,7 @@ void ASimStreetBuilder::BuildGroundAndLighting(const FVector2D& BoundsMin, const
 
 void ASimStreetBuilder::AddPiece(UInstancedStaticMeshComponent* ISM, const FTransform& T)
 {
-	const int32 I = ISM->AddInstance(T);
+	const int32 I = ISM->AddInstance(T * CurrentFrame);
 	ISM->SetCustomDataValue(I, 0, CurrentTint.R, false);
 	ISM->SetCustomDataValue(I, 1, CurrentTint.G, false);
 	ISM->SetCustomDataValue(I, 2, CurrentTint.B, true);
@@ -472,175 +452,106 @@ FSimStreetBuildResult ASimStreetBuilder::Build()
 	Result.bKitMeshesFound = bKitMeshesFound;
 	if (Places.Num() == 0)
 	{
-		UE_LOG(LogSimStreetBuilder, Error, TEXT("no 'Moon Gate Quarter' places in places.csv — the street was not built."));
+		UE_LOG(LogSimStreetBuilder, Error, TEXT("no places with footprints in places.csv — run tools/city_layout.py and stage the canon."));
 		LastResult = Result;
 		return Result;
 	}
 
-	bool bAlongY = false;
-	float Cursor = 0.f;
-	float TurnBaseX = 0.f;
-	int32 PlotsLaid = 0;
 	FVector GateLoc = FVector::ZeroVector;
 	bool bHaveGate = false;
-	FVector2D BoundsMin = FVector2D::ZeroVector, BoundsMax = FVector2D::ZeroVector;
-	bool bHaveBounds = false;
+	FVector2D BoundsMin(TNumericLimits<float>::Max()), BoundsMax(TNumericLimits<float>::Lowest());
+	const FSimCityFrame& City = SimCityData::Frame();
+	const float RowSplit = (City.LagoonR + City.WallR) * 0.5f;
 
-	for (const FSimPlaceRow& Row : Places)
+	// The kinds of building that are open ground, not rooms.
+	static const TSet<FString> OpenGround = {
+		TEXT("market_square"), TEXT("well_house"), TEXT("street_shrine"), TEXT("moon_pool"), TEXT("necropolis"),
+		TEXT("brickyard"), TEXT("cattle_pen"), TEXT("wharf"), TEXT("fish_market"), TEXT("floating_shrine") };
+	static const TSet<FString> Stalls = { TEXT("market_stall"), TEXT("cookshop"), TEXT("scribe_booth") };
+	// The monuments SimEnvironment builds; the street only registers them.
+	static const TSet<FString> Monuments = { TEXT("city_gate"), TEXT("ziggurat"), TEXT("lighthouse") };
+
+	for (const FSimCityPlace& P : SimCityData::Places())
 	{
-		if (PlotsLaid == PLOTS_BEFORE_TURN)
-		{
-			bAlongY = true;
-			TurnBaseX = Cursor; // the street's X position at the turn
-			Cursor = 0.f;
-		}
-
-		// Each building's lime wash / mud tone (INVENTED dressing; content hash so the street is stable).
+		// Each building's lime wash / mud tone (content hash: stable across runs).
 		{
 			static const FLinearColor Tints[] = {
 				FLinearColor(1.06f, 1.05f, 1.02f), FLinearColor(1.f, 0.9f, 0.76f), FLinearColor(0.93f, 0.82f, 0.7f),
 				FLinearColor(1.04f, 0.88f, 0.8f), FLinearColor(0.86f, 0.76f, 0.64f), FLinearColor(1.08f, 1.0f, 0.86f) };
-			const uint32 H = FCrc::StrCrc32(*Row.Id.ToString());
-			CurrentTint = (Row.Kind == TEXT("temple")) ? FLinearColor(1.12f, 1.1f, 1.08f) : Tints[H % 6];
+			const uint32 H = FCrc::StrCrc32(*P.Id.ToString());
+			CurrentTint = (P.Wealth == TEXT("sacred") || P.Wealth == TEXT("elite")) ? FLinearColor(1.12f, 1.1f, 1.08f) : Tints[H % 6];
 		}
-		const bool bGate = (Row.Kind == TEXT("gate"));
-		const bool bPosSide = (PlotsLaid % 2 == 0);
-		FVector2D Center;
-		FString DoorSide;
-		float OutwardYaw = 0.f;
-		if (bGate)
-		{
-			// The gate straddles the street axis (not a plot offset to one
-			// side) — the street runs through its opening.
-			Center = bAlongY ? FVector2D(TurnBaseX, Cursor) : FVector2D(Cursor, 0.f);
-			DoorSide = bAlongY ? TEXT("west") : TEXT("south"); // only used for slot bookkeeping
-			OutwardYaw = bAlongY ? 270.f : 180.f; // faces back down the street, out of the city
-		}
-		else if (!bAlongY)
-		{
-			Center = FVector2D(Cursor, bPosSide ? OFFSET : -OFFSET);
-			DoorSide = bPosSide ? TEXT("south") : TEXT("north"); // door faces the street centreline
-			OutwardYaw = bPosSide ? 270.f : 90.f;
-		}
-		else
-		{
-			Center = FVector2D(TurnBaseX + (bPosSide ? OFFSET : -OFFSET), Cursor);
-			DoorSide = bPosSide ? TEXT("west") : TEXT("east");
-			OutwardYaw = bPosSide ? 180.f : 0.f;
-		}
-		Cursor += PLOT;
-		++PlotsLaid;
+		const FVector World(P.Center, 0.f);
+		CurrentFrame = FTransform(FRotator(0.f, P.YawDeg, 0.f), World);
+		BoundsMin = FVector2D(FMath::Min(BoundsMin.X, P.Center.X), FMath::Min(BoundsMin.Y, P.Center.Y));
+		BoundsMax = FVector2D(FMath::Max(BoundsMax.X, P.Center.X), FMath::Max(BoundsMax.Y, P.Center.Y));
 
-		// --- footprint + kind dispatch ---
-		int32 W = 2, D = 2;
-		bool bWindow = true;
-		bool bRoofAccess = false;
-		bool bRoofed = true;
-		bool bPaved = false;
-		bool bStall = false;
+		// The door faces the ring street: the lagoon-side row opens outward (+Y local),
+		// the wall-side row inward (-Y); cluster buildings open to local south.
+		const float Radius = (P.Center - City.Center).Size();
+		const bool bArc = P.Quarter != TEXT("reed_quarter") && P.Quarter != TEXT("newcomers_terraces")
+			&& P.Quarter != TEXT("garden_of_tombs") && P.Quarter != TEXT("beyond_the_gate");
+		const bool bInnerRow = bArc && Radius < RowSplit;
+		const FString DoorSide = bInnerRow ? TEXT("north") : TEXT("south");
+		const float LocalOutwardYaw = bInnerRow ? 90.f : 270.f;  // local yaw of "out of the door"
 
-		if (Row.Kind == TEXT("watch post")) { W = 2; D = 2; bWindow = false; }
-		else if (Row.Kind == TEXT("market")) { bPaved = true; W = 6; D = 6; }
-		else if (Row.Kind == TEXT("market stall") || Row.Kind == TEXT("cook-shop")) { bStall = true; W = 1; D = 1; }
-		else if (Row.Kind == TEXT("bakery")) { W = 3; D = 3; }
-		else if (Row.Kind == TEXT("brewery/tavern")) { W = 4; D = 3; }
-		else if (Row.Kind == TEXT("temple")) { W = 4; D = 4; }
-		else if (Row.Kind == TEXT("house"))
-		{
-			// buildings.csv already says which house it is: the courtyard
-			// house is the larger plan. The modest one-room houses vary by a
-			// content hash — FCrc::StrCrc32, not GetTypeHash(FName): name-table
-			// ids are not stable across sessions, and the street must be
-			// (same CSV -> same houses, so place ids keep pointing at the
-			// same buildings).
-			if (Row.BuildingId == TEXT("mudbrick_house_courtyard")) { W = 4; D = 4; }
-			else if (FCrc::StrCrc32(*Row.Id.ToString()) % 3 == 2)
-			{
-				W = 3; D = 3; bRoofAccess = true; bWindow = false; // roof access (roof-top living)
-			}
-			else { W = 3; D = 3; } // small single-room
-		}
-		else if (Row.Kind == TEXT("well") || Row.Kind == TEXT("shrine")) { bPaved = true; W = 1; D = 1; }
-		else if (Row.Kind == TEXT("granary")) { W = 2; D = 2; bWindow = false; }
-		else if (Row.Kind == TEXT("smithy")) { W = 3; D = 3; bWindow = false; bRoofed = false; } // a walled open yard with its furnace
-		else { W = 2; D = 2; }
+		const int32 W = FMath::Max(1, FMath::RoundToInt(P.Size.X / GRID));
+		const int32 D = FMath::Max(1, FMath::RoundToInt(P.Size.Y / GRID));
+		const FVector Origin(-W * GRID * 0.5f, -D * GRID * 0.5f, 0.f);
 
-		const FVector Origin(Center.X - W * GRID * 0.5f, Center.Y - D * GRID * 0.5f, 0.f);
-
-		if (!bHaveBounds)
-		{
-			BoundsMin = Center - FVector2D(W * GRID, D * GRID) * 0.5f;
-			BoundsMax = Center + FVector2D(W * GRID, D * GRID) * 0.5f;
-			bHaveBounds = true;
-		}
-		else
-		{
-			BoundsMin = FVector2D(FMath::Min(BoundsMin.X, Center.X - W * GRID * 0.5f), FMath::Min(BoundsMin.Y, Center.Y - D * GRID * 0.5f));
-			BoundsMax = FVector2D(FMath::Max(BoundsMax.X, Center.X + W * GRID * 0.5f), FMath::Max(BoundsMax.Y, Center.Y + D * GRID * 0.5f));
-		}
-
-		FVector PlaceLoc;
 		FSimDoorSlotInfo Slot;
-		Slot.PlaceId = Row.Id;
-		Slot.Kind = Row.Kind;
-		Slot.DisplayName = Row.Name;
-		Slot.OwnerPersonId = Row.OwnerPersonId;
-		Slot.OutwardYawDeg = OutwardYaw;
+		Slot.PlaceId = P.Id;
+		Slot.Kind = P.Kind;
+		Slot.DisplayName = P.Name;
+		Slot.OwnerPersonId = P.OwnerPersonId;
+		Slot.OutwardYawDeg = P.YawDeg + LocalOutwardYaw;
 
-		if (bGate)
+		FVector PlaceLoc = World;
+		if (P.Quarter == TEXT("beyond_the_gate"))
 		{
-			PlaceLoc = BuildGate(Center);
-			GateLoc = PlaceLoc + FVector(0.f, 0.f, 100.f);
-			bHaveGate = true;
-			Slot.Location = PlaceLoc;
-			SpawnDoorSlot(Slot); // the gate opens at dawn and shuts at dusk — it is a door too
+			// Fields and pasture: a place, not a building.
 		}
-		else if (bPaved)
+		else if (Monuments.Contains(P.Typology))
 		{
-			PlaceLoc = BuildPavedArea(Origin, W, D);
+			if (P.Typology == TEXT("city_gate"))
+			{
+				PlaceLoc = World;
+				GateLoc = World + FVector(0.f, 0.f, 100.f);
+				bHaveGate = true;
+				if (bLegacyGate)
+				{
+					BuildGate(FVector2D::ZeroVector);  // local: the frame puts it in the wall
+				}
+				Slot.Location = World;
+				Slot.OutwardYawDeg = P.YawDeg + 90.f;  // out through the wall, to the fields
+				SpawnDoorSlot(Slot);
+			}
 		}
-		else if (bStall)
+		else if (OpenGround.Contains(P.Typology) || P.Typology == TEXT("field") || P.Typology == TEXT("pasture"))
 		{
-			PlaceLoc = BuildStall(Origin);
+			PlaceLoc = CurrentFrame.TransformPosition(BuildPavedArea(Origin, W, D));
+		}
+		else if (Stalls.Contains(P.Typology))
+		{
+			PlaceLoc = CurrentFrame.TransformPosition(BuildStall(FVector(-GRID * 0.5f, -GRID * 0.5f, 0.f)));
 		}
 		else
 		{
-			PlaceLoc = BuildRoom(Origin, W, D, DoorSide, bWindow, bRoofAccess, bRoofed);
+			const bool bWindow = P.Typology != TEXT("granary") && P.Typology != TEXT("watch_post") && P.Typology != TEXT("migrant_tent");
+			const bool bRoofed = P.Typology != TEXT("foundry") && P.Typology != TEXT("tannery") && P.Typology != TEXT("caravan_yard")
+				&& P.Typology != TEXT("rebel_barracks") && P.Typology != TEXT("potter");
+			const bool bRoofAccess = P.Typology.StartsWith(TEXT("home_")) && (FCrc::StrCrc32(*P.Id.ToString()) % 3 == 2);
+			const FVector DoorLocal = BuildRoom(Origin, W, D, DoorSide, bWindow, bRoofAccess, bRoofed);
+			PlaceLoc = CurrentFrame.TransformPosition(DoorLocal);
 			Slot.Location = PlaceLoc;
 			SpawnDoorSlot(Slot);
-
-			if (Row.Kind == TEXT("temple") && W >= 3)
-			{
-				// Engaged pilasters flanking the temple's door cell, on the
-				// outside face of the street wall (pieces are 30x15 cm).
-				const int32 M = (DoorSide == TEXT("south") || DoorSide == TEXT("north")) ? W / 2 : D / 2;
-				for (int32 Side = -1; Side <= 1; Side += 2)
-				{
-					const float Off = (M + Side) * GRID + 35.f;
-					if (DoorSide == TEXT("south"))
-					{
-						AddPiece(ISM_Pilaster, PieceTransform(Origin.X + Off, Origin.Y - 15.f, 0.f, 0.f, 30.f, 15.f));
-					}
-					else if (DoorSide == TEXT("north"))
-					{
-						AddPiece(ISM_Pilaster, PieceTransform(Origin.X + Off, Origin.Y + D * GRID, 0.f, 0.f, 30.f, 15.f));
-					}
-					else if (DoorSide == TEXT("west"))
-					{
-						AddPiece(ISM_Pilaster, PieceTransform(Origin.X - 15.f, Origin.Y + Off, 0.f, 90.f, 30.f, 15.f));
-					}
-					else if (DoorSide == TEXT("east"))
-					{
-						AddPiece(ISM_Pilaster, PieceTransform(Origin.X + W * GRID, Origin.Y + Off, 0.f, 270.f, 30.f, 15.f));
-					}
-				}
-			}
 		}
+		CurrentFrame = FTransform::Identity;
 
-		PlaceLocations.Add(Row.Id, PlaceLoc);
-		PlaceOrder.Add(Row.Id);
-		UE_LOG(LogSimStreetBuilder, Log, TEXT("place registry: %s (%s) -> (%.0f,%.0f,%.0f)"),
-			*Row.Id.ToString(), *Row.Kind, PlaceLoc.X, PlaceLoc.Y, PlaceLoc.Z);
+		PlaceLocations.Add(P.Id, PlaceLoc);
+		PlaceOrder.Add(P.Id);
+		UE_LOG(LogSimStreetBuilder, Verbose, TEXT("place registry: %s (%s) -> (%.0f,%.0f,%.0f)"),
+			*P.Id.ToString(), *P.Typology, PlaceLoc.X, PlaceLoc.Y, PlaceLoc.Z);
 	}
 
 	BuildGroundAndLighting(BoundsMin, BoundsMax);
@@ -653,7 +564,7 @@ FSimStreetBuildResult ASimStreetBuilder::Build()
 	{
 		UE_LOG(LogSimStreetBuilder, Warning, TEXT("no 'gate' place in the quarter — GateLocation is zero."));
 	}
-	UE_LOG(LogSimStreetBuilder, Log, TEXT("The Moon Gate Quarter stands: %d places, %d door slots%s."),
+	UE_LOG(LogSimStreetBuilder, Log, TEXT("The crescent's buildings stand: %d places, %d door slots%s."),
 		Result.NumPlacesBuilt, Result.NumDoorSlots, Result.bKitMeshesFound ? TEXT("") : TEXT(" (kit meshes missing — engine-cube fallback)"));
 	LastResult = Result;
 	return Result;

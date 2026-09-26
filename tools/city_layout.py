@@ -26,9 +26,17 @@ CANON = ROOT / "db" / "canon"
 PLACES = CANON / "places.csv"
 
 # The crescent: its centre (metres), the lagoon inside radius 105 m, the wall at 175 m
-# (the Prophet's citadel to 205 m); the coast runs at about x = 412 m.
-COAST_X = 412.0
-O = (240.0, 20.0)
+# (the Prophet's citadel to 205 m); the coast runs at about x = 425 m (the wall reaches ~415 m).
+COAST_X = 425.0
+def _frame():
+    with open(CANON / "city_districts.csv", newline="", encoding="utf-8") as fh:
+        for r in csv.DictReader(fh):
+            if r["id"] == "crescent_frame":
+                return (float(r["cx_m"]), float(r["cy_m"])), float(r["r0_m"]), float(r["r1_m"])
+    raise SystemExit("city_districts.csv has no crescent_frame row")
+
+
+O, LAGOON_R, WALL_R = _frame()
 GAP_M = 3.0          # lanes between neighbours
 STEP_DEG = 0.25      # the scan's angular step
 
@@ -157,10 +165,10 @@ FILL = {
 # Where a quarter's first building is pinned (angle deg, radius m), so the
 # monuments stand where the design puts them; the rest flow after.
 PIN = {
-    "moon_gate_place": (193.0, 140.0),        # the western horn
+    "moon_gate_place": (185.0, 175.0),        # in the outer wall by the western horn, facing the land road
     "temple_front_place": (90.0, 140.0),      # the northern belly
     "great_lighthouse_place": (-15.0, 215.0), # out on the mole, at the sea
-    "sea_gate_place": (-6.0, 165.0),
+    "sea_gate_place": (8.0, 175.0),           # in the outer wall, facing the quay and the sea
 }
 
 

@@ -3,6 +3,7 @@
 // grounded in world-bible §5 (City of the Moon ~ Ur: temple of sun and moon,
 // the Great Lighthouse, sea trade) and §2 (the drought).
 #include "SimEnvironment.h"
+#include "SimCityData.h"
 
 #include "SimMeshKit.h"
 #include "SimStreetBuilder.h"
@@ -20,34 +21,65 @@ DEFINE_LOG_CATEGORY_STATIC(LogSimEnvironment, Log, All);
 
 namespace
 {
-	// --- the city (cm; +X east, +Y north; the Moon Gate at the origin) ----
-	constexpr float CityX0 = 0.f, CityX1 = 36000.f, CityY0 = -14000.f, CityY1 = 22000.f;
+	// --- the city: the crescent round the lagoon (AA4, D-025; cm; +X east,
+	// +Y north; the old Moon Gate's spot is the origin). The frame and the
+	// monuments' places are read from the canon (SimCityData) in Build().
 	constexpr float WallH = 950.f;
 	constexpr float WaterZ = -120.f;
-	const FVector2D ZigCenter(22000.f, 3000.f);
-	const FVector2D LighthousePos(48500.f, 6000.f);
-	constexpr float SeaGateY = 6000.f;
+	FVector2D CityO(24000.f, 2000.f);
+	float LagoonR = 10500.f, WallR = 17500.f, HornW = 195.f, HornE = -15.f;
+	constexpr float CitadelA0 = 144.f, CitadelA1 = 122.f, CitadelR = 20500.f;  // the Prophet's citadel bulges out
+	FVector2D ZigCenter(24000.f, 16000.f);
+	FVector2D LighthousePos(44770.f, -3560.f);
+	FVector2D GatePos(6570.f, 470.f);   // the Moon Gate, in the outer wall
+	float GateYaw = 5.f;                // local +X runs from outside to inside
+	FVector2D SeaGatePos(41330.f, 4440.f);
+	float SeaGateYaw = 188.f;
+
+	void LoadCityFrame()
+	{
+		const FSimCityFrame& F = SimCityData::Frame();
+		CityO = F.Center;
+		LagoonR = F.LagoonR;
+		WallR = F.WallR;
+		HornW = F.HornWestDeg;
+		HornE = F.HornEastDeg;
+		if (const FSimCityPlace* Z = SimCityData::Find(TEXT("temple_front_place"))) { ZigCenter = Z->Center; }
+		if (const FSimCityPlace* L = SimCityData::Find(TEXT("great_lighthouse_place"))) { LighthousePos = L->Center; }
+		// A gate's place yaw runs along the wall; its passage (local +X, outside to inside) is 90° less.
+		if (const FSimCityPlace* G = SimCityData::Find(TEXT("moon_gate_place"))) { GatePos = G->Center; GateYaw = G->YawDeg - 90.f; }
+		if (const FSimCityPlace* S = SimCityData::Find(TEXT("sea_gate_place"))) { SeaGatePos = S->Center; SeaGateYaw = S->YawDeg - 90.f; }
+	}
+
+	/** Degrees of P round the crescent's centre (0 = east, 90 = north), in (-180, 180]. */
+	float CityAngle(float X, float Y) { return FMath::RadiansToDegrees(FMath::Atan2(Y - CityO.Y, X - CityO.X)); }
+	float CityRadius(float X, float Y) { return FVector2D(X - CityO.X, Y - CityO.Y).Size(); }
+	/** True between the horns, going over the north (the built crescent). */
+	bool InCrescentArc(float A) { const float A360 = A < HornE ? A + 360.f : A; return A360 <= HornW; }
+	/** Point on the crescent: angle (deg) and radius from the centre. */
+	FVector2D CityPoint(float ADeg, float R) { const float A = FMath::DegreesToRadians(ADeg); return CityO + FVector2D(FMath::Cos(A), FMath::Sin(A)) * R; }
 	const float CanalYs[] = { -21000.f, -9000.f, 9000.f, 21000.f };
 	constexpr float CanalX = -30000.f;
 
 	float Smooth(float A, float B, float X) { return FMath::SmoothStep(A, B, X); }
 	float Perlin(float X, float Y) { return FMath::PerlinNoise2D(FVector2D(X, Y)); }
 
+	/** How far P lies outside the walls (0 inside the crescent, its lagoon and the citadel). */
 	float CityDist(float X, float Y)
 	{
-		const float Dx = FMath::Max3(CityX0 - X, 0.f, X - CityX1);
-		const float Dy = FMath::Max3(CityY0 - Y, 0.f, Y - CityY1);
-		return FMath::Sqrt(Dx * Dx + Dy * Dy);
+		const float A = CityAngle(X, Y);
+		const float Edge = (A <= CitadelA0 && A >= CitadelA1) ? CitadelR : WallR;
+		return FMath::Max(0.f, CityRadius(X, Y) - (Edge + 300.f));
 	}
 	float RiverY(float X) { return -34000.f + 5000.f * FMath::Sin(X / 30000.f) + 1800.f * FMath::Sin(X / 9000.f + 1.f); }
-	float CoastX(float Y) { return 38500.f + 1500.f * FMath::Sin(Y / 20000.f) + 600.f * FMath::Sin(Y / 5000.f); }
+	float CoastX(float Y) { return 42500.f + 1500.f * FMath::Sin(Y / 20000.f) + 600.f * FMath::Sin(Y / 5000.f); }
 	bool InFarmland(float X, float Y) { return X > -70000.f && X < -5000.f && FMath::Abs(Y) < 29000.f; }
 
-	/** The quarter's street and its plots (SimStreetBuilder's layout). */
+	/** The ring street between the lagoon-side and the wall-side rows, worn by feet. */
 	bool InStreetZone(float X, float Y)
 	{
-		return (X > -500.f && X < 12600.f && FMath::Abs(Y) < 1400.f)
-			|| (FMath::Abs(X - 11200.f) < 1500.f && Y > -1400.f && Y < 9400.f);
+		const float R = CityRadius(X, Y);
+		return R > LagoonR + 2600.f && R < LagoonR + 4400.f && InCrescentArc(CityAngle(X, Y));
 	}
 
 	/** Grid coordinates: Fine steps within FineHalf of Center, then growing to Far. */
@@ -117,9 +149,9 @@ namespace
 		{
 			C = SimRGB(208, 186, 138);  // beach
 		}
-		else if (X < 0.f && FMath::Abs(Y) < 520.f)
+		else if (X < GatePos.X && FMath::Abs(Y - GatePos.Y) < 520.f)
 		{
-			C = SimRGB(168, 146, 116);  // the road west
+			C = SimRGB(168, 146, 116);  // the road west from the Moon Gate
 		}
 		else if (Dr < 6800.f)
 		{
@@ -235,6 +267,7 @@ ASimEnvironment* ASimEnvironment::BuildWorld(UWorld* World)
 void ASimEnvironment::Build()
 {
 	const double T0 = FPlatformTime::Seconds();
+	LoadCityFrame();
 	LoadMaterials();
 	BuildTerrain();
 	BuildWater();
@@ -249,14 +282,17 @@ void ASimEnvironment::Build()
 		for (int32 s = 0; s <= Steps; ++s)
 		{
 			const float Th = FMath::DegreesToRadians(200.f + 140.f * s / Steps);
-			O.Add(FVector(Xf, R * FMath::Cos(Th), Zc + R * FMath::Sin(Th)));
-			I.Add(FVector(Xf, Ri * FMath::Cos(Th), Zc + Lift + Ri * FMath::Sin(Th)));
+			// In the gate's frame (GatePos, GateYaw): local X = Xf, local Y along the wall.
+			const FVector2D Po = GatePos + FVector2D(Xf, R * FMath::Cos(Th)).GetRotated(GateYaw);
+			const FVector2D Pi = GatePos + FVector2D(Xf, Ri * FMath::Cos(Th)).GetRotated(GateYaw);
+			O.Add(FVector(Po, Zc + R * FMath::Sin(Th)));
+			I.Add(FVector(Pi, Zc + Lift + Ri * FMath::Sin(Th)));
 		}
 		I[0] = O[0];
 		I[Steps] = O[Steps];
 		for (int32 s = 0; s < Steps; ++s)
 		{
-			MoonK.Quad(O[s], O[s + 1], I[s + 1], I[s], FLinearColor::White, -FVector::ForwardVector);
+			MoonK.Quad(O[s], O[s + 1], I[s + 1], I[s], FLinearColor::White, -FVector::ForwardVector.RotateAngleAxis(GateYaw, FVector::UpVector));
 		}
 	}
 	BuildZiggurat(SolidK, FireK);
@@ -306,10 +342,25 @@ float ASimEnvironment::TerrainHeight(float X, float Y)
 	// The walled city and a 40 m apron stand on flat ground.
 	H = FMath::Lerp(0.f, H, Smooth(0.f, 4000.f, D));
 
-	// The road west out of the Moon Gate.
-	if (X < 0.f)
+	// The lagoon of the two waters inside the crescent, with a channel south to the
+	// river (the fresh water) and one east to the sea (the salt) (D-025).
 	{
-		H = FMath::Lerp(H, 15.f, 1.f - Smooth(350.f, 900.f, FMath::Abs(Y)));
+		const float R = CityRadius(X, Y);
+		H = FMath::Lerp(H, -420.f, 1.f - Smooth(LagoonR - 900.f, LagoonR - 150.f, R));
+		if (Y < CityO.Y && Y > RiverY(X))
+		{
+			H = FMath::Lerp(H, -420.f, 1.f - Smooth(500.f, 1100.f, FMath::Abs(X - CityO.X)));
+		}
+		const float SeaChannelY = CityO.Y - LagoonR * 0.78f;
+		if (X > CityO.X)
+		{
+			H = FMath::Lerp(H, -420.f, 1.f - Smooth(700.f, 1500.f, FMath::Abs(Y - SeaChannelY)));
+		}
+	}
+	// The road west out of the Moon Gate.
+	if (X < GatePos.X)
+	{
+		H = FMath::Lerp(H, 15.f, 1.f - Smooth(350.f, 900.f, FMath::Abs(Y - GatePos.Y)));
 	}
 	// Irrigation canals across the fields.
 	if (X > -68000.f && X < -2500.f)
@@ -463,50 +514,105 @@ void ASimEnvironment::BuildWalls(FSimMeshKit& K, FSimMeshKit& Glow)
 		if (bTowerA) { Tower(A); }
 		if (bTowerB) { Tower(B); }
 	};
-	const FVector2D W(-1.f, 0.f), E(1.f, 0.f), S(0.f, -1.f), N(0.f, 1.f);
-	Run(FVector2D(CityX0, CityY0), FVector2D(CityX0, -1300.f), W, true, false);
-	Run(FVector2D(CityX0, 1300.f), FVector2D(CityX0, CityY1), W, false, true);
-	Run(FVector2D(CityX0, CityY0), FVector2D(CityX1, CityY0), S, true, true);
-	Run(FVector2D(CityX0, CityY1), FVector2D(CityX1, CityY1), N, true, true);
-	Run(FVector2D(CityX1, CityY0), FVector2D(CityX1, SeaGateY - 700.f), E, true, false);
-	Run(FVector2D(CityX1, SeaGateY + 700.f), FVector2D(CityX1, CityY1), E, false, true);
+	// --- the crescent's walls (AA4, D-025): the outer arc from the western horn over the
+	// north to the eastern horn, bulging round the Prophet's citadel; the horns closed
+	// radially down to the lagoon; the two gates stand in the outer wall.
+	auto Gap = [](const FVector2D& P, const FVector2D& G) { return (P - G).Size() < 1150.f; };
+	auto ArcWall = [&](float A0, float A1, float R)
+	{
+		const float Span = FMath::Abs(A1 - A0);
+		const int32 N = FMath::Max(1, FMath::RoundToInt(FMath::DegreesToRadians(Span) * R / 1800.f));
+		for (int32 i = 0; i < N; ++i)
+		{
+			const FVector2D A = CityPoint(FMath::Lerp(A0, A1, float(i) / N), R);
+			const FVector2D B = CityPoint(FMath::Lerp(A0, A1, float(i + 1) / N), R);
+			if (Gap((A + B) * 0.5f, GatePos) || Gap((A + B) * 0.5f, SeaGatePos))
+			{
+				continue;  // the gates stand here
+			}
+			const FVector2D Mid = (A + B) * 0.5f;
+			const FVector2D Out = (Mid - CityO).GetSafeNormal();
+			Run(A, B, Out, i % 3 == 0, false);
+		}
+	};
+	auto RadialWall = [&](float Ang, float R0, float R1)
+	{
+		const FVector2D A = CityPoint(Ang, R0), B = CityPoint(Ang, R1);
+		const float Side = (Ang > 90.f || Ang < -90.f) ? -1.f : 1.f;
+		const FVector2D Out = FVector2D(-(B - A).Y, (B - A).X).GetSafeNormal() * Side;
+		Run(A, B, Out, false, true);
+	};
+	ArcWall(HornW, CitadelA0, WallR);
+	RadialWall(CitadelA0, WallR, CitadelR);
+	ArcWall(CitadelA0, CitadelA1, CitadelR);
+	RadialWall(CitadelA1, WallR, CitadelR);
+	ArcWall(CitadelA1, HornE, WallR);
+	RadialWall(HornW, LagoonR + 200.f, WallR);
+	RadialWall(HornE, LagoonR + 200.f, WallR);
+
+	// The lagoon's stone embankment: a low quay all round the inner curve.
+	{
+		const int32 N = 96;
+		for (int32 i = 0; i < N; ++i)
+		{
+			const float A0 = FMath::Lerp(HornE, HornW, float(i) / N), A1 = FMath::Lerp(HornE, HornW, float(i + 1) / N);
+			const FVector2D A = CityPoint(A0, LagoonR), B = CityPoint(A1, LagoonR);
+			const FVector2D M = (A + B) * 0.5f;
+			const float Yaw = FMath::RadiansToDegrees(FMath::Atan2(B.Y - A.Y, B.X - A.X));
+			K.Block(FVector(M, WaterZ - 300.f), FVector2D((B - A).Size() * 0.5f + 20.f, 160.f), FVector2D((B - A).Size() * 0.5f + 20.f, 150.f),
+				300.f + 60.f - WaterZ, Yaw, Stone, SimRGB(178, 162, 132));
+		}
+	}
+
+	// A gate's local frame: +X from outside to inside, +Y along the wall.
+	auto Frame = [](const FVector2D& Pos, float Yaw)
+	{
+		return [Pos, Yaw](float Lx, float Ly, float Z)
+		{
+			const FVector2D R = FVector2D(Lx, Ly).GetRotated(Yaw);
+			return FVector(Pos + R, Z);
+		};
+	};
 
 	// --- the Moon Gate: two massive towers, the lintel over the passage, a
-	// lapis band and the crescent (glow section). The street's own gate place
-	// (the pillars and the door) stands inside the passage.
-	// Front face at GateFront (outside), back face at GateBack: a short,
-	// deep-shadowed passage the street opens straight into.
-	constexpr float GateFront = -620.f, GateBack = 120.f;
-	const float GateMid = (GateFront + GateBack) * 0.5f, GateHalf = (GateBack - GateFront) * 0.5f;
-	for (float Side : { -1.f, 1.f })
+	// lapis band and the crescent (glow section, Build()). Built in its own
+	// frame so it stands wherever the canon puts it in the wall.
 	{
-		K.Box(FVector(GateMid, 840.f * Side, 0.f), FVector2D(GateHalf, 540.f), 1500.f, 0.f, BakedBrick, MudTop);
-		for (int32 m = 0; m < 5; ++m)
+		const auto G = Frame(GatePos, GateYaw);
+		constexpr float GateFront = -620.f, GateBack = 120.f;
+		const float GateMid = (GateFront + GateBack) * 0.5f, GateHalf = (GateBack - GateFront) * 0.5f;
+		for (float Side : { -1.f, 1.f })
 		{
-			K.Box(FVector(GateFront + 40.f, 840.f * Side - 420.f + 210.f * m, 1500.f), FVector2D(40.f, 62.f), 130.f, 0.f, BakedBrick, MudTop);
-			K.Box(FVector(GateBack - 40.f, 840.f * Side - 420.f + 210.f * m, 1500.f), FVector2D(40.f, 62.f), 130.f, 0.f, BakedBrick, MudTop);
+			K.Box(G(GateMid, 840.f * Side, 0.f), FVector2D(GateHalf, 540.f), 1500.f, GateYaw, BakedBrick, MudTop);
+			for (int32 m = 0; m < 5; ++m)
+			{
+				K.Box(G(GateFront + 40.f, 840.f * Side - 420.f + 210.f * m, 1500.f), FVector2D(40.f, 62.f), 130.f, GateYaw, BakedBrick, MudTop);
+				K.Box(G(GateBack - 40.f, 840.f * Side - 420.f + 210.f * m, 1500.f), FVector2D(40.f, 62.f), 130.f, GateYaw, BakedBrick, MudTop);
+			}
+			// Braziers flanking the approach.
+			const FVector Post = G(GateFront - 380.f, 560.f * Side, 0.f);
+			K.Prism(Post, 26.f, 22.f, 6, 170.f, Bronze, Bronze);
+			K.Prism(Post + FVector(0, 0, 170.f), 40.f, 72.f, 8, 34.f, Bronze, SimRGB(40, 30, 20));
+			AddFire(Glow, Post + FVector(0, 0, 196.f), 1.f, 60.f, 2200.f, true);
 		}
-		// Braziers flanking the approach.
-		const FVector Post(GateFront - 380.f, 560.f * Side, 0.f);
-		K.Prism(Post, 26.f, 22.f, 6, 170.f, Bronze, Bronze);
-		K.Prism(Post + FVector(0, 0, 170.f), 40.f, 72.f, 8, 34.f, Bronze, SimRGB(40, 30, 20));
-		AddFire(Glow, Post + FVector(0, 0, 196.f), 1.f, 60.f, 2200.f, true);
+		K.Box(G(GateMid, 0.f, 760.f), FVector2D(GateHalf, 320.f), 740.f, GateYaw, BakedBrick, MudTop);
+		// Lapis-glazed band across the gate front, gold rims, and the lapis
+		// field behind the crescent.
+		K.Box(G(GateFront - 6.f, 0.f, 950.f), FVector2D(12.f, 1382.f), 110.f, GateYaw, Lapis, Lapis);
+		K.Box(G(GateFront - 10.f, 0.f, 1060.f), FVector2D(12.f, 1382.f), 18.f, GateYaw, Gold, Gold);
+		K.Box(G(GateFront - 10.f, 0.f, 932.f), FVector2D(12.f, 1382.f), 18.f, GateYaw, Gold, Gold);
+		K.Box(G(GateFront - 8.f, 0.f, 1078.f), FVector2D(12.f, 250.f), 340.f, GateYaw, Lapis, Lapis);
 	}
-	K.Box(FVector(GateMid, 0.f, 760.f), FVector2D(GateHalf, 320.f), 740.f, 0.f, BakedBrick, MudTop);
-	// Lapis-glazed band across the gate front, gold rims, and the lapis
-	// field behind the crescent (the crescent is a glow section, Build()).
-	K.Box(FVector(GateFront - 6.f, 0.f, 950.f), FVector2D(12.f, 1382.f), 110.f, 0.f, Lapis, Lapis);
-	K.Box(FVector(GateFront - 10.f, 0.f, 1060.f), FVector2D(12.f, 1382.f), 18.f, 0.f, Gold, Gold);
-	K.Box(FVector(GateFront - 10.f, 0.f, 932.f), FVector2D(12.f, 1382.f), 18.f, 0.f, Gold, Gold);
-	K.Box(FVector(GateFront - 8.f, 0.f, 1078.f), FVector2D(12.f, 250.f), 340.f, 0.f, Lapis, Lapis);
 
-	// --- the sea gate onto the quay.
-	for (float Side : { -1.f, 1.f })
+	// --- the sea gate onto the quay and the lighthouse mole.
 	{
-		K.Block(FVector(CityX1 + 60.f, SeaGateY + 1150.f * Side, 0.f), FVector2D(540.f, 440.f), FVector2D(500.f, 400.f),
-			1300.f, 0.f, MudBrick, MudTop);
+		const auto G = Frame(SeaGatePos, SeaGateYaw);
+		for (float Side : { -1.f, 1.f })
+		{
+			K.Block(G(0.f, 1150.f * Side, 0.f), FVector2D(540.f, 440.f), FVector2D(500.f, 400.f), 1300.f, SeaGateYaw, MudBrick, MudTop);
+		}
+		K.Block(G(0.f, 0.f, 700.f), FVector2D(520.f, 720.f), FVector2D(500.f, 720.f), 600.f, SeaGateYaw, MudBrick, MudTop);
 	}
-	K.Block(FVector(CityX1 + 60.f, SeaGateY, 700.f), FVector2D(520.f, 720.f), FVector2D(500.f, 720.f), 600.f, 0.f, MudBrick, MudTop);
 }
 
 void ASimEnvironment::BuildZiggurat(FSimMeshKit& K, FSimMeshKit& Glow)
@@ -586,40 +692,27 @@ void ASimEnvironment::BuildZiggurat(FSimMeshKit& K, FSimMeshKit& Glow)
 		AddFire(Glow, At + FVector(0, 0, 60.f), 1.3f, 120.f, 4000.f, false);
 	}
 
-	// The precinct wall (temenos) with its gate facing the quarter.
-	const float Px0 = C.X - 7000.f, Px1 = C.X + 6000.f, Py0 = C.Y - 7000.f, Py1 = C.Y + 7000.f;
-	const FLinearColor Pl = SimRGB(206, 178, 132), PlTop = SimRGB(216, 190, 146);
-	auto PWall = [&](const FVector2D& A, const FVector2D& B)
-	{
-		const FVector2D M = (A + B) * 0.5f;
-		const FVector2D H((FMath::Abs(B.X - A.X) * 0.5f) + 60.f, (FMath::Abs(B.Y - A.Y) * 0.5f) + 60.f);
-		K.Box(FVector(M, 0.f), H, 480.f, 0.f, Pl, PlTop);
-	};
-	PWall(FVector2D(Px0, Py0), FVector2D(Px0, C.Y - 700.f));
-	PWall(FVector2D(Px0, C.Y + 700.f), FVector2D(Px0, Py1));
-	PWall(FVector2D(Px0, Py0), FVector2D(Px1, Py0));
-	PWall(FVector2D(Px0, Py1), FVector2D(Px1, Py1));
-	PWall(FVector2D(Px1, Py0), FVector2D(Px1, Py1));
-	for (float Side : { -1.f, 1.f })
-	{
-		K.Box(FVector(Px0, C.Y + 800.f * Side, 0.f), FVector2D(200.f, 200.f), 700.f, 0.f, Pl, Lapis);
-		AddFire(Glow, FVector(Px0 - 260.f, C.Y + 800.f * Side, 260.f), 0.8f, 40.f, 1800.f, false);
-		K.Prism(FVector(Px0 - 260.f, C.Y + 800.f * Side, 0.f), 18.f, 16.f, 6, 250.f, Bronze, Bronze);
-	}
+	// The precinct is the Sacred Mound quarter itself (D-025): its buildings stand round
+	// the ziggurat (places.csv), so no temenos wall is drawn here.
 }
 
 void ASimEnvironment::BuildLighthouse(FSimMeshKit& K, FSimMeshKit& Glow)
 {
-	// The mole from the quay out to the lighthouse, and the quay itself.
-	const float QuayX = 38400.f;
-	K.Block(FVector((QuayX + LighthousePos.X) * 0.5f, SeaGateY, -900.f), FVector2D((LighthousePos.X - QuayX) * 0.5f, 720.f),
-		FVector2D((LighthousePos.X - QuayX) * 0.5f, 650.f), 980.f, 0.f, Stone, SimRGB(178, 162, 132));
-	K.Block(FVector(QuayX - 500.f, 3000.f, -900.f), FVector2D(900.f, 18500.f), FVector2D(820.f, 18500.f), 960.f, 0.f,
-		Stone, SimRGB(178, 162, 132));
-	// Bollards along the quay edge.
-	for (float Y = -14000.f; Y < 20000.f; Y += 1600.f)
+	// The mole from the eastern horn out to the lighthouse, and the quay under the sea gate.
 	{
-		K.Prism(FVector(QuayX + 230.f, Y, 60.f), 22.f, 18.f, 6, 70.f, SimRGB(96, 80, 60), SimRGB(96, 80, 60));
+		const FVector2D Horn = CityPoint(HornE, WallR);
+		const FVector2D Dir = (LighthousePos - Horn).GetSafeNormal();
+		const float L = (LighthousePos - Horn).Size();
+		const float Yaw = FMath::RadiansToDegrees(FMath::Atan2(Dir.Y, Dir.X));
+		K.Block(FVector((Horn + LighthousePos) * 0.5f, -900.f), FVector2D(L * 0.5f, 720.f), FVector2D(L * 0.5f, 650.f), 980.f, Yaw,
+			Stone, SimRGB(178, 162, 132));
+		const float QuayX = SeaGatePos.X + 700.f;
+		K.Block(FVector(QuayX, SeaGatePos.Y, -900.f), FVector2D(700.f, 5200.f), FVector2D(640.f, 5200.f), 960.f, 0.f,
+			Stone, SimRGB(178, 162, 132));
+		for (float Y = SeaGatePos.Y - 4800.f; Y < SeaGatePos.Y + 4800.f; Y += 1600.f)
+		{
+			K.Prism(FVector(QuayX + 560.f, Y, 60.f), 22.f, 18.f, 6, 70.f, SimRGB(96, 80, 60), SimRGB(96, 80, 60));
+		}
 	}
 
 	const FVector B(LighthousePos, -900.f);
@@ -675,98 +768,59 @@ void ASimEnvironment::BuildLighthouse(FSimMeshKit& K, FSimMeshKit& Glow)
 
 void ASimEnvironment::BuildCity(FSimMeshKit& Plants, FSimMeshKit& Windows)
 {
-	UStaticMesh* Cube = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"));
-	Blocks->SetStaticMesh(Cube);
-	Blocks->SetMaterial(0, FlatMat);
-
-	const FLinearColor Walls[] = {
-		SimRGB(200, 178, 146), SimRGB(186, 162, 130), SimRGB(214, 196, 166), SimRGB(172, 146, 116),
-		SimRGB(226, 216, 194), SimRGB(206, 182, 146), SimRGB(180, 136, 108) };
-	const float Cell = 1000.f;
-	const float PxMin = ZigCenter.X - 7800.f, PxMax = ZigCenter.X + 6800.f, PyMin = ZigCenter.Y - 7800.f, PyMax = ZigCenter.Y + 7800.f;
-	int32 Houses = 0;
-	for (float X = CityX0 + 1500.f; X < CityX1 - 1500.f; X += Cell)
+	// AA4 (D-025): the city's buildings are the crescent's places, built by
+	// SimStreetBuilder from places.csv. Here: their lamp-lit windows at night,
+	// on the face toward the ring street, and palms along that street.
+	static const TSet<FString> NoWindows = { TEXT("market_square"), TEXT("market_stall"), TEXT("cookshop"), TEXT("scribe_booth"),
+		TEXT("well_house"), TEXT("street_shrine"), TEXT("moon_pool"), TEXT("necropolis"), TEXT("brickyard"), TEXT("cattle_pen"),
+		TEXT("wharf"), TEXT("fish_market"), TEXT("floating_shrine"), TEXT("field"), TEXT("pasture"), TEXT("city_gate"),
+		TEXT("ziggurat"), TEXT("lighthouse"), TEXT("granary") };
+	const float RowSplit = (LagoonR + WallR) * 0.5f;
+	int32 Lit = 0;
+	for (const FSimCityPlace& P : SimCityData::Places())
 	{
-		for (float Y = CityY0 + 1500.f; Y < CityY1 - 1500.f; Y += Cell)
+		if (NoWindows.Contains(P.Typology) || P.Quarter == TEXT("beyond_the_gate"))
 		{
-			const int32 Ix = FMath::RoundToInt(X / Cell), Iy = FMath::RoundToInt(Y / Cell);
-			// Avenues: every sixth row and column stays open.
-			if (Ix % 6 == 0 || Iy % 6 == 0)
+			continue;
+		}
+		const uint32 H = FCrc::StrCrc32(*P.Id.ToString());
+		const float Chance = P.Wealth == TEXT("poor") ? 0.35f : (P.Wealth == TEXT("modest") ? 0.6f : 0.9f);  // lamp oil costs
+		if ((H % 1000) / 1000.f > Chance)
+		{
+			continue;
+		}
+		// The street-facing face: +local Y for the lagoon-side row, -local Y otherwise.
+		const bool bInner = (P.Center - CityO).Size() < RowSplit;
+		const FVector2D Across = FVector2D(0.f, bInner ? 1.f : -1.f).GetRotated(P.YawDeg);
+		const FVector2D Along = FVector2D(1.f, 0.f).GetRotated(P.YawDeg);
+		const float Off = (H % 7) / 7.f * 0.5f - 0.25f;  // not every window centred
+		const FVector2D At = P.Center + Across * (P.Size.Y * 0.5f + 3.f) + Along * (P.Size.X * Off);
+		const FVector Wc(At, 175.f);
+		const FVector Hx = FVector(Along, 0.f) * 22.f, Hz(0, 0, 28.f);
+		Windows.Quad(Wc - Hx - Hz, Wc + Hx - Hz, Wc + Hx + Hz, Wc - Hx + Hz, FLinearColor::White, FVector(Across, 0.f));
+		++Lit;
+	}
+	// Palms along the ring street, where no building stands.
+	int32 Palms = 0;
+	for (float A = HornE + 3.f; A < HornW - 3.f; A += 4.5f)
+	{
+		const FVector2D At = CityPoint(A, LagoonR + 3500.f + 400.f * FMath::Sin(A));
+		bool bClear = true;
+		for (const FSimCityPlace& P : SimCityData::Places())
+		{
+			if ((P.Center - At).Size() < FMath::Max(P.Size.X, P.Size.Y) * 0.5f + 400.f)
 			{
-				continue;
+				bClear = false;
+				break;
 			}
-			if (InStreetZone(X, Y) || (X < 3200.f && FMath::Abs(Y) < 3200.f)
-				|| (X > PxMin && X < PxMax && Y > PyMin && Y < PyMax))
-			{
-				continue;
-			}
-			FSimRand R((Ix * 73856093u) ^ (Iy * 19349663u));
-			const float Yard = R.Next();
-			if (Yard < 0.1f)
-			{
-				// An open yard: a palm, sometimes two.
-				Plants.Palm(FVector(X + R.Range(-300.f, 300.f), Y + R.Range(-300.f, 300.f), 0.f), R.Range(650.f, 1050.f), Ix * 31 + Iy);
-				continue;
-			}
-			const float W = R.Range(640.f, 900.f), D = R.Range(640.f, 900.f);
-			const float Cx = X + R.Range(-1.f, 1.f) * (Cell - W) * 0.5f, Cy = Y + R.Range(-1.f, 1.f) * (Cell - D) * 0.5f;
-			const float H = R.Range(300.f, 430.f);
-			const FLinearColor Col = Jit(Walls[FMath::Min(6, static_cast<int32>(R.Next() * 7.f))], R.Next(), 0.1f);
-			AddBlock(FVector(Cx, Cy, 0.f), FVector(W, D, H), 0.f, Col);
-			// Parapet ring.
-			const FLinearColor Par = Col * 0.92f;
-			AddBlock(FVector(Cx, Cy - D * 0.5f + 10.f, H), FVector(W, 20.f, 40.f), 0.f, Par);
-			AddBlock(FVector(Cx, Cy + D * 0.5f - 10.f, H), FVector(W, 20.f, 40.f), 0.f, Par);
-			AddBlock(FVector(Cx - W * 0.5f + 10.f, Cy, H), FVector(20.f, D - 40.f, 40.f), 0.f, Par);
-			AddBlock(FVector(Cx + W * 0.5f - 10.f, Cy, H), FVector(20.f, D - 40.f, 40.f), 0.f, Par);
-			// An upper room on some roofs.
-			if (R.Next() < 0.3f)
-			{
-				const float Uw = W * R.Range(0.35f, 0.55f), Ud = D * R.Range(0.35f, 0.55f);
-				AddBlock(FVector(Cx + (W - Uw) * 0.5f * R.Range(-1.f, 1.f), Cy + (D - Ud) * 0.5f * R.Range(-1.f, 1.f), H),
-					FVector(Uw, Ud, R.Range(220.f, 280.f)), 0.f, Col * 1.03f);
-			}
-			// A reed sunshade on posts.
-			else if (R.Next() < 0.25f)
-			{
-				const FVector Sc(Cx + R.Range(-100.f, 100.f), Cy + R.Range(-100.f, 100.f), H + 190.f);
-				AddBlock(Sc, FVector(260.f, 220.f, 8.f), R.Range(0.f, 90.f), SimRGB(186, 158, 92));
-				AddBlock(Sc + FVector(-110.f, -90.f, -190.f), FVector(10.f, 10.f, 190.f), 0.f, SimRGB(92, 64, 40));
-				AddBlock(Sc + FVector(110.f, 90.f, -190.f), FVector(10.f, 10.f, 190.f), 0.f, SimRGB(92, 64, 40));
-			}
-			// A dark doorway on one side, and a lamp-lit window at night.
-			const int32 Face = static_cast<int32>(R.Next() * 4.f) % 4;
-			const FVector2D Dirs[4] = { {1, 0}, {-1, 0}, {0, 1}, {0, -1} };
-			const FVector2D Fd = Dirs[Face];
-			const float Ext = (Fd.X != 0.f) ? W * 0.5f : D * 0.5f;
-			const FVector DoorAt(Cx + Fd.X * (Ext + 1.f), Cy + Fd.Y * (Ext + 1.f), 0.f);
-			AddBlock(DoorAt, (Fd.X != 0.f) ? FVector(6.f, 95.f, 195.f) : FVector(95.f, 6.f, 195.f), 0.f, SimRGB(34, 26, 20));
-			if (R.Next() < 0.22f)
-			{
-				const FVector Side = (Fd.X != 0.f) ? FVector(0, 1, 0) : FVector(1, 0, 0);
-				const FVector Wc = DoorAt + FVector(Fd.X * 2.f, Fd.Y * 2.f, 0.f) + Side * (Ext * 0.5f) + FVector(0, 0, 175.f);
-				const FVector Hx = Side * 22.f, Hz(0, 0, 28.f);
-				Windows.Quad(Wc - Hx - Hz, Wc + Hx - Hz, Wc + Hx + Hz, Wc - Hx + Hz, FLinearColor::White, FVector(Fd, 0.f));
-			}
-			++Houses;
+		}
+		if (bClear && (At - ZigCenter).Size() > 4500.f)
+		{
+			Plants.Palm(FVector(At, 0.f), 850.f + 250.f * SimHash01(FMath::RoundToInt(A * 10.f), 3), FMath::RoundToInt(A * 10.f));
+			++Palms;
 		}
 	}
-	// Palms along the precinct avenue and on the quay.
-	for (float X = 3500.f; X < ZigCenter.X - 7400.f; X += 1400.f)
-	{
-		for (float Side : { -1.f, 1.f })
-		{
-			Plants.Palm(FVector(X, ZigCenter.Y + 900.f * Side, 0.f), 900.f + 150.f * SimHash01(FMath::RoundToInt(X), FMath::RoundToInt(Side) + 2), FMath::RoundToInt(X) + (Side > 0 ? 1 : 0));
-		}
-	}
-	for (float Y = -12000.f; Y < 20000.f; Y += 2600.f)
-	{
-		if (FMath::Abs(Y - SeaGateY) > 1500.f)
-		{
-			Plants.Palm(FVector(37200.f + 300.f * SimHash01(FMath::RoundToInt(Y), 4), Y, 0.f), 1000.f, FMath::RoundToInt(Y) + 77);
-		}
-	}
-	UE_LOG(LogSimEnvironment, Log, TEXT("city: %d houses"), Houses);
+	UE_LOG(LogSimEnvironment, Log, TEXT("city: %d places lit at night, %d street palms"), Lit, Palms);
 }
 
 void ASimEnvironment::BuildCountryside(FSimMeshKit& K, FSimMeshKit& Plants)
@@ -933,14 +987,21 @@ void ASimEnvironment::BuildBoats(FSimMeshKit& K, FSimMeshKit& Sails)
 	// Merchant ships along the quay and at anchor in the harbour.
 	for (int32 i = 0; i < 9; ++i)
 	{
-		const float Y = -11000.f + 3300.f * i;
-		if (FMath::Abs(Y - SeaGateY) < 1600.f)
+		const float Y = SeaGatePos.Y - 9000.f + 2500.f * i;
+		if (FMath::Abs(Y - SeaGatePos.Y) < 1600.f)
 		{
 			continue;
 		}
-		const bool bAnchored = i % 3 == 2;
-		const FVector At(bAnchored ? 43000.f + R.Range(-1500.f, 3000.f) : 39400.f, Y + R.Range(-400.f, 400.f), WaterZ);
+		const bool bAnchored = i % 3 == 2 || FMath::Abs(Y - SeaGatePos.Y) > 5000.f;
+		const FVector At(bAnchored ? SeaGatePos.X + 5500.f + R.Range(-1500.f, 3000.f) : SeaGatePos.X + 2200.f, Y + R.Range(-400.f, 400.f), WaterZ);
 		Boat(At, bAnchored ? R.Range(0.f, 360.f) : 90.f + R.Range(-6.f, 6.f), R.Range(1400.f, 2200.f), true, false);
+	}
+	// Reed boats and fishing skiffs on the lagoon.
+	for (int32 i = 0; i < 8; ++i)
+	{
+		const float A = R.Range(0.f, 360.f), Rr = R.Range(1500.f, LagoonR - 1600.f);
+		const FVector2D P = CityPoint(A, Rr);
+		Boat(FVector(P, WaterZ), R.Range(0.f, 360.f), R.Range(500.f, 900.f), false, true);
 	}
 	// Reed boats on the river.
 	for (int32 i = 0; i < 7; ++i)
@@ -1033,7 +1094,13 @@ void ASimEnvironment::BuildStreetDressing()
 		Posts.Prism(Base, 9.f, 7.f, 5, 185.f, SimRGB(84, 60, 40), SimRGB(84, 60, 40));
 		Posts.Prism(Base + FVector(0, 0, 185.f), 14.f, 20.f, 6, 12.f, Bronze, SimRGB(40, 30, 20));
 		Flames.Prism(Base + FVector(0, 0, 197.f), 10.f, 0.f, 5, 26.f, FLinearColor::White, FLinearColor::White);
-		AddNightLight(Base + FVector(0, 0, 230.f), 14.f, 1100.f, FLinearColor(1.f, 0.58f, 0.28f), false);
+		// Every door keeps its flame; only the first MaxDoorLights cast real light
+		// (a whole crescent of dynamic lights would sink the integrated GPU).
+		constexpr int32 MaxDoorLights = 32;
+		if (N < MaxDoorLights && (FCrc::StrCrc32(*S.PlaceId.ToString()) % 3) == 0)
+		{
+			AddNightLight(Base + FVector(0, 0, 230.f), 14.f, 1100.f, FLinearColor(1.f, 0.58f, 0.28f), false);
+		}
 		++N;
 	}
 	// Lamp posts and flames get their own mesh actors' sections on this actor.

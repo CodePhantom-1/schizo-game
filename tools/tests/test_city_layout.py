@@ -64,7 +64,9 @@ class Layout(unittest.TestCase):
         gate = self.by_id["moon_gate_place"]
         light = self.by_id["great_lighthouse_place"]
         self.assertGreater(float(zig["y_m"]), city_layout.O[1] + 100)       # the northern belly
-        self.assertLess(float(gate["x_m"]), city_layout.O[0] - 100)         # the western horn
+        self.assertLess(float(gate["x_m"]), city_layout.O[0] - 100)         # the western side
+        self.assertAlmostEqual(math.hypot(float(gate["x_m"]) - city_layout.O[0], float(gate["y_m"]) - city_layout.O[1]),
+                               city_layout.WALL_R, delta=1.0)                  # in the wall itself
         self.assertGreater(float(light["x_m"]), city_layout.O[0] + 150)     # the eastern horn, at the sea
 
 

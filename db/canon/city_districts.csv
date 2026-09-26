@@ -1,4 +1,5 @@
 id,name,shape,a0_deg,a1_deg,r0_m,r1_m,cx_m,cy_m,character,wealth,tag,source_ref
+crescent_frame,The crescent (its geometry),frame,195,-15,105,175,240,20,the crescent's centre (cx_m cy_m) its lagoon edge (r0_m) and its wall (r1_m) from the western horn (a0_deg) over the north to the eastern horn (a1_deg); the citadel bulges to 205 m and the coast runs at x = 425 m,civic,INVENTED,"D-025; docs/city-of-the-moon.md §1; tools/city_layout.py"
 moon_gate_quarter,The Moon Gate & the Caravan Yard,arc,195,170,105,175,,,the western horn where the land road arrives,modest,INVENTED,"D-025; docs/city-of-the-moon.md §2.1"
 crescent_market,The Crescent Market,arc,168,122,105,131,,,the inner arc facing the lagoon: awnings noise and everything for sale,modest,INVENTED,"D-025; docs/city-of-the-moon.md §2.2"
 smiths_lane,The smiths' lane,arc,170,146,149,175,,,the outer arc behind the market: forges kilns and looms,modest,INVENTED,"D-025; docs/city-of-the-moon.md §2.2; world-art-plan §4.2"
