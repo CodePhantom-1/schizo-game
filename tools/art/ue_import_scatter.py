@@ -74,7 +74,7 @@ def world_collection():
     # against the old ids (M_Terrain) then fails to compile (V-B3).
     params = list(mpc.get_editor_property("scalar_parameters"))
     have = {str(p.get_editor_property("parameter_name")) for p in params}
-    for name in ("Wither", "Bloom", "Wet", "Dust", "Festival", "Shimmer"):  # V-B5 added the last four
+    for name in ("Wither", "Bloom", "Wet", "Dust", "Festival", "Shimmer", "Rain"):  # V-B5 added the last five
         if name not in have:
             p = unreal.CollectionScalarParameter()
             p.set_editor_property("parameter_name", name)

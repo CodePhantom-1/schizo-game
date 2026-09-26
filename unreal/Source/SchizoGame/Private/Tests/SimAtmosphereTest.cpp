@@ -51,3 +51,64 @@ bool FSimAtmosphereEasing::RunTest(const FString&)
 }
 
 #endif
+
+#if WITH_DEV_AUTOMATION_TESTS
+
+#include "Components/InstancedStaticMeshComponent.h"
+#include "Engine/Engine.h"
+#include "Engine/World.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimAtmosphereFx, "Sim.Atmosphere.Fx",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+bool FSimAtmosphereFx::RunTest(const FString&)
+{
+	// The schedule (pure).
+	TestTrue(TEXT("the bakery smokes at dawn"), ASimAtmosphere::SmokeOn(TEXT("bakery"), 6.f, 0.f));
+	TestFalse(TEXT("...not at noon"), ASimAtmosphere::SmokeOn(TEXT("bakery"), 12.f, 0.f));
+	TestTrue(TEXT("a home's hearth at dusk"), ASimAtmosphere::SmokeOn(TEXT("home_modest"), 18.f, 0.f));
+	TestFalse(TEXT("...not at dawn"), ASimAtmosphere::SmokeOn(TEXT("home_modest"), 6.f, 0.f));
+	TestTrue(TEXT("the foundry all day"), ASimAtmosphere::SmokeOn(TEXT("foundry"), 3.f, 0.f));
+	TestFalse(TEXT("nothing in the rain"), ASimAtmosphere::SmokeOn(TEXT("foundry"), 3.f, 1.f));
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, TEXT("SimAtmosphereFxTest"));
+	FWorldContext& Ctx = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Ctx.SetCurrentWorld(World);
+	ASimAtmosphere* A = ASimAtmosphere::BuildAtmosphere(World);
+	if (TestNotNull(TEXT("the atmosphere"), A) && TestNotNull(TEXT("the rain field (run ue_make_fx_materials.py if null)"), A->GetRain()))
+	{
+		TestEqual(TEXT("1,500 rain streaks"), A->GetRain()->GetInstanceCount(), ASimAtmosphere::RainCount);
+		TestEqual(TEXT("800 dust motes"), A->GetDust()->GetInstanceCount(), ASimAtmosphere::DustCount);
+		TArray<FString> Lines;
+		FFileHelper::LoadFileToStringArray(Lines, *FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Sim/smoke.csv")));
+		TestEqual(TEXT("a smoke source per smoke.csv row"), A->NumSmokeSources(), Lines.Num() - 1);
+		TestEqual(TEXT("five puffs each"), A->GetSmoke()->GetInstanceCount(), A->NumSmokeSources() * ASimAtmosphere::PuffsPerSource);
+
+		FSimAtmosphere Dry = ASimAtmosphere::Target(TEXT("clear"), 0, TEXT("harvest"), 12.f, false);
+		A->ApplyFx(Dry, 12.f, FVector::ZeroVector);
+		TestFalse(TEXT("no rain: the streaks are hidden"), A->GetRain()->IsVisible());
+		TestFalse(TEXT("no dust: the motes are hidden"), A->GetDust()->IsVisible());
+		FSimAtmosphere Wet = ASimAtmosphere::Target(TEXT("rain"), 0, TEXT("rains"), 12.f, false);
+		A->ApplyFx(Wet, 12.f, FVector::ZeroVector);
+		TestTrue(TEXT("rain: the streaks show"), A->GetRain()->IsVisible());
+		int32 LitAtDawn = 0, LitInRain = 0;
+		A->ApplyFx(Dry, 6.f, FVector::ZeroVector);
+		for (int32 s = 0; s < A->NumSmokeSources(); ++s)
+		{
+			LitAtDawn += A->IsSmokeLit(s);
+		}
+		A->ApplyFx(Wet, 6.f, FVector::ZeroVector);
+		for (int32 s = 0; s < A->NumSmokeSources(); ++s)
+		{
+			LitInRain += A->IsSmokeLit(s);
+		}
+		TestTrue(TEXT("dawn: the ovens and furnaces smoke"), LitAtDawn > 0);
+		TestEqual(TEXT("rain: every fire out"), LitInRain, 0);
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
+#endif

@@ -10,6 +10,7 @@
 #include "SimAtmosphere.generated.h"
 
 class ASimDayNight;
+class UInstancedStaticMeshComponent;
 class UMaterialParameterCollection;
 
 struct FSimAtmosphere
@@ -46,6 +47,24 @@ public:
 
 	const FSimAtmosphere& GetLive() const { return Live; }
 
+	/** Is a smoke source of this place typology lit at this hour (ovens at dawn, homes and fires at dusk, the
+	 *  foundry and armourer all day; nothing in the rain)? Pure. */
+	static bool SmokeOn(const FString& Typology, float Hour, float Rain);
+
+	/** Builds the rain and dust fields and the smoke puffs (Content/Sim/smoke.csv); nothing if not imported. */
+	void BuildFx();
+	/** Shows and places the effects for a state, an hour and the camera (Tick; tests call it directly). */
+	void ApplyFx(const FSimAtmosphere& State, float Hour, FVector Camera);
+
+	static constexpr int32 RainCount = 1500;
+	static constexpr int32 DustCount = 800;
+	static constexpr int32 PuffsPerSource = 5;
+	UInstancedStaticMeshComponent* GetRain() const { return RainIsm; }
+	UInstancedStaticMeshComponent* GetDust() const { return DustIsm; }
+	UInstancedStaticMeshComponent* GetSmoke() const { return SmokeIsm; }
+	int32 NumSmokeSources() const { return SmokeTypology.Num(); }
+	bool IsSmokeLit(int32 Source) const { return SmokeLit.IsValidIndex(Source) && SmokeLit[Source]; }
+
 	virtual void Tick(float DeltaSeconds) override;
 
 private:
@@ -56,4 +75,9 @@ private:
 	bool bFirst = true;
 	UPROPERTY() TObjectPtr<UMaterialParameterCollection> WorldParams;
 	UPROPERTY() TObjectPtr<ASimDayNight> Sky;
+	UPROPERTY() TObjectPtr<UInstancedStaticMeshComponent> RainIsm;
+	UPROPERTY() TObjectPtr<UInstancedStaticMeshComponent> DustIsm;
+	UPROPERTY() TObjectPtr<UInstancedStaticMeshComponent> SmokeIsm;
+	TArray<FString> SmokeTypology;
+	TArray<bool> SmokeLit;
 };

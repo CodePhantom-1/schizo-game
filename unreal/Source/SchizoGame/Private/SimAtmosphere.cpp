@@ -1,12 +1,20 @@
 // SimAtmosphere.cpp — Stage V batch 5 Task 1: the atmosphere driver.
 #include "SimAtmosphere.h"
 
+#include "SimCityData.h"
 #include "SimDayNight.h"
+#include "SimMeshKit.h"
 #include "SimWorldSubsystem.h"
 #include "sim/CApi.h"
 #include "sim/CApiWild.h"
 
+#include "Camera/PlayerCameraManager.h"
+#include "Components/InstancedStaticMeshComponent.h"
+#include "Engine/StaticMesh.h"
 #include "Engine/World.h"
+#include "GameFramework/PlayerController.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
 #include "EngineUtils.h"
 #include "HAL/IConsoleManager.h"
 #include "Kismet/KismetMaterialLibrary.h"
@@ -54,8 +62,133 @@ ASimAtmosphere* ASimAtmosphere::BuildAtmosphere(UWorld* World)
 	}
 	FActorSpawnParameters P;
 	P.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	return World->SpawnActor<ASimAtmosphere>(FVector::ZeroVector, FRotator::ZeroRotator, P);
+	ASimAtmosphere* A = World->SpawnActor<ASimAtmosphere>(FVector::ZeroVector, FRotator::ZeroRotator, P);
+	if (A != nullptr)
+	{
+		A->BuildFx();
+	}
+	return A;
 }
+
+bool ASimAtmosphere::SmokeOn(const FString& Typology, float Hour, float Rain)
+{
+	if (Rain > 0.5f)
+	{
+		return false;  // the rain puts the fires out
+	}
+	if (Typology == TEXT("foundry") || Typology == TEXT("armourer"))
+	{
+		return true;  // the furnaces never go cold
+	}
+	if (Typology == TEXT("bakery") || Typology == TEXT("temple_kitchens") || Typology == TEXT("cookshop") || Typology == TEXT("potter"))
+	{
+		return Hour >= 5.f && Hour < 8.f;  // the ovens at dawn
+	}
+	return Hour >= 17.f && Hour < 20.f;  // every other hearth and fire: the evening meal
+}
+
+void ASimAtmosphere::BuildFx()
+{
+	auto Load = [](const TCHAR* Name) -> UStaticMesh*
+	{
+		const FString Pkg = FString::Printf(TEXT("/Game/Art/FX/%s"), Name);
+		return FPackageName::DoesPackageExist(Pkg) ? LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("%s.%s"), *Pkg, Name)) : nullptr;
+	};
+	auto Make = [this](UStaticMesh* Mesh, const TCHAR* Name)
+	{
+		UInstancedStaticMeshComponent* I = NewObject<UInstancedStaticMeshComponent>(this, Name);
+		I->SetupAttachment(RootComponent);
+		I->SetMobility(EComponentMobility::Movable);
+		I->SetStaticMesh(Mesh);
+		I->NumCustomDataFloats = 1;
+		I->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		I->SetCastShadow(false);
+		I->SetBoundsScale(4.f);  // the material moves every card metres from its instance (falls, drifts, rises): never cull early
+		I->RegisterComponent();
+		AddInstanceComponent(I);
+		return I;
+	};
+	UStaticMesh* Rain = Load(TEXT("SM_FX_Rain"));
+	UStaticMesh* Dust = Load(TEXT("SM_FX_Dust"));
+	UStaticMesh* Smoke = Load(TEXT("SM_FX_Smoke"));
+	if (Rain == nullptr || Dust == nullptr || Smoke == nullptr)
+	{
+		UE_LOG(LogSimAtmosphere, Log, TEXT("atmosphere: the weather's cards are not imported — run tools/art/ue_make_fx_materials.py."));
+		return;
+	}
+	// Rain: streaks in a 30 m box that rides with the camera; the material makes them fall.
+	RainIsm = Make(Rain, TEXT("Rain"));
+	for (int32 i = 0; i < RainCount; ++i)
+	{
+		RainIsm->AddInstance(FTransform(FVector((SimHash01(i, 1) - 0.5f) * 3000.f, (SimHash01(i, 2) - 0.5f) * 3000.f, SimHash01(i, 3) * 3000.f)));
+	}
+	// Dust: motes over the ground, blown 30 m across the box by the material.
+	DustIsm = Make(Dust, TEXT("Dust"));
+	for (int32 i = 0; i < DustCount; ++i)
+	{
+		DustIsm->AddInstance(FTransform(FVector(0.f, (SimHash01(i, 4) - 0.5f) * 3000.f, SimHash01(i, 5) * 800.f)));
+	}
+	// Smoke: puffs at every soot source the building grammar wrote (Content/Sim/smoke.csv).
+	SmokeIsm = Make(Smoke, TEXT("Smoke"));
+	TArray<FString> Lines;
+	FFileHelper::LoadFileToStringArray(Lines, *FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Sim/smoke.csv")));
+	for (int32 l = 1; l < Lines.Num(); ++l)
+	{
+		const TArray<FString> F = SimCityData::SplitCsv(Lines[l]);
+		if (F.Num() < 4)
+		{
+			continue;
+		}
+		const FSimCityPlace* Place = SimCityData::Find(FName(*F[0]));
+		SmokeTypology.Add(Place != nullptr ? Place->Typology : FString());
+		SmokeLit.Add(false);
+		const FVector At(FCString::Atof(*F[1]), FCString::Atof(*F[2]), FCString::Atof(*F[3]));
+		for (int32 p = 0; p < PuffsPerSource; ++p)
+		{
+			const int32 I = SmokeIsm->AddInstance(FTransform(FRotator(0.f, 360.f * SimHash01(l, p, 6), 0.f), At, FVector(1.5f + 1.0f * SimHash01(l, p, 7))));
+			SmokeIsm->SetCustomDataValue(I, 0, 0.f, false);
+		}
+	}
+	RainIsm->SetVisibility(false);
+	DustIsm->SetVisibility(false);
+	UE_LOG(LogSimAtmosphere, Log, TEXT("atmosphere: %d rain streaks, %d dust motes, %d smoke sources."), RainCount, DustCount, SmokeTypology.Num());
+}
+
+void ASimAtmosphere::ApplyFx(const FSimAtmosphere& State, float Hour, FVector Camera)
+{
+	if (RainIsm != nullptr)
+	{
+		RainIsm->SetVisibility(State.Rain > 0.01f);
+		RainIsm->SetWorldLocation(Camera + FVector(0.f, 0.f, -500.f));  // streaks from 25 m above the eye fall to 35 m below it
+	}
+	if (DustIsm != nullptr)
+	{
+		DustIsm->SetVisibility(State.Dust > 0.01f);
+		DustIsm->SetWorldLocation(Camera + FVector(-1500.f, 0.f, -200.f));
+	}
+	if (SmokeIsm != nullptr)
+	{
+		bool bDirty = false;
+		for (int32 s = 0; s < SmokeTypology.Num(); ++s)
+		{
+			const bool bOn = SmokeOn(SmokeTypology[s], Hour, State.Rain);
+			if (bOn != SmokeLit[s])
+			{
+				SmokeLit[s] = bOn;
+				for (int32 p = 0; p < PuffsPerSource; ++p)
+				{
+					SmokeIsm->SetCustomDataValue(s * PuffsPerSource + p, 0, bOn ? 1.f : 0.f, false);
+				}
+				bDirty = true;
+			}
+		}
+		if (bDirty)
+		{
+			SmokeIsm->MarkRenderStateDirty();
+		}
+	}
+}
+
 
 FSimAtmosphere ASimAtmosphere::Target(FName WeatherId, int32 Drought, const FString& Season, float Hour, bool bFestival)
 {
@@ -138,6 +271,15 @@ void ASimAtmosphere::Tick(float DeltaSeconds)
 		Ease(Live, T, DeltaSeconds, GameHours > 6.f ? 0.f : GameHours);  // a skipped night is not a drying spell
 	}
 	Apply();
+	FVector Cam = FVector::ZeroVector;
+	if (APlayerController* PC = World->GetFirstPlayerController())
+	{
+		if (PC->PlayerCameraManager != nullptr)
+		{
+			Cam = PC->PlayerCameraManager->GetCameraLocation();
+		}
+	}
+	ApplyFx(Live, Hour, Cam);
 }
 
 void ASimAtmosphere::Apply()
@@ -153,6 +295,7 @@ void ASimAtmosphere::Apply()
 		UKismetMaterialLibrary::SetScalarParameterValue(World, WorldParams, TEXT("Dust"), Live.Dust);
 		UKismetMaterialLibrary::SetScalarParameterValue(World, WorldParams, TEXT("Festival"), Live.bFestival ? 1.f : 0.f);
 		UKismetMaterialLibrary::SetScalarParameterValue(World, WorldParams, TEXT("Shimmer"), Live.Shimmer);
+		UKismetMaterialLibrary::SetScalarParameterValue(World, WorldParams, TEXT("Rain"), Live.Rain);
 	}
 	if (Sky == nullptr)
 	{

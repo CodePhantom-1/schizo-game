@@ -15,6 +15,7 @@ hull [sx, sy, sz] (vault: a C-section arch spanning y, open underneath; gable: r
 nearby vertices (ovens, furnaces, kilns).
 """
 import csv
+import io
 import json
 import math
 import os
@@ -649,16 +650,55 @@ def signature(s):
     return tuple(sorted((p["shape"], p["mat"], p["tag"], tuple(round(v, 1) for v in p["size"])) for p in s["parts"]))
 
 
+SMOKE_CSV = os.path.join(REPO, "unreal", "Content", "Sim", "smoke.csv")
+
+
+def smoke_rows(specs, places):
+    """V-B5: every soot source (ovens, kilns, chimneys, fires) in world cm, plus a roof hearth for every
+    home without one: place_id,x_cm,y_cm,z_cm (UE frame: the spec frame rotated by the yaw, + the centre)."""
+    by_id = {p["id"]: p for p in places}
+    out = []
+    for sp in specs:
+        p = by_id[sp["id"]]
+        cx, cy, yaw = float(p["x_m"]), float(p["y_m"]), math.radians(float(p["yaw_deg"]))
+        c, s = math.cos(yaw), math.sin(yaw)
+        points = [(x, y, z) for x, y, z, _ in sp["soot"]]
+        if not points and sp["typology"].startswith("home_"):
+            sign = 1 if sp["door"]["side"] == "+y" else -1
+            points = [(0.0, -sign * sp["d"] / 4, STOREY_H + 0.2)]  # the hearth's smoke hole, over the back room
+        for x, y, z in points:
+            out.append({"place_id": sp["id"], "x_cm": str(round((cx + c * x - s * y) * 100)),
+                        "y_cm": str(round((cy + s * x + c * y) * 100)), "z_cm": str(round(z * 100))})
+    out.sort(key=lambda r: (r["place_id"], int(r["x_cm"]), int(r["y_cm"]), int(r["z_cm"])))
+    return out
+
+
+def smoke_text(rows):
+    buf = io.StringIO()
+    w = csv.DictWriter(buf, ["place_id", "x_cm", "y_cm", "z_cm"], lineterminator="\n")
+    w.writeheader()
+    w.writerows(rows)
+    return buf.getvalue()
+
+
 def main(argv):
     out = argv[argv.index("--out") + 1] if "--out" in argv else os.path.join(REPO, "art", "generated", "buildings", "specs.json")
     canon = os.path.join(REPO, "db", "canon")
     places = list(csv.DictReader(open(os.path.join(canon, "places.csv"), newline="", encoding="utf-8")))
     types = {t["id"]: t for t in csv.DictReader(open(os.path.join(canon, "building_types.csv"), newline="", encoding="utf-8"))}
     specs = all_specs(places, types)
+    smoke = smoke_text(smoke_rows(specs, places))
+    if "--check-smoke" in argv:  # CI: the tracked smoke.csv matches the grammar
+        have = open(SMOKE_CSV, encoding="utf-8", newline="").read().replace("\r\n", "\n") if os.path.exists(SMOKE_CSV) else ""
+        print("smoke.csv is current" if have == smoke else "smoke.csv is stale: run tools/art/building_grammar.py")
+        sys.exit(0 if have == smoke else 1)
+    with open(SMOKE_CSV, "wb") as f:
+        f.write(smoke.encode("utf-8"))
     os.makedirs(os.path.dirname(out), exist_ok=True)
     with open(out, "w") as f:
         json.dump(specs, f, indent=1, sort_keys=True)
-    print(f"building_grammar: {len(specs)} buildings, {sum(s['tris_est'] for s in specs)} tris est -> {out}")
+    print(f"building_grammar: {len(specs)} buildings, {sum(s['tris_est'] for s in specs)} tris est -> {out}; "
+          f"{smoke.count(chr(10)) - 1} smoke sources -> {os.path.relpath(SMOKE_CSV, REPO)}")
 
 
 if __name__ == "__main__":
