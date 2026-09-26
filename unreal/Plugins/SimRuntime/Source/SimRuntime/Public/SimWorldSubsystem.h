@@ -138,6 +138,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Sim", meta = (WorldContext = "WorldContextObject"))
 	static void SkipSimHoursFor(const UObject* WorldContextObject, float Hours);
 
+	/** New game (A12): the sub-day clock back to StartHour of the current sim day. */
+	static void ResetClockToStartFor(const UObject* WorldContextObject);
+
 	/** GetSimHandle() for the caller's own world. Same rules: never destroy, never cache. */
 	static struct SimWorld* GetSimHandleFor(const UObject* WorldContextObject);
 

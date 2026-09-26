@@ -35,6 +35,12 @@ protected:
 
 	// --- development captures (-SimShots=<dir>, see TickShots) ---
 	void TickShots(float DeltaSeconds);
+	/** A12 boot: 0 = not started, 1 = loading notice up (waiting for smooth frames), 2 = done. */
+	int32 BootStage = 0;
+	int32 SmoothFrames = 0;
+	bool bSettingsApplied = false;
+	void TickBoot(float DeltaSeconds);
+
 	int32 ShotStage = 0;  // 0 = not parsed, -1 = off/finished, 1 = settling, 2 = shooting
 	int32 ShotIndex = 0;
 	float ShotTimer = 0.f;

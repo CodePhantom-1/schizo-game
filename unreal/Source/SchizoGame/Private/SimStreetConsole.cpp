@@ -1,6 +1,7 @@
 // SimStreetConsole.cpp — A5: console commands that need the built street.
 #include "SimStreetBuilder.h"
 #include "SimSaves.h"
+#include "UI/SimShellSubsystem.h"
 
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
@@ -70,6 +71,15 @@ namespace
 			{
 				UE_LOG(LogSimStreetConsole, Display, TEXT("%s — %s — %d %s (day %lld), %.2fh — %s"), *S.Slot, *S.Label,
 					S.DayOfMonth, *S.MonthName, S.Day, S.Hour, *S.SavedAt.ToString());
+			}
+		}));
+
+	FAutoConsoleCommandWithWorldAndArgs CmdNewGame(TEXT("sim.NewGame"), TEXT("sim.NewGame — start a fresh game (as the main menu does)"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>&, UWorld* World)
+		{
+			if (USimShellSubsystem* Shell = USimShellSubsystem::Get(World))
+			{
+				Shell->StartNewGame();
 			}
 		}));
 }

@@ -338,3 +338,14 @@ FString USimWorldSubsystem::GetSimDayObservanceFor(const UObject* WorldContextOb
 {
 	return ReadSimString(HandleIn(WorldOf(WorldContextObject)), &sim_world_day_observance);
 }
+
+void USimWorldSubsystem::ResetClockToStartFor(const UObject* WorldContextObject)
+{
+	const UWorld* World = WorldOf(WorldContextObject);
+	const USimWorldSubsystem* Sim = GetSim(World);
+	USimGameInstanceSubsystem* SimOwner = FindSimOwner(World);
+	if (Sim != nullptr && SimOwner != nullptr)
+	{
+		SimOwner->SetSecondsSinceLastDay(Sim->SecondsPerDay() * FMath::Clamp(Sim->StartHour, 0.f, 23.999f) / 24.0);
+	}
+}

@@ -3,6 +3,7 @@
 // controller), and the sim clock on screen.
 #include "SimGameMode.h"
 #include "UI/SimShellSubsystem.h"
+#include "SimGameUserSettings.h"
 #include "SimWorldSubsystem.h"
 
 // The kernel's C API through SimRuntime's public include path.
@@ -171,6 +172,7 @@ void ASimGameMode::StartPlay()
 			UE_LOG(LogSimGameMode, Warning, TEXT("Pawn spawn at the street start failed — keeping the engine's pawn."));
 		}
 	}
+	TickBoot(0.f);  // A12: the loading notice opens with the city, before any command runs
 }
 
 AActor* ASimGameMode::FindPlayerStart_Implementation(AController* Player, const FString& IncomingName)
@@ -375,10 +377,55 @@ void ASimGameMode::TickShots(float DeltaSeconds)
 	}
 }
 
+void ASimGameMode::TickBoot(float DeltaSeconds)
+{
+	UWorld* World = GetWorld();
+	const bool bWorldReady = World != nullptr && USimWorldSubsystem::GetSimHourFor(World) >= 0.f;
+	// The player's settings go to the sim the moment it exists (day length, needs severity...).
+	if (bWorldReady && !bSettingsApplied)
+	{
+		if (USimGameUserSettings* Settings = USimGameUserSettings::Get())
+		{
+			Settings->ApplySimSettings(World);
+		}
+		bSettingsApplied = true;
+	}
+	if (BootStage == 2)
+	{
+		return;
+	}
+	USimShellSubsystem* Shell = USimShellSubsystem::Get(this);
+	if (Shell == nullptr)
+	{
+		return;
+	}
+	// Unattended runs (smoke tests, screenshot tours) start straight in the world.
+	if (FParse::Param(FCommandLine::Get(), TEXT("SimNoMenu")) || FString(FCommandLine::Get()).Contains(TEXT("SimShots=")))
+	{
+		BootStage = 2;
+		return;
+	}
+	if (BootStage == 0)
+	{
+		Shell->Open(ESimScreen::Loading);  // the first-launch shader compile stalls frames: say so
+		BootStage = 1;
+		return;
+	}
+	// The notice holds until the world exists and 30 frames in a row come in under 100 ms.
+	SmoothFrames = (bWorldReady && DeltaSeconds < 0.1f) ? SmoothFrames + 1 : 0;
+	if (SmoothFrames >= 30)
+	{
+		Shell->Close(ESimScreen::Loading);
+		Shell->Open(ESimScreen::MainMenu);
+		BootStage = 2;
+	}
+}
+
 void ASimGameMode::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	TickShots(DeltaSeconds);
+	TickBoot(DeltaSeconds);
 
 	// The clock on screen: sim day, season and hour, from the kernel via the
 	// C API. The world subsystem drives the clock; the sim itself is owned by

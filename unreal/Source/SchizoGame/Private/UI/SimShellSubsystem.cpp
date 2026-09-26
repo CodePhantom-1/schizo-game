@@ -3,6 +3,11 @@
 
 #include "SchizoGame.h"
 #include "SimGameUserSettings.h"
+#include "SimGameInstanceSubsystem.h"
+#include "SimPlayerController.h"
+#include "SimWorldSubsystem.h"
+#include "GameFramework/GameModeBase.h"
+#include "GameFramework/Pawn.h"
 #include "UI/SimScreens.h"
 #include "UI/SimUiStyle.h"
 
@@ -267,6 +272,37 @@ void USimShellSubsystem::EnsureToastOverlay()
 
 void USimShellSubsystem::StartNewGame()
 {
-	// Part 3 Task 7.
+	ULocalPlayer* LP = GetLocalPlayer();
+	UWorld* World = LP ? LP->GetWorld() : nullptr;
+	USimGameInstanceSubsystem* Owner = USimGameInstanceSubsystem::Get(World);
+	if (Owner == nullptr || !Owner->NewWorld(static_cast<uint64>(FMath::Rand()) + 1))
+	{
+		Toast(NSLOCTEXT("SimUi", "NewGameFailed", "A new game could not start (see the log)."));
+		return;
+	}
+	USimWorldSubsystem::ResetClockToStartFor(World);
+	if (USimGameUserSettings* Settings = USimGameUserSettings::Get())
+	{
+		Settings->ApplySimSettings(World);
+	}
+	// The player back at the start: the gate today; the prisoner barracks with Stage AA6.
+	APlayerController* PC = LP->GetPlayerController(World);
+	if (PC != nullptr && World->GetAuthGameMode() != nullptr)
+	{
+		if (AActor* Start = World->GetAuthGameMode()->FindPlayerStart(PC))
+		{
+			if (APawn* Pawn = PC->GetPawn())
+			{
+				Pawn->TeleportTo(Start->GetActorLocation(), Start->GetActorRotation(), false, true);
+			}
+			PC->SetControlRotation(Start->GetActorRotation());
+		}
+		if (ASimPlayerController* SimPC = Cast<ASimPlayerController>(PC))
+		{
+			SimPC->ResetNeedsClock();
+		}
+	}
+	UE_LOG(LogSchizoGame, Log, TEXT("Shell: new game"));
 	CloseAll();
+	Toast(NSLOCTEXT("SimUi", "NewGame", "You arrive in chains at the City of the Moon."), 5.f);
 }

@@ -7,8 +7,8 @@ set -uo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 UE_ROOT="${UE_ROOT:-$HOME/UnrealEngine}"
 LOG="$(mktemp -t ue_smoke.XXXXXX.log)"
-timeout 600 "$UE_ROOT/Engine/Binaries/Linux/UnrealEditor" "$REPO/unreal/SchizoGame.uproject" -game -nullrhi -unattended \
-	-ExecCmds="sim.Dump, sim.Accept the_outsiders_first_days, sim.Quests active, sim.Talk the captain of the prisoner transport, sim.AdvanceDays 1, sim.AdvanceHours 12, sim.Dump, sim.SaveSlot smoke_a Smoke test, sim.AdvanceDays 3, sim.LoadSlot smoke_a, sim.Dump, quit" -log > "$LOG" 2>&1
+timeout 600 "$UE_ROOT/Engine/Binaries/Linux/UnrealEditor" "$REPO/unreal/SchizoGame.uproject" -game -nullrhi -unattended -SimNoMenu \
+	-ExecCmds="sim.Dump, sim.Accept the_outsiders_first_days, sim.Quests active, sim.Talk the captain of the prisoner transport, sim.AdvanceDays 1, sim.AdvanceHours 12, sim.Dump, sim.SaveSlot smoke_a Smoke test, sim.AdvanceDays 3, sim.LoadSlot smoke_a, sim.Dump, sim.AdvanceDays 5, sim.NewGame, sim.Dump, quit" -log > "$LOG" 2>&1
 RC=$?
 TEXT="$(tr -d '\0' < "$LOG")"
 fail=0
@@ -28,6 +28,17 @@ need 'Loaded slot smoke_a' "and loaded back"
 DUMPS="$(grep -aoE 'sim: day [0-9]+ \([^)]*\) [0-9.]+h' <<<"$TEXT")"
 BEFORE="$(sed -n 2p <<<"$DUMPS")"; AFTER="$(sed -n 3p <<<"$DUMPS")"
 [[ -n "$BEFORE" && "$BEFORE" == "$AFTER" ]] && echo "ok   the load restored the day and hour ($AFTER)" || { echo "BAD  after the load: '$AFTER', saved at: '$BEFORE'"; fail=1; }
+LAST="$(tail -1 <<<"$DUMPS")"
+[[ "$LAST" == "sim: day 1 (1 Rains-Coming, year 1)"* ]] && echo "ok   New Game starts a fresh world on day 1" || { echo "BAD  after New Game: '$LAST'"; fail=1; }
 never 'Fatal error|Assertion failed|Ensure condition failed|=== Handled ensure' "no crash, assert or ensure"
-echo "log: $LOG"
+# A plain boot (no -SimNoMenu) shows the loading notice, then the main menu over the city.
+LOG2="$(mktemp -t ue_smoke_menu.XXXXXX.log)"
+# No quit: it runs until the menu has had time to appear, then the timeout ends it (rc 124).
+timeout 120 "$UE_ROOT/Engine/Binaries/Linux/UnrealEditor" "$REPO/unreal/SchizoGame.uproject" -game -nullrhi -unattended \
+	-log > "$LOG2" 2>&1
+TEXT2="$(tr -d '\0' < "$LOG2")"
+grep -qa 'Shell: open Loading' <<<"$TEXT2" && echo "ok   the loading notice opens on boot" || { echo "MISS the loading notice on boot"; fail=1; }
+grep -qa 'Shell: open MainMenu' <<<"$TEXT2" && echo "ok   then the main menu, over the city" || { echo "MISS the main menu after loading"; fail=1; }
+grep -qaE 'Fatal error|Assertion failed|Ensure condition failed' <<<"$TEXT2" && { echo "BAD  the menu boot logged a crash or ensure"; fail=1; } || echo "ok   the menu boot is clean"
+echo "log: $LOG (menu run: $LOG2)"
 exit $fail

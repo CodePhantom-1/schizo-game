@@ -4,6 +4,7 @@
 #include "SchizoGame.h"
 #include "SimGameInstanceSubsystem.h"
 #include "SimPlayerController.h"
+#include "SimGameUserSettings.h"
 #include "SimWorldSubsystem.h"
 
 #include "Engine/World.h"
@@ -114,6 +115,10 @@ namespace SimSaves
 			return false;  // logged; the current world continues
 		}
 		Owner->SetSecondsSinceLastDay(Game->SecondsSinceLastDay);
+		if (USimGameUserSettings* Settings = USimGameUserSettings::Get())
+		{
+			Settings->ApplySimSettings(Ctx);  // settings are the player's, not the save's (needs severity)
+		}
 		if (APlayerController* PC = PlayerOf(Ctx))
 		{
 			if (APawn* Pawn = PC->GetPawn())
