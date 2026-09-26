@@ -3,6 +3,7 @@
 // grounded in world-bible §5 (City of the Moon ~ Ur: temple of sun and moon,
 // the Great Lighthouse, sea trade) and §2 (the drought).
 #include "SimEnvironment.h"
+#include "Misc/PackageName.h"
 #include "SimCityData.h"
 
 #include "SimMeshKit.h"
@@ -183,6 +184,53 @@ namespace
 		}
 		return Jit(C, J, 0.1f);
 	}
+
+	/** V-B3: the ground kind of the same triangle — TerrainColor's regions in its order (the colour
+	 *  stays TerrainColor's; this only picks M_Terrain's detail cell). */
+	ESimGround GroundKindOf(float X, float Y, float H, float Nz, uint32 Seed)
+	{
+		if (H < -160.f)
+		{
+			return ESimGround::Bed;
+		}
+		if (H < -30.f)
+		{
+			return ESimGround::ReedMud;  // wet mud at the water's edge
+		}
+		if (CityDist(X, Y) < 1.f)
+		{
+			return ESimGround::Street;  // the packed earth of the crescent
+		}
+		if (X > CoastX(Y) - 1800.f)
+		{
+			return ESimGround::Beach;
+		}
+		if (X < GatePos.X && FMath::Abs(Y - GatePos.Y) < 520.f)
+		{
+			return ESimGround::Road;
+		}
+		if (FMath::Abs(Y - RiverY(X)) < 6800.f)
+		{
+			return ESimGround::ReedMud;  // reed banks
+		}
+		if (InFarmland(X, Y))
+		{
+			const int32 Px = FMath::FloorToInt((X + 100000.f) / 6000.f);
+			const int32 Py = FMath::FloorToInt((Y + 100000.f) / 2600.f);
+			const float Crop = SimHash01(Px, Py, 17);
+			return Crop < 0.52f ? ESimGround::Irrigated : (Crop < 0.76f ? ESimGround::Silt : ESimGround::Cracked);
+		}
+		if (H > 12000.f)
+		{
+			return Nz < 0.86f ? ESimGround::Rock : ESimGround::Hills;
+		}
+		if (Nz < 0.86f)
+		{
+			return ESimGround::Gravel;
+		}
+		const float Desert = FMath::Max(Smooth(62000.f, 90000.f, -X), Smooth(44000.f, 60000.f, Y));
+		return Desert > 0.6f ? ESimGround::Dune : (Desert > 0.25f ? ESimGround::Sand : ESimGround::Silt);
+	}
 }
 
 ASimEnvironment::ASimEnvironment()
@@ -243,6 +291,9 @@ void ASimEnvironment::LoadMaterials()
 	GlowMat = Mid(TEXT("/Game/Art/Style/M_Glow.M_Glow"), FLinearColor(1.f, 0.42f, 0.1f), 40.f, TEXT("Intensity"));
 	WindowGlowMat = Mid(TEXT("/Game/Art/Style/M_Glow.M_Glow"), FLinearColor(1.f, 0.55f, 0.22f), 6.f, TEXT("Intensity"));
 	MoonMat = Mid(TEXT("/Game/Art/Style/M_Glow.M_Glow"), FLinearColor(1.f, 0.86f, 0.52f), 2.5f, TEXT("Intensity"));
+	// V-B3: the terrain's detail material (tools/art/ue_make_terrain_material.py); look first, a miss logs.
+	TerrainMat = FPackageName::DoesPackageExist(TEXT("/Game/Art/Terrain/M_Terrain"))
+		? LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Art/Terrain/M_Terrain.M_Terrain")) : nullptr;
 }
 
 ASimEnvironment* ASimEnvironment::BuildWorld(UWorld* World)
@@ -319,6 +370,21 @@ void ASimEnvironment::Build()
 		TEXT("The City of the Moon stands: solid %d tris, foliage %d, far %d, fire %d, lit windows %d, %d blocks, %d night lights (%.2f s)."),
 		SolidK.NumTris(), FoliageK.NumTris(), FarK.NumTris(), FireK.NumTris(), NightK.NumTris(),
 		Blocks->GetInstanceCount(), NightLights.Num(), FPlatformTime::Seconds() - T0);
+}
+
+FLinearColor ASimEnvironment::SampleTerrainColor(float X, float Y, float H, float Nz, uint32 Seed)
+{
+	return TerrainColor(X, Y, H, Nz, Seed);
+}
+
+ESimGround ASimEnvironment::GroundKind(float X, float Y, float H, float Nz, uint32 Seed)
+{
+	return GroundKindOf(X, Y, H, Nz, Seed);
+}
+
+void ASimEnvironment::LoadFrame()
+{
+	LoadCityFrame();
 }
 
 float ASimEnvironment::WaterHeight()
@@ -416,7 +482,10 @@ void ASimEnvironment::BuildTerrain()
 				const FVector Ctr = (A + B + C) / 3.f;
 				const FVector N = FVector::CrossProduct(B - A, C - A).GetSafeNormal();
 				const float Nz = FMath::Abs(N.Z);
-				K.Tri(A, B, C, TerrainColor(Ctr.X, Ctr.Y, Ctr.Z, Nz, (i * 7919u) ^ (j * 104729u) ^ Salt), FVector::UpVector);
+				const uint32 Seed = (i * 7919u) ^ (j * 104729u) ^ Salt;
+				FLinearColor Col = TerrainColor(Ctr.X, Ctr.Y, Ctr.Z, Nz, Seed);
+				Col.A = static_cast<uint8>(GroundKindOf(Ctr.X, Ctr.Y, Ctr.Z, Nz, Seed)) / 15.f;  // M_Terrain's detail cell
+				K.Tri(A, B, C, Col, FVector::UpVector);
 			};
 			if ((i + j) % 2 == 0)
 			{
@@ -431,7 +500,7 @@ void ASimEnvironment::BuildTerrain()
 		}
 	}
 	K.Commit(Terrain, 0, true);
-	Terrain->SetMaterial(0, FlatMat);
+	Terrain->SetMaterial(0, TerrainMat != nullptr ? TerrainMat.Get() : FlatMat.Get());
 	UE_LOG(LogSimEnvironment, Log, TEXT("terrain: %d x %d grid, %d tris"), NX, NY, K.NumTris());
 }
 

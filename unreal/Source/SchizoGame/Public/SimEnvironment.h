@@ -32,6 +32,13 @@ class USpotLightComponent;
 class UMaterialInterface;
 struct FSimMeshKit;
 
+/** What the ground is, per terrain triangle (V-B3): picks M_Terrain's detail cell (T_Ground, same order)
+ *  and rides in the terrain's vertex alpha as Kind / 15. Tommy's colours do not depend on it. */
+enum class ESimGround : uint8
+{
+	Silt, Irrigated, Cracked, Salt, Sand, Gravel, ReedMud, Beach, Road, Street, Bed, Rock, Hills, Dune, Tell, Spare
+};
+
 UCLASS()
 class SCHIZOGAME_API ASimEnvironment : public AActor
 {
@@ -53,6 +60,16 @@ public:
 	/** The lagoon and sea surface height, cm (the scatter floats its lilies on it). */
 	static float WaterHeight();
 
+	/** Tommy's terrain colour of a triangle centred at (X, Y, H) with normal Z Nz (tests pin it). */
+	static FLinearColor SampleTerrainColor(float X, float Y, float H, float Nz, uint32 Seed);
+
+	/** The ground kind of a terrain triangle centred at (X, Y, H), normal Z Nz: the same regions as
+	 *  TerrainColor, finer where the colour has one tone for two grounds. */
+	static ESimGround GroundKind(float X, float Y, float H, float Nz, uint32 Seed);
+
+	/** Reads the crescent's frame and monuments from the canon (Build does it; tests call it first). */
+	static void LoadFrame();
+
 	virtual void Tick(float DeltaSeconds) override;
 
 private:
@@ -70,6 +87,8 @@ private:
 	UPROPERTY() TObjectPtr<USpotLightComponent> Beacon;
 
 	UPROPERTY() TObjectPtr<UMaterialInterface> FlatMat;
+	/** V-B3: Tommy's look x the ground kind's detail (null on a fresh clone: the terrain keeps FlatMat). */
+	UPROPERTY() TObjectPtr<UMaterialInterface> TerrainMat;
 	UPROPERTY() TObjectPtr<UMaterialInterface> WindMat;
 	UPROPERTY() TObjectPtr<UMaterialInterface> WaterMat;
 	UPROPERTY() TObjectPtr<UMaterialInterface> GlowMat;
