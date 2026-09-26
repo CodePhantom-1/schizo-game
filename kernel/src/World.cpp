@@ -80,6 +80,7 @@ void WorldState::init(const std::string& canon_dir, std::uint64_t world_seed) {
     rite_effects = RiteEffectsState{};    // K-1: no ward laid, no omen read
     combat = CombatState{};               // W4-B: nobody hurt yet
     divine = DivineState{};               // W5: the gods hold no grudge yet
+    world_items = WorldItemsState{};      // P0a: nothing lies on the ground yet
 
     WorldContext ctx = context();
     for (const Row& city : db.rows("cities"))

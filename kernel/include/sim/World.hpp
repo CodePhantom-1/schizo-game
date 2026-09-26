@@ -16,6 +16,8 @@
 #include "sim/Combat.hpp"
 // W5: divine wrath (per-offender, per-deity wrath with the gods).
 #include "sim/Divine.hpp"
+// P0a: goods in the world and in containers (FND-04).
+#include "sim/WorldItems.hpp"
 
 namespace sim {
 
@@ -75,6 +77,11 @@ struct WorldState {
     // tick_divine. Saved as the trailing DIVINE_* snapshot sections.
     DivineState divine;
     // --- end W5
+
+    // --- P0a: goods lying in the world and in containers (sim/WorldItems.hpp),
+    // written only by the verbs in sim/ItemActions.hpp. Saved as the
+    // optional trailing WORLD_ITEMS_* / CONTAINERS sections.
+    WorldItemsState world_items;
 
     // Loads canon from canon_dir, seeds markets and people, prepares the calendar.
     void init(const std::string& canon_dir, std::uint64_t world_seed);

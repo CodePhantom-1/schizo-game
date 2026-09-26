@@ -43,6 +43,37 @@ int sim_world_stack_at(const SimWorld* world, const char* actor, int index, char
 // spoil_days;flags" (flags '|'-joined). -2 for an unknown or OPEN item.
 int sim_world_item_def(const SimWorld* world, const char* item, char* out, int cap);
 
+// FND-04: goods in the world and in containers. Stack indexes are the actor's
+// (sim_world_stack_at) or the container's (sim_world_container_stack_at).
+// Witnesses are npc ids ';'-joined (null or "" = nobody saw); taking goods
+// whose rightful owner is someone else flags them stolen and, when witnessed,
+// files a theft. Each verb returns units moved (>= 0) or a refusal code and
+// sets the last reason.
+//
+// Drops up to qty units at a place and a resting position in cm. id_out
+// (optional: null is fine) receives the new world item's id.
+int sim_world_drop(SimWorld* world, const char* actor, int stack_index, int qty, const char* place,
+                   int x_cm, int y_cm, int z_cm, char* id_out, int cap);
+// Picks up to qty units, never past 125% of the actor's carrying capacity.
+int sim_world_pick_up(SimWorld* world, const char* actor, const char* world_item, int qty,
+                      const char* witnesses_semicolon);
+// The world items at a place, in order of creation: count (-1 null), and
+// "id;x_cm;y_cm;z_cm;" followed by the stack record (-2 bad index).
+int sim_world_world_item_count(const SimWorld* world, const char* place);
+int sim_world_world_item_at(const SimWorld* world, const char* place, int index, char* out, int cap);
+// Places a container (id chosen by the caller; "" owner = anyone's; capacity
+// in grams, 0 = unlimited). 0 or a refusal (-1 when the id is taken).
+int sim_world_add_container(SimWorld* world, const char* id, const char* place, const char* kind,
+                            const char* owner, int capacity_g);
+// A container's stacks: count (-2 unknown container) and records (-2 bad index).
+int sim_world_container_stack_count(const SimWorld* world, const char* container);
+int sim_world_container_stack_at(const SimWorld* world, const char* container, int index, char* out,
+                                 int cap);
+// Moves up to qty units of a stack into / out of a container.
+int sim_world_put_in(SimWorld* world, const char* actor, const char* container, int stack_index, int qty);
+int sim_world_take_out(SimWorld* world, const char* actor, const char* container, int stack_index,
+                       int qty, const char* witnesses_semicolon);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

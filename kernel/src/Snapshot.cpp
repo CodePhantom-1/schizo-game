@@ -458,6 +458,26 @@ std::string save_world(const WorldState& w) {
     }
     // --- end W5
 
+    // --- P0a: goods in the world and in containers (optional trailing
+    // sections; a save written before P0a loads with nothing on the ground).
+    {
+        wr.line({"WORLD_ITEMS_NEXT", s64(w.world_items.next_id)});
+        wr.line({"WORLD_ITEMS", s64(static_cast<std::int64_t>(w.world_items.items.size()))});
+        for (const WorldItem& wi : w.world_items.items) {
+            std::vector<std::string> f = {wi.id, wi.place, s64(wi.x_cm), s64(wi.y_cm), s64(wi.z_cm),
+                                          s64(wi.dropped_day), wi.dropped_by};
+            for (std::string& s : stack_fields(wi.stack)) f.push_back(std::move(s));
+            wr.line(f);
+        }
+        wr.line({"CONTAINERS", s64(static_cast<std::int64_t>(w.world_items.containers.size()))});
+        for (const auto& [id, c] : w.world_items.containers) {
+            wr.line({c.id, c.place, c.kind, c.owner, sbool(c.locked), c.key_item, s64(c.capacity_g),
+                     s64(static_cast<std::int64_t>(c.contents.stacks.size()))});
+            for (const ItemStack& s : c.contents.stacks) wr.line(stack_fields(s));
+        }
+    }
+    // --- end P0a
+
     return wr.str();
 }
 
@@ -1024,6 +1044,47 @@ void load_world(WorldState& out, const std::string& canon_dir, const std::string
             w.divine.decay_acc = static_cast<int>(Reader::parse_i64(rd.scalar("DIVINE_DECAY_ACC")));
         }
         // --- end W5
+
+        // --- P0a: goods in the world and in containers (absent before P0a).
+        if (!rd.at_end() && rd.peek_tag() == "WORLD_ITEMS_NEXT") {
+            w.world_items.next_id = Reader::parse_i64(rd.scalar("WORLD_ITEMS_NEXT"));
+            std::size_t n = rd.section("WORLD_ITEMS");
+            for (std::size_t i = 0; i < n; ++i) {
+                std::vector<std::string> f = rd.next();
+                if (f.size() != 15) throw std::runtime_error("snapshot: bad world item row");
+                WorldItem wi;
+                wi.id = f[0];
+                wi.place = f[1];
+                wi.x_cm = static_cast<int>(Reader::parse_i64(f[2]));
+                wi.y_cm = static_cast<int>(Reader::parse_i64(f[3]));
+                wi.z_cm = static_cast<int>(Reader::parse_i64(f[4]));
+                wi.dropped_day = Reader::parse_i64(f[5]);
+                wi.dropped_by = f[6];
+                wi.stack = stack_from(f, 7, "world item");
+                w.world_items.items.push_back(std::move(wi));
+            }
+            n = rd.section("CONTAINERS");
+            for (std::size_t i = 0; i < n; ++i) {
+                std::vector<std::string> f = rd.next();
+                if (f.size() != 8) throw std::runtime_error("snapshot: bad container row");
+                Container c;
+                c.id = f[0];
+                c.place = f[1];
+                c.kind = f[2];
+                c.owner = f[3];
+                c.locked = Reader::parse_bool(f[4]);
+                c.key_item = f[5];
+                c.capacity_g = static_cast<int>(Reader::parse_i64(f[6]));
+                const std::size_t stacks = static_cast<std::size_t>(Reader::parse_u64(f[7]));
+                for (std::size_t j = 0; j < stacks; ++j) {
+                    std::vector<std::string> sf = rd.next();
+                    if (sf.size() != 8) throw std::runtime_error("snapshot: bad container stack row");
+                    add_stack(c.contents, stack_from(sf, 0, "container"));
+                }
+                w.world_items.containers.emplace(c.id, std::move(c));
+            }
+        }
+        // --- end P0a
 
         out = std::move(w);  // atomic: only reached once parsing fully succeeded
     } catch (const std::runtime_error&) {
