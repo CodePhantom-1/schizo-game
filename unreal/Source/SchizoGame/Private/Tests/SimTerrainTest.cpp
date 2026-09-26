@@ -38,6 +38,23 @@ namespace
 
 	// Computed on the unmodified TerrainColor (V-B3 T2 step 0): the refactor must reproduce it exactly.
 	constexpr uint32 PreRefactorColorHash = 4154157424u;
+
+	/** Heights of 500 seeded points on the city and its apron (within 210 m of the crescent's centre). */
+	uint32 ApronHeightHash()
+	{
+		FRandomStream R(4000);
+		uint32 Crc = 0;
+		for (int32 i = 0; i < 500; ++i)
+		{
+			const float A = R.FRandRange(0.f, 2.f * PI), Rad = FMath::Sqrt(R.FRand()) * 21000.f;
+			const int32 H = FMath::RoundToInt(ASimEnvironment::TerrainHeight(24000.f + Rad * FMath::Cos(A), 2000.f + Rad * FMath::Sin(A)) * 100.f);
+			Crc = FCrc::MemCrc32(&H, sizeof(H), Crc);
+		}
+		return Crc;
+	}
+
+	// Computed before the landforms (V-B3 T3 step 0): the city and its apron must not move.
+	constexpr uint32 PreLandformApronHash = 371132571u;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimTerrainGroundKind, "Sim.Terrain.GroundKind",
@@ -55,9 +72,65 @@ bool FSimTerrainGroundKind::RunTest(const FString&)
 	TestTrue(TEXT("the beach by the sea"), Kind(43000.f, 30000.f, 10.f) == ESimGround::Beach);
 	TestTrue(TEXT("the road west of the Moon Gate"), Kind(-3000.f, 500.f, 10.f) == ESimGround::Road);
 	const ESimGround Field = Kind(-40000.f, 5000.f, 20.f);
-	TestTrue(TEXT("a field is farmland"), Field == ESimGround::Irrigated || Field == ESimGround::Silt || Field == ESimGround::Cracked);
+	TestTrue(TEXT("a field is farmland"), Field == ESimGround::Irrigated || Field == ESimGround::Silt || Field == ESimGround::Cracked || Field == ESimGround::Salt);
 	TestTrue(TEXT("the desert south"), Kind(20000.f, 65000.f, 300.f) == ESimGround::Dune);
 	TestTrue(TEXT("the ring street"), Kind(33899.f, 11899.f, 0.f) == ESimGround::Street);
+	return true;
+}
+
+#endif
+
+#if WITH_DEV_AUTOMATION_TESTS
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimTerrainLandforms, "Sim.Terrain.Landforms",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+bool FSimTerrainLandforms::RunTest(const FString&)
+{
+	ASimEnvironment::LoadFrame();
+	const uint32 Apron = ApronHeightHash();
+	AddInfo(FString::Printf(TEXT("apron height hash over 500 samples: %u"), Apron));
+	TestEqual(TEXT("the city and its apron stay flat"), Apron, PreLandformApronHash);
+
+	// The road west from the Moon Gate (6570, 470) stays at road level; the canal crossing is its bridge.
+	int32 HighRoad = 0;
+	for (float X = -90000.f; X < 5500.f; X += 1000.f)
+	{
+		if (FMath::Abs(X + 30000.f) > 1200.f)
+		{
+			HighRoad += ASimEnvironment::TerrainHeight(X, 470.f) > 20.f;
+		}
+	}
+	TestEqual(TEXT("the road west stays at or under 20 cm"), HighRoad, 0);
+
+	// The canals' centrelines stay dug.
+	int32 Shallow = 0;
+	for (float Cy : { -21000.f, -9000.f, 9000.f, 21000.f })
+	{
+		for (float X = -65000.f; X < -5000.f; X += 5000.f)
+		{
+			Shallow += ASimEnvironment::TerrainHeight(X, Cy) > -250.f;
+		}
+	}
+	TestEqual(TEXT("every canal centre stays at or under -250 cm"), Shallow, 0);
+
+	// Five tells, each a mound of its kind, clear of the road and the river.
+	const TArray<FSimTell> Tells = ASimEnvironment::GetTells();
+	TestEqual(TEXT("five tells"), Tells.Num(), 5);
+	for (const FSimTell& T : Tells)
+	{
+		const float Top = ASimEnvironment::TerrainHeight(T.Center.X, T.Center.Y);
+		float Ring = 0.f;
+		for (int32 k = 0; k < 16; ++k)
+		{
+			const FVector2D P = T.Center + FVector2D(1.3f * T.Radius, 0.f).GetRotated(22.5f * k);
+			Ring += ASimEnvironment::TerrainHeight(P.X, P.Y) / 16.f;
+		}
+		const FString Where = FString::Printf(TEXT("tell at (%.0f, %.0f) r %.0f"), T.Center.X, T.Center.Y, T.Radius);
+		TestTrue(Where + TEXT(" stands 8 m over its surroundings"), Top - Ring >= 800.f);
+		TestTrue(Where + TEXT(" is a Tell"), ASimEnvironment::GroundKind(T.Center.X, T.Center.Y, Top, 1.f, 0u) == ESimGround::Tell);
+		TestTrue(Where + TEXT(" is 500 m clear of the road west"), T.Center.X > 6570.f + 50000.f + T.Radius || FMath::Abs(T.Center.Y - 470.f) >= 50000.f + T.Radius);
+		TestTrue(Where + TEXT(" is 500 m clear of the river"), FMath::Abs(T.Center.Y - ASimEnvironment::RiverCentreY(T.Center.X)) >= 50000.f + T.Radius);
+	}
 	return true;
 }
 

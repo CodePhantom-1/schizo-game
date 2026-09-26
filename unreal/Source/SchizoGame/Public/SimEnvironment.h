@@ -39,6 +39,15 @@ enum class ESimGround : uint8
 	Silt, Irrigated, Cracked, Salt, Sand, Gravel, ReedMud, Beach, Road, Street, Bed, Rock, Hills, Dune, Tell, Spare
 };
 
+/** A tell (V-B3): an old settlement mound on the landward horizon, flat-topped. cm. */
+struct FSimTell
+{
+	FVector2D Center;
+	float Radius;
+	float Height;  // above Level
+	float Level;   // the mean ground round its foot, its flat base
+};
+
 UCLASS()
 class SCHIZOGAME_API ASimEnvironment : public AActor
 {
@@ -66,6 +75,12 @@ public:
 	/** The ground kind of a terrain triangle centred at (X, Y, H), normal Z Nz: the same regions as
 	 *  TerrainColor, finer where the colour has one tone for two grounds. */
 	static ESimGround GroundKind(float X, float Y, float H, float Nz, uint32 Seed);
+
+	/** The five tells (seeded; clear of the road, the river, the fields and the sea). */
+	static TArray<FSimTell> GetTells();
+
+	/** The river's centreline Y at X, cm (it runs east to the sea, north of the walls). */
+	static float RiverCentreY(float X);
 
 	/** Reads the crescent's frame and monuments from the canon (Build does it; tests call it first). */
 	static void LoadFrame();

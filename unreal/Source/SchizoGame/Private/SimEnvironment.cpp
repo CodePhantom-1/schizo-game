@@ -83,6 +83,112 @@ namespace
 		return R > LagoonR + 2600.f && R < LagoonR + 4400.f && InCrescentArc(CityAngle(X, Y));
 	}
 
+	/** The open land before any landform or mask: rolling ground, dunes, far hills (Tommy's). */
+	float BaseHeight(float X, float Y)
+	{
+		const float D = CityDist(X, Y);
+		const float N = Perlin(X / 9000.f, Y / 9000.f) * 0.6f + Perlin(X / 3100.f, Y / 3100.f) * 0.3f + Perlin(X / 900.f, Y / 900.f) * 0.1f;
+		float H = 40.f + (N * 0.5f + 0.5f) * FMath::Lerp(60.f, 450.f, Smooth(0.f, 60000.f, D));
+
+		// Dunes: the desert west beyond the fields and south (+Y, D-026) behind the
+		// crescent; a gentler rolling steppe north beyond the river.
+		float Desert = FMath::Max(Smooth(62000.f, 90000.f, -X), Smooth(44000.f, 60000.f, Y));
+		Desert = FMath::Max(Desert, Smooth(40000.f, 70000.f, -Y) * 0.45f);
+		const float Ridge = 1.f - FMath::Abs(Perlin(X / 6500.f + 3.1f, Y / 2600.f - 1.7f));
+		H += Desert * Ridge * Ridge * 1600.f;
+
+		// Far hills on every landward horizon.
+		const float Rad = FVector2D(X - 15000.f, Y - 3000.f).Size();
+		H += Smooth(250000.f, 900000.f, Rad) * (Perlin(X / 60000.f, Y / 60000.f) * 0.5f + 0.5f) * 40000.f
+			* (1.f - Smooth(40000.f, 120000.f, X));
+		return H;
+	}
+
+	// --- V-B3 landforms ---------------------------------------------------------------------------
+	/** Five tells, seeded: 3-4.5 km out on the landward side (south, west, north), 250-600 m across,
+	 *  8-18 m high, each 500 m + its radius clear of the road west, the river, the fields and the sea,
+	 *  and of each other. Cached per city frame (the frame moves the road and the centre). */
+	const TArray<FSimTell>& TellList()
+	{
+		static TArray<FSimTell> Out;
+		static FVector2D ForO(TNumericLimits<float>::Max()), ForGate(TNumericLimits<float>::Max());
+		if (ForO == CityO && ForGate == GatePos)
+		{
+			return Out;
+		}
+		ForO = CityO;
+		ForGate = GatePos;
+		Out.Reset();
+		for (int32 k = 0; Out.Num() < 5 && k < 500; ++k)
+		{
+			const float A = FMath::DegreesToRadians(100.f + 160.f * SimHash01(k, 71));
+			const float Dist = 300000.f + 150000.f * SimHash01(k, 72);
+			const FVector2D C = CityO + FVector2D(FMath::Cos(A), FMath::Sin(A)) * Dist;
+			const float R = 25000.f + 35000.f * SimHash01(k, 73);
+			const float Clear = 50000.f + R;
+			const bool bNearFields = C.X > -70000.f - Clear && C.X < -5000.f + Clear && FMath::Abs(C.Y) < 29000.f + Clear;
+			if ((C.X < GatePos.X + Clear && FMath::Abs(C.Y - GatePos.Y) < Clear) || FMath::Abs(C.Y - RiverY(C.X)) < Clear
+				|| bNearFields || C.X > CoastX(C.Y) - Clear)
+			{
+				continue;
+			}
+			bool bNear = false;
+			for (const FSimTell& T : Out)
+			{
+				bNear |= FVector2D::Distance(T.Center, C) < T.Radius + R + 20000.f;
+			}
+			if (!bNear)
+			{
+				float Level = 0.f;  // the mean ground on the ring round its foot: the tell's plateau
+				for (int32 q = 0; q < 16; ++q)
+				{
+					const FVector2D P = C + FVector2D(1.3f * R, 0.f).GetRotated(22.5f * q);
+					Level += BaseHeight(P.X, P.Y) / 16.f;
+				}
+				Out.Add({ C, R, 800.f + 1000.f * SimHash01(k, 74), Level });
+			}
+		}
+		return Out;
+	}
+
+	/** 1 on a tell's flat top, falling to 0 at its foot (the strongest tell wins); OutTell is that tell. */
+	float TellWeight(float X, float Y, const FSimTell** OutTell = nullptr)
+	{
+		float Best = 0.f;
+		for (const FSimTell& T : TellList())
+		{
+			const float W = 1.f - Smooth(0.6f * T.Radius, T.Radius, FVector2D::Distance(T.Center, FVector2D(X, Y)));
+			if (W > Best)
+			{
+				Best = W;
+				if (OutTell != nullptr)
+				{
+					*OutTell = &T;
+				}
+			}
+		}
+		return Best;
+	}
+
+	/** 1 on the crest of a levee beside the river or a canal, 0 beyond ~45 m (it reads at the 15 m grid). */
+	float LeveeWeight(float X, float Y)
+	{
+		auto Bank = [](float DistFromEdge) { return DistFromEdge > 0.f ? 1.f - Smooth(300.f, 4500.f, DistFromEdge) : 0.f; };
+		float W = Bank(FMath::Abs(Y - RiverY(X)) - 5200.f);  // the river's banks end 52 m out
+		if (X > -68000.f && X < -2500.f)
+		{
+			for (float Cy : CanalYs)
+			{
+				W = FMath::Max(W, Bank(FMath::Abs(Y - Cy) - 520.f));
+			}
+			if (FMath::Abs(Y) < 21500.f)
+			{
+				W = FMath::Max(W, Bank(FMath::Abs(X - CanalX) - 520.f));
+			}
+		}
+		return W;
+	}
+
 	/** Grid coordinates: Fine steps within FineHalf of Center, then growing to Far. */
 	void AxisCoords(float Center, float Fine, float FineHalf, float Far, float Growth, TArray<float>& Out)
 	{
@@ -213,8 +319,16 @@ namespace
 		{
 			return ESimGround::ReedMud;  // reed banks
 		}
+		if (TellWeight(X, Y) > 0.35f)
+		{
+			return ESimGround::Tell;  // V-B3: the mound's top and upper slopes
+		}
 		if (InFarmland(X, Y))
 		{
+			if (Perlin(X / 2500.f + 7.3f, Y / 2500.f - 2.1f) * 0.5f + 0.5f > 0.75f)
+			{
+				return ESimGround::Salt;  // V-B3: salt pans in the fields (the drought spreads them in M_Terrain)
+			}
 			const int32 Px = FMath::FloorToInt((X + 100000.f) / 6000.f);
 			const int32 Py = FMath::FloorToInt((Y + 100000.f) / 2600.f);
 			const float Crop = SimHash01(Px, Py, 17);
@@ -382,6 +496,16 @@ ESimGround ASimEnvironment::GroundKind(float X, float Y, float H, float Nz, uint
 	return GroundKindOf(X, Y, H, Nz, Seed);
 }
 
+TArray<FSimTell> ASimEnvironment::GetTells()
+{
+	return TellList();
+}
+
+float ASimEnvironment::RiverCentreY(float X)
+{
+	return RiverY(X);
+}
+
 void ASimEnvironment::LoadFrame()
 {
 	LoadCityFrame();
@@ -395,20 +519,32 @@ float ASimEnvironment::WaterHeight()
 float ASimEnvironment::TerrainHeight(float X, float Y)
 {
 	const float D = CityDist(X, Y);
-	const float N = Perlin(X / 9000.f, Y / 9000.f) * 0.6f + Perlin(X / 3100.f, Y / 3100.f) * 0.3f + Perlin(X / 900.f, Y / 900.f) * 0.1f;
-	float H = 40.f + (N * 0.5f + 0.5f) * FMath::Lerp(60.f, 450.f, Smooth(0.f, 60000.f, D));
+	float H = BaseHeight(X, Y);
 
-	// Dunes: the desert west beyond the fields and south (+Y, D-026) behind the
-	// crescent; a gentler rolling steppe north beyond the river.
-	float Desert = FMath::Max(Smooth(62000.f, 90000.f, -X), Smooth(44000.f, 60000.f, Y));
-	Desert = FMath::Max(Desert, Smooth(40000.f, 70000.f, -Y) * 0.45f);
-	const float Ridge = 1.f - FMath::Abs(Perlin(X / 6500.f + 3.1f, Y / 2600.f - 1.7f));
-	H += Desert * Ridge * Ridge * 1600.f;
-
-	// Far hills on every landward horizon.
-	const float Rad = FVector2D(X - 15000.f, Y - 3000.f).Size();
-	H += Smooth(250000.f, 900000.f, Rad) * (Perlin(X / 60000.f, Y / 60000.f) * 0.5f + 0.5f) * 40000.f
-		* (1.f - Smooth(40000.f, 120000.f, X));
+	// --- V-B3 landforms: before the apron, lagoon, road, canals, river and sea below, so their masks win.
+	// Levees: a 70 cm bank beside the river and each canal (the date groves stand high and dry).
+	H += 70.f * LeveeWeight(X, Y);
+	// Tells: flat-topped mounds of old settlements on the landward horizon.
+	{
+		const FSimTell* Tell = nullptr;
+		const float W = TellWeight(X, Y, &Tell);
+		if (Tell != nullptr)
+		{
+			H = FMath::Lerp(H, Tell->Level + Tell->Height, W);  // its plateau, then its height
+		}
+	}
+	// Erosion gullies: five shallow (80 cm) meandering runnels down the dunes south.
+	{
+		const float South = Smooth(44000.f, 60000.f, Y);
+		if (South > 0.f)
+		{
+			for (int32 G = 0; G < 5; ++G)
+			{
+				const float Gx = -60000.f + 30000.f * G + 8000.f * SimHash01(G, 81) + 6000.f * Perlin(Y / 9000.f, G * 3.7f);
+				H -= 80.f * South * (1.f - Smooth(600.f, 3000.f, FMath::Abs(X - Gx)));
+			}
+		}
+	}
 
 	// The walled city and a 40 m apron stand on flat ground.
 	H = FMath::Lerp(0.f, H, Smooth(0.f, 4000.f, D));
