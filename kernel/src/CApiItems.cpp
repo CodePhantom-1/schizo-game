@@ -2,6 +2,8 @@
 // containers, timed actions and notices (sim/CApiItems.h).
 #include "sim/CApiItems.h"
 
+#include "sim/ItemActions.hpp"
+
 #include <cstring>
 #include <string>
 
@@ -43,6 +45,27 @@ int sim_world_last_reason(const SimWorld* world, char* out, int cap) {
     return guard([&] {
         if (world == nullptr) return -1;
         return write_req(out, cap, world->last_reason);
+    });
+}
+
+int64_t sim_world_capacity_g(const SimWorld* world, const char* actor) {
+    return guard([&]() -> int64_t {
+        if (world == nullptr || actor == nullptr) return -1;
+        return capacity_g(world->world, Id(actor));
+    });
+}
+
+int64_t sim_world_carried_g(const SimWorld* world, const char* actor) {
+    return guard([&]() -> int64_t {
+        if (world == nullptr || actor == nullptr) return -1;
+        return carried_g(world->world, Id(actor));
+    });
+}
+
+int sim_world_encumbrance(const SimWorld* world, const char* actor) {
+    return guard([&] {
+        if (world == nullptr || actor == nullptr) return -1;
+        return encumbrance(world->world, Id(actor));
     });
 }
 

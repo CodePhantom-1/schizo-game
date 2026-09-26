@@ -24,6 +24,13 @@ typedef struct SimWorld SimWorld;
 // ("" after a success or before any verb). Buffer convention.
 int sim_world_last_reason(const SimWorld* world, char* out, int cap);
 
+// FND-03: carrying. Grams the actor can carry unburdened (30 kg + 3 kg per
+// Strength), grams carried (stacks plus the purse's silver), and the tier:
+// 0 normal (<= 100%), 1 burdened (<= 125%), 2 pinned (> 125%). -1 on null.
+int64_t sim_world_capacity_g(const SimWorld* world, const char* actor);
+int64_t sim_world_carried_g(const SimWorld* world, const char* actor);
+int sim_world_encumbrance(const SimWorld* world, const char* actor);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif
