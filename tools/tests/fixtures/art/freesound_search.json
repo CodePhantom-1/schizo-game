@@ -1,0 +1,13 @@
+{
+ "count": 4,
+ "results": [
+  {"id": 101, "name": "crickets NC", "username": "someone", "license": "http://creativecommons.org/licenses/by-nc/4.0/",
+   "duration": 60.0, "previews": {"preview-hq-ogg": "https://cdn.freesound.org/previews/0/101_1-hq.ogg"}, "url": "https://freesound.org/people/someone/sounds/101/"},
+  {"id": 102, "name": "crickets too long", "username": "longer", "license": "http://creativecommons.org/publicdomain/zero/1.0/",
+   "duration": 900.0, "previews": {"preview-hq-ogg": "https://cdn.freesound.org/previews/0/102_1-hq.ogg"}, "url": "https://freesound.org/people/longer/sounds/102/"},
+  {"id": 103, "name": "night crickets loop", "username": "fieldrec", "license": "https://creativecommons.org/licenses/by/4.0/",
+   "duration": 74.5, "previews": {"preview-hq-ogg": "https://cdn.freesound.org/previews/0/103_1-hq.ogg"}, "url": "https://freesound.org/people/fieldrec/sounds/103/"},
+  {"id": 104, "name": "crickets cc0", "username": "zero", "license": "http://creativecommons.org/publicdomain/zero/1.0/",
+   "duration": 40.0, "previews": {"preview-hq-ogg": "https://cdn.freesound.org/previews/0/104_1-hq.ogg"}, "url": "https://freesound.org/people/zero/sounds/104/"}
+ ]
+}

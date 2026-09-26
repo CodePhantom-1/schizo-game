@@ -48,3 +48,5 @@ unreal/Plugins/*/Intermediate/
 
 # local execution ledgers (docs/superpowers/plans/STAGE-V-ROADMAP.md: copied into the plan's Status when a batch is done)
 .superpowers/
+# Freesound HQ previews (art/sounds.csv; tools/art/sources.py --sounds)
+art/source/sounds/

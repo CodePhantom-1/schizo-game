@@ -1,0 +1,35 @@
+id,source,query_or_url,license,zone,loop,purpose
+city_day_murmur,freesound,crowd murmur village outdoor,CC0-1.0;CC-BY-4.0;CC-BY-3.0,city_day,1,the street by day: voices without words
+city_day_courtyard,freesound,courtyard ambience birds distant voices,CC0-1.0;CC-BY-4.0;CC-BY-3.0,city_day,1,a house courtyard at midday
+city_day_sparrows,freesound,house sparrows chirping,CC0-1.0;CC-BY-4.0;CC-BY-3.0,city_day,1,the sparrows of every roof (fauna.csv sparrow)
+city_night_crickets,freesound,crickets night ambience,CC0-1.0;CC-BY-4.0;CC-BY-3.0,city_night,1,the city asleep
+city_night_dogs,freesound,distant dogs barking night,CC0-1.0;CC-BY-4.0;CC-BY-3.0,city_night,1,dogs answering across the quarters at night
+city_night_wind,freesound,night breeze calm,CC0-1.0;CC-BY-4.0;CC-BY-3.0,city_night,1,the night air between the walls
+market_crowd,freesound,market crowd bargaining,CC0-1.0;CC-BY-4.0;CC-BY-3.0,market,1,the market square and the stalls
+market_pottery,freesound,clay pots handling,CC0-1.0;CC-BY-4.0;CC-BY-3.0,market,1,jars and bowls set down on the stalls
+market_goats,freesound,goats bleating,CC0-1.0;CC-BY-4.0;CC-BY-3.0,market,1,beasts brought to market
+smithy_hammer,freesound,blacksmith hammer anvil,CC0-1.0;CC-BY-4.0;CC-BY-3.0,smithy,1,the smiths' lane and the armourer: the hammer loop
+smithy_bellows,freesound,bellows forge,CC0-1.0;CC-BY-4.0;CC-BY-3.0,smithy,1,the foundry's bellows
+smithy_fire,freesound,forge fire roar,CC0-1.0;CC-BY-4.0;CC-BY-3.0,smithy,1,the furnace under the bellows
+bakery_crackle,freesound,wood fire crackle,CC0-1.0;CC-BY-4.0;CC-BY-3.0,bakery,1,the bread ovens at dawn
+bakery_quern,freesound,grinding stone grain,CC0-1.0;CC-BY-4.0;CC-BY-3.0,bakery,1,grain ground on a saddle quern
+lagoon_lap,freesound,water lapping shore gentle,CC0-1.0;CC-BY-4.0;CC-BY-3.0,lagoon,1,the lagoon of the two waters at its shore
+lagoon_frogs,freesound,frogs croaking night marsh,CC0-1.0;CC-BY-4.0;CC-BY-3.0,lagoon,1,the lagoon at night (fauna.csv frog)
+lagoon_reeds,freesound,wind through reeds,CC0-1.0;CC-BY-4.0;CC-BY-3.0,lagoon,1,the reed beds in the wind
+lagoon_birds,freesound,marsh birds wetland,CC0-1.0;CC-BY-4.0;CC-BY-3.0,lagoon,1,herons and ducks on the water by day
+desert_wind,freesound,desert wind,CC0-1.0;CC-BY-4.0;CC-BY-3.0,desert_wind,1,the open land beyond the fields
+desert_sand,freesound,sand blowing wind gusts,CC0-1.0;CC-BY-4.0;CC-BY-3.0,desert_wind,1,sand hissing over the dunes
+precinct_chant,freesound,male choir chant drone,CC0-1.0;CC-BY-4.0;CC-BY-3.0,precinct,1,a distant chant at the hours of the rites (rites.csv)
+precinct_drum,freesound,frame drum slow,CC0-1.0;CC-BY-4.0;CC-BY-3.0,precinct,1,the temple drum at the rites
+precinct_lyre,freesound,lyre plucked,CC0-1.0;CC-BY-4.0;CC-BY-3.0,precinct,1,the temple's lyre (the lyres of Ur)
+harbour_gulls,freesound,seagulls harbour,CC0-1.0;CC-BY-4.0;CC-BY-3.0,harbour,1,gulls over the harbour
+harbour_rigging,freesound,wooden boat creaking rope,CC0-1.0;CC-BY-4.0;CC-BY-3.0,harbour,1,reed and plank boats at their moorings
+harbour_waves,freesound,sea waves calm shore,CC0-1.0;CC-BY-4.0;CC-BY-3.0,harbour,1,the sea beyond the sea gate
+weather_rain,freesound,rain on roof steady,CC0-1.0;CC-BY-4.0;CC-BY-3.0,rain,1,the rains on the flat roofs (the atmosphere's rain)
+weather_sandstorm,freesound,strong wind storm howling,CC0-1.0;CC-BY-4.0;CC-BY-3.0,sandstorm,1,the sandstorm (the atmosphere's dust)
+cue_dog,freesound,dog bark single,CC0-1.0;CC-BY-4.0;CC-BY-3.0,cue:mastiff_dog;saluki,0,a dog barks (OnAnimalCue)
+cue_donkey,freesound,donkey bray,CC0-1.0;CC-BY-4.0;CC-BY-3.0,cue:donkey;kunga,0,a donkey brays (OnAnimalCue)
+cue_sheep,freesound,sheep bleat,CC0-1.0;CC-BY-4.0;CC-BY-3.0,cue:fat_tailed_sheep,0,a sheep bleats (OnAnimalCue)
+cue_goat,freesound,goat bleat,CC0-1.0;CC-BY-4.0;CC-BY-3.0,cue:goat,0,a goat bleats (OnAnimalCue)
+cue_goose,freesound,goose honk,CC0-1.0;CC-BY-4.0;CC-BY-3.0,cue:goose;duck,0,a goose honks (OnAnimalCue)
+cue_cattle,freesound,cow moo,CC0-1.0;CC-BY-4.0;CC-BY-3.0,cue:zebu_cattle,0,the zebu low (OnAnimalCue)

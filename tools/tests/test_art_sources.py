@@ -74,3 +74,76 @@ class ExpectTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FreesoundTest(unittest.TestCase):
+    """V-B5 T5: the sound adapter (art/sounds.csv), against a saved-style search response."""
+    ROW = {"id": "city_night_crickets", "query_or_url": "crickets night ambience", "license": "CC0-1.0;CC-BY-4.0;CC-BY-3.0",
+           "loop": "1"}
+
+    def test_licences(self):
+        self.assertEqual(sources.freesound_license("http://creativecommons.org/publicdomain/zero/1.0/"), "CC0-1.0")
+        self.assertEqual(sources.freesound_license("https://creativecommons.org/licenses/by/4.0/"), "CC-BY-4.0")
+        self.assertEqual(sources.freesound_license("http://creativecommons.org/licenses/by/3.0/"), "CC-BY-3.0")
+        self.assertEqual(sources.freesound_license("http://creativecommons.org/licenses/by-nc/4.0/"), "")
+        self.assertEqual(sources.freesound_license("http://creativecommons.org/licenses/sampling+/1.0/"), "")
+
+    def test_the_search_asks_for_open_licences_and_a_loop_length(self):
+        url = sources.freesound_search_url(self.ROW, "TOKEN")
+        q = sources.urllib.parse.parse_qs(sources.urllib.parse.urlparse(url).query)
+        self.assertEqual(q["query"], ["crickets night ambience"])
+        self.assertIn('license:("Creative Commons 0" OR "Attribution")', q["filter"][0])
+        self.assertIn("duration:[15.0 TO 300.0]", q["filter"][0])
+        self.assertEqual(q["sort"], ["rating_desc"])
+
+    def test_picks_the_best_open_result_that_fits(self):
+        pick = sources.freesound_pick(json.loads(fixture("freesound_search.json")), self.ROW)
+        self.assertEqual(pick["sound_id"], 103)  # 101 is NC, 102 is too long for a loop
+        self.assertEqual((pick["author"], pick["license"]), ("fieldrec", "CC-BY-4.0"))
+        self.assertTrue(pick["preview"].endswith("-hq.ogg"))
+
+    def test_a_cc0_only_row_skips_attribution(self):
+        pick = sources.freesound_pick(json.loads(fixture("freesound_search.json")), dict(self.ROW, license="CC0-1.0"))
+        self.assertEqual(pick["sound_id"], 104)
+
+    def test_nothing_fits_raises(self):
+        with self.assertRaises(ValueError):
+            sources.freesound_pick(json.loads(fixture("freesound_search.json")), dict(self.ROW, loop="0"))
+
+    def test_no_key_stops_without_fetching(self):
+        old = os.environ.pop("FREESOUND_API_KEY", None)
+        try:
+            self.assertEqual(sources.main_sounds([]), 2)
+        finally:
+            if old is not None:
+                os.environ["FREESOUND_API_KEY"] = old
+
+
+class SoundWishlistTest(unittest.TestCase):
+    ZONES = {"city_day", "city_night", "market", "smithy", "bakery", "lagoon", "desert_wind", "precinct", "harbour",
+             "rain", "sandstorm"}
+
+    def test_the_wishlist(self):
+        import csv  # noqa: PLC0415
+        sys.path.insert(0, os.path.join(HERE, "..", "art"))
+        import license_gate  # noqa: PLC0415
+        with open(sources.SOUNDS, newline="", encoding="utf-8") as f:
+            rows = list(csv.DictReader(f))
+        with open(os.path.join(HERE, "..", "..", "db", "canon", "fauna.csv"), newline="", encoding="utf-8") as f:
+            fauna = {r["id"] for r in csv.DictReader(f)}
+        self.assertGreaterEqual(len(rows), 30)
+        self.assertEqual(len({r["id"] for r in rows}), len(rows))
+        beds = set()
+        for r in rows:
+            with self.subTest(r["id"]):
+                self.assertEqual(r["source"], "freesound")
+                self.assertTrue(set(r["license"].split(";")) <= set(license_gate.ALLOWED))
+                self.assertIn(r["loop"], {"0", "1"})
+                if r["zone"].startswith("cue:"):
+                    self.assertEqual(r["loop"], "0")
+                    self.assertTrue(set(r["zone"][4:].split(";")) <= fauna, r["zone"])
+                else:
+                    self.assertIn(r["zone"], self.ZONES)
+                    self.assertEqual(r["loop"], "1")
+                    beds.add(r["zone"])
+        self.assertEqual(beds, self.ZONES)  # every zone has a bed
