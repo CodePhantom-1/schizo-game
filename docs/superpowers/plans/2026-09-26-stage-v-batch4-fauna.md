@@ -79,3 +79,37 @@ Rows (tags `A` for species per §8, numbers `INVENTED`): `fat_tailed_sheep`, `go
 ### Task 5: records and push
 
 - [ ] `docs/notes-for-tommy.md` (the subsystem, the licence caveat, re-import commands), HANDOFF "Stage V batch 4", `docs/proposals/invented-ledger-fauna.md` (the herd scale, group sizes, hours, the variant edits), `tools/art/README.md` (fauna commands), completion-plan progress. Fresh-context review against the Review Focus → fix pass → push → CI green.
+
+## Status (2026-09-26): all 5 tasks done (on Tommy's Windows box)
+
+| Task | Commits | Verified by |
+|---|---|---|
+| 1 fauna.csv | 7cbe9a6 | `test_art_fauna.py` (§10 guard rails, habitats, hours, herd shares = 1, models), `canon_lint`, stage `--check`, `mechanics_registry --check` |
+| 2 models | 63857cd | `fauna_variants.py` 10/10, `birds_gen.py` 9/9 (`art/review/birds_contact.png`), `ue_import_fauna.py` 19/19 |
+| 3 ASimFauna | c0887e0 | `Sim.Fauna.Herds` (400 head -> 22/12/6; 100 -> 6 sheep), `.HomeGround` (600 steps: on its ground, out of the lagoon), `.Night` (asleep at home at 02:00; jackals 20–05 only), `.MissingModels` (one species skipped; a fresh clone spawns nothing, one line); lineup shot `vb4_12.00_lineup.png` |
+| 4 birds | de4c27b | `Sim.Fauna.Birds` (1.5 x radius over 1,000 ticks; lifts >= 2 m within 1 s; resettles after 20 s; deterministic), `ue_test.sh` 73/73, `ue_smoke.sh` all ok, `vb4_*_lagoon_birds.png` |
+| 5 records | (this) | HANDOFF, notes for Tommy, `invented-ledger-fauna.md`, completion-plan, `tools/art/README.md` "Fauna", roadmap |
+
+The review was done inline against the Review Focus list (each item has a test or a shot), not by a separate fresh-context agent.
+
+**Rulings made during execution** (each: what — why — cost if wrong):
+- T2 survey: goat = a black variant of the Ultimate pack's deer, cat = a small grey fox; the fat-tailed sheep and the pig keep the Farm pack models — no goat or cat exists in the packs, and the farm sheep and pig carry only Idle and Jump clips (the deer walks) — sheep and pigs graze in place and glide when they move.
+- T2: licence LicenseRef-QAL-1.0 although the packs' bundled License.txt still says CC0 — quaternius.com's licence page is QAL v1.0 since 2026-08-28 and governs what is fetched now; `fetch_fauna.py` stops if the page changes — none.
+- T2: `art/fauna_models.csv` has a `size_m` column (body length) — the bases' own sizes are arbitrary (a pig 9.8 m long) — sizes are judgement.
+- T2: coats by material name (dark / main / light / horn), brightness rank for unnamed `Material.00x`; anything feeding Base Color is unlinked first — the deer's materials were all 0.8 grey fed from a mix node (the goat came out white) — none.
+- T2: every material forced opaque — the Farm pack's FBX materials have alpha 0 (the sheep and pig were invisible in game) — none.
+- T2: each animal imports into its own folder and keeps it (skeleton, physics asset, materials, source clips); role clips are duplicated and saved explicitly — deleting the staging folder broke the meshes, and a commandlet does not save duplicates — none.
+- T2: no Blender contact sheet for the skinned animals; the in-game lineup (`-SimFaunaLineup`, view `lineup`) is the review — none.
+- T3: an actor (`ASimFauna`), not a world subsystem — the pattern of `ASimScatter`, testable with a fixed day, herd, hour and player — none.
+- T3: the imported animals face their local +Y: a -90 deg mesh yaw (seen in the lineup shot) — none.
+- T3: culling measures from the camera, not the pawn (the review cameras and a free camera see what is near them); with no player view (a test world) nothing is culled — none.
+- T3: the fauna ticks every frame (the state machine's choices are still discrete) — 5 Hz steps made walking visibly jerky — a small CPU cost.
+- T3: a building's animals stand 2.5 m out of its door (not in its footprint); pens, pastures and the caravan yard hold theirs inside — none.
+- T4: the bird tests and every draw hash the step count, reset by `Populate` — without the reset the same day diverged — none.
+
+**Deferred minors:**
+- The farm sheep and pig have no walk or eat clip (Idle for all roles): retarget the Ultimate pack's quadruped walk onto them, or model a sheep with the full clip set.
+- The fat-tailed widening and the zebu hump are subtle at game distance; stronger shape edits (or a hand-modelled hump) would read better.
+- At night the animals are silhouettes (the moonless first night); batch 5's atmosphere owns the night light.
+- Doves and vultures are small against the sky in the standard views; a closer `sky` shot view would show them.
+- Birds do not avoid walls or roofs while flying (they fly high over the precinct and the tombs, and the roof flocks keep 3–8 m up).

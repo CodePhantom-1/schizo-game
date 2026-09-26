@@ -338,3 +338,16 @@ the street's place/door registries and places everything deterministically;
 missing meshes are skipped silently, so the street never depends on this
 import. `sim.PropsDressing 0` disables the whole pass.
 
+## Fauna (Stage V batch 4): the animals and the birds
+
+```
+python3 tools/art/fetch_fauna.py                                          # 0. the Quaternius bases -> art/source/fauna/ (QAL: private repo only)
+blender -b --factory-startup -P tools/art/fauna_variants.py               # 1. the breeds -> art/generated/fauna/SK_<id>.glb (skeleton + clips)
+blender -b --factory-startup -P tools/art/birds_gen.py -- [--sheet]        # 2. the birds and the carp -> SM_Bird_<id>.glb (+ art/review/birds_contact.png)
+UnrealEditor-Cmd "$PWD/unreal/SchizoGame.uproject" \
+    -run=pythonscript -script="$PWD/tools/art/ue_import_fauna.py"           # 3. /Game/Art/Fauna: SK_<id> + <id>/Anims/{Idle,Walk,Run,Eat,Sleep}, SM_Bird_*, M_Bird
+```
+
+- **What lives where** is `db/canon/fauna.csv` (species, habitats — flora habitats and `@typology` places —, hours, group sizes, herd shares, model; `test_art_fauna.py` holds §10: no chickens, camels or horses in ordinary use).
+- **`ASimFauna`** (built after the scatter) populates each sim day: the herds from the kernel's `herd_head` (one animal per ten head), the rest at their places and streets; each animal a skeletal mesh on an idle/graze/walk/flee/sleep machine round its home; flocks as boids in instanced meshes (`M_Bird` flaps by per-instance `FlapHz`). `Sim.Fauna.*` tests it; `-SimFaunaLineup` with `-SimShotViews=lineup` stands one of each species in the street for review.
+- The farm pack's FBX materials carry alpha 0: `fauna_variants.py` forces every material opaque.

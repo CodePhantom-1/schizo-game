@@ -142,3 +142,11 @@ Both lost pieces rebuilt and merged; 40/40 kernel tests. Divine wrath (`sim/Divi
 - **Invented choices:** `docs/proposals/invented-ledger-terrain.md`. Rulings (the plan's tell distances were beyond the 15 km terrain window; field dykes cannot read on the 15 m grid) and deferred minors: the batch 3 plan's Status section.
 - **Found in passing:** Tommy's `M_Flat` links its snapped "blocky" position to a Noise pin called `Position`, which does not exist (it is `World Position`), so the blocky look was never on; `M_Terrain` matches what renders. Tell Tommy before fixing (it changes every flat surface).
 - **Next:** batch 4 — fauna ([plan](docs/superpowers/plans/2026-09-26-stage-v-batch4-fauna.md)).
+
+## Stage V batch 4 (2026-09-26) — the fauna (done on Tommy's Windows box)
+- **Data:** `db/canon/fauna.csv` (20 species, §10-checked) and `art/fauna_models.csv` (the Quaternius survey: no goat or cat exists, so they are variants of the deer and the fox; the farm sheep and pig have Idle and Jump only).
+- **Pipeline:** `fetch_fauna.py` (QAL checked on quaternius.com) → `fauna_variants.py` (breeds, palette coats, real sizes, clips kept) + `birds_gen.py` → `ue_import_fauna.py` (`/Game/Art/Fauna`, 5 role clips per animal, `M_Bird`). Commands: `tools/art/README.md` "Fauna".
+- **Engine:** `ASimFauna` — herds that follow the kernel's head count, beasts and city animals at their places, jackals by night, flocks as boids that lift from the player; every frame. `Sim.Fauna.Herds/HomeGround/Night/MissingModels/Birds`; `ue_test.sh` 73/73, `ue_smoke.sh` all ok. Review: `art/review/crescent/vb4_*.png` (the lineup, the lagoon birds).
+- **Invented choices:** `docs/proposals/invented-ledger-fauna.md`. Rulings and deferred minors: the batch 4 plan's Status section.
+- **Licence:** the animal models are QAL (no redistribution): keep this repo private, or replace them before it goes public.
+- **Next:** batch 5 — atmosphere and sound ([plan](docs/superpowers/plans/2026-09-26-stage-v-batch5-atmosphere-sound.md)); `ASimFauna::OnAnimalCue` is its hook for barks, lifts and flights.
