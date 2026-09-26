@@ -79,6 +79,12 @@
 
 ---
 
+## Stage V: The world made alive — buildings, materials, terrain, flora, fauna ([world-art-plan.md](world-art-plan.md))
+
+The designer's brief (2026-09-26): every kind of building for every trade and class, rich materials and surface detail instead of plain blocks, real terrain relief and textures, regional flora and fauna of all kinds. The full plan, catalogue and steps V0–V10 are in [world-art-plan.md](world-art-plan.md). V0–V3 run together with Stage AA (the crescent is built in the new style from the start); V4 with C, V5–V7 with Q, V8 with O, V9 with Q7; V10 is continuous. Stage S's art rows (S2 interiors, S5–S9) are carried out through Stage V.
+
+---
+
 ## Stage B: The body (rpg-systems §1.2, §6; game-design §4.1)
 
 | # | Step | Done when |
@@ -394,7 +400,7 @@
 Dependencies decide the order. Inside a stage, steps without shared files run in parallel (one agent per step or per table). Each stage ends with the merge → bug review → fix → push cycle and a **designer play session**.
 
 ```
-A Foundation ──► AA City rebuilt ──► B Body ──► C Trade ──► D Craft ──► E Character
+A Foundation ──► AA City rebuilt (+ V0–V3) ──► B Body ──► C Trade ──► D Craft ──► E Character
                                   │
                                   ├──► F People ──► G Reaction ──► H Justice ──► I Death
                                   │                     │
