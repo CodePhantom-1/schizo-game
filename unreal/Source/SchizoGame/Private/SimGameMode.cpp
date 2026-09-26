@@ -11,6 +11,7 @@
 // The kernel's C API through SimRuntime's public include path.
 #include "SimDayNight.h"  // W6-C: the sun and sky on the sim clock
 #include "SimScatter.h"   // V-B2: the city's plants and clutter
+#include "SimFauna.h"    // V-B4: the animals
 #include "SimNpcDirector.h"  // W6-C: the residents, spawned from kernel schedules
 #include "SimCharacter.h"  // the protagonist's body — replaces the spectator pawn
 #include "SimPlayerController.h"
@@ -132,6 +133,8 @@ void ASimGameMode::StartPlay()
 	// --- the scatter (V-B2): palms, reeds, flowers and clutter from scatter.csv, after the street
 	// (its door slots are what the scatter kept clear) and on the environment's terrain.
 	ASimScatter::BuildScatter(World);
+	// --- the fauna (V-B4): herds by the kernel's head count, beasts at their places, the night's jackals.
+	ASimFauna::BuildFauna(World);
 
 	// The first readable thing: a clay tablet just inside the Moon Gate (notes L198).
 	const FSimCityPlace* GatePlace = SimCityData::Find(TEXT("moon_gate_place"));
@@ -223,6 +226,7 @@ namespace
 		{ TEXT("zig"),      FVector(24000.f, 3000.f, 700.f),      FVector(24000.f, 16000.f, 1500.f), false },
 		{ TEXT("overview"), FVector(-9000.f, -14000.f, 6500.f),   FVector(24000.f, 4000.f, 0.f),    false },
 		{ TEXT("harbor"),   FVector(48000.f, -13000.f, 2400.f),   FVector(41300.f, 4400.f, 500.f),  false },
+		{ TEXT("lineup"),   FVector(12900.f, 10300.f, 260.f),     FVector(14600.f, 10900.f, 80.f),  false },  // -SimFaunaLineup
 	};
 
 }

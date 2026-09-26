@@ -127,17 +127,24 @@ def recolour(model_id, meshes):
             return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
         return 0.5
     ranked = sorted(mats, key=lum)
+    for m in mats:  # opaque: the farm pack's FBX materials carry alpha 0 (the sheep and pig exported invisible)
+        if m.use_nodes and "Principled BSDF" in m.node_tree.nodes:
+            alpha = m.node_tree.nodes["Principled BSDF"].inputs["Alpha"]
+            for link in list(alpha.links):
+                m.node_tree.links.remove(link)
+            alpha.default_value = 1.0
+        if hasattr(m, "surface_render_method"):
+            m.surface_render_method = "DITHERED"
+        m.blend_method = "OPAQUE"
     for m in mats:
         r = role(m.name, ranked.index(m), len(ranked))
         if r is None or not m.use_nodes or "Principled BSDF" not in m.node_tree.nodes:
             continue
         rgb = PALETTE[ramp[r]]
-        m.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (
-            *[flora_gen.srgb_to_linear(c) for c in rgb], 1.0)
-        for n in m.node_tree.nodes:  # colour lives in the material alone
-            if n.type in ("VERTEX_COLOR", "ATTRIBUTE"):
-                for link in list(n.outputs[0].links):
-                    m.node_tree.links.remove(link)
+        base = m.node_tree.nodes["Principled BSDF"].inputs["Base Color"]
+        for link in list(base.links):  # whatever fed the colour (vertex colour, a mix): the ramp replaces it
+            m.node_tree.links.remove(link)
+        base.default_value = (*[flora_gen.srgb_to_linear(c) for c in rgb], 1.0)
     for o in meshes:  # a base's vertex colours would tint the new coat in UE
         for a in list(o.data.color_attributes):
             o.data.color_attributes.remove(a)
