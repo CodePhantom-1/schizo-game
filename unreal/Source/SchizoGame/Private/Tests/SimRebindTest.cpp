@@ -1,0 +1,60 @@
+// SimRebindTest.cpp — part 3 Task 6: a rebound key leaves the action that had it.
+#include "Misc/AutomationTest.h"
+#include "UI/SimRebind.h"
+#include "GameFramework/InputSettings.h"
+
+#if WITH_DEV_AUTOMATION_TESTS
+
+namespace
+{
+	TArray<FKey> KeysOf(FName Action)
+	{
+		TArray<FKey> Keys;
+		for (const FInputActionKeyMapping& M : GetDefault<UInputSettings>()->GetActionMappings())
+		{
+			if (M.ActionName == Action) Keys.Add(M.Key);
+		}
+		return Keys;
+	}
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimRebindMovesKey, "Sim.Input.RebindMovesKey",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FSimRebindMovesKey::RunTest(const FString&)
+{
+	UInputSettings* Input = GetMutableDefault<UInputSettings>();
+	const TArray<FInputActionKeyMapping> SavedActions = Input->GetActionMappings();
+	const TArray<FInputAxisKeyMapping> SavedAxes = Input->GetAxisMappings();
+
+	SimRebind::ResetToDefaults();  // start from the project's keys
+	TestTrue(TEXT("Use is E by default"), KeysOf(TEXT("Use")).Contains(EKeys::E));
+	TestTrue(TEXT("Eat is F by default"), KeysOf(TEXT("Eat")).Contains(EKeys::F));
+
+	TestTrue(TEXT("rebind"), SimRebind::Rebind(TEXT("Use"), false, 1.f, EKeys::E, EKeys::F));
+	TestTrue(TEXT("Use is now F"), KeysOf(TEXT("Use")).Contains(EKeys::F));
+	TestFalse(TEXT("Use lost E"), KeysOf(TEXT("Use")).Contains(EKeys::E));
+	TestFalse(TEXT("Eat lost F (no double binding)"), KeysOf(TEXT("Eat")).Contains(EKeys::F));
+
+	const TArray<SimRebind::FBinding> List = SimRebind::List();
+	TestTrue(TEXT("the list shows Eat as unbound"), List.ContainsByPredicate(
+		[](const SimRebind::FBinding& B) { return B.Name == TEXT("Eat") && !B.Key.IsValid(); }));
+
+	TestTrue(TEXT("axis rebind"), SimRebind::Rebind(TEXT("MoveForward"), true, 1.f, EKeys::W, EKeys::Up));
+	TestTrue(TEXT("forward is Up"), GetDefault<UInputSettings>()->GetAxisMappings().ContainsByPredicate(
+		[](const FInputAxisKeyMapping& M) { return M.AxisName == TEXT("MoveForward") && M.Key == EKeys::Up && M.Scale > 0.f; }));
+
+	SimRebind::ResetToDefaults();
+	TestTrue(TEXT("reset: Use is E"), KeysOf(TEXT("Use")).Contains(EKeys::E));
+	TestTrue(TEXT("reset: Eat is F"), KeysOf(TEXT("Eat")).Contains(EKeys::F));
+
+	// Leave no trace: the player's own bindings back as they were.
+	for (const FInputActionKeyMapping& M : TArray<FInputActionKeyMapping>(Input->GetActionMappings())) Input->RemoveActionMapping(M, false);
+	for (const FInputAxisKeyMapping& M : TArray<FInputAxisKeyMapping>(Input->GetAxisMappings())) Input->RemoveAxisMapping(M, false);
+	for (const FInputActionKeyMapping& M : SavedActions) Input->AddActionMapping(M, false);
+	for (const FInputAxisKeyMapping& M : SavedAxes) Input->AddAxisMapping(M, false);
+	Input->SaveKeyMappings();
+	Input->ForceRebuildKeymaps();
+	return true;
+}
+
+#endif
