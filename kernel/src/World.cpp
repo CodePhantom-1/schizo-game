@@ -3,6 +3,9 @@
 // the same morning and writes only its own.
 #include "sim/World.hpp"
 
+#include <algorithm>
+#include <map>
+
 #include "sim/Actions.hpp"
 #include "sim/Progression.hpp"  // W4-A
 #include "sim/WildActions.hpp"  // W4-C
@@ -81,6 +84,7 @@ void WorldState::init(const std::string& canon_dir, std::uint64_t world_seed) {
     combat = CombatState{};               // W4-B: nobody hurt yet
     divine = DivineState{};               // W5: the gods hold no grudge yet
     world_items = WorldItemsState{};      // P0a: nothing lies on the ground yet
+    notices = NoticeState{};              // P0a: nothing to tell the player yet
 
     WorldContext ctx = context();
     for (const Row& city : db.rows("cities"))
@@ -103,8 +107,47 @@ void WorldState::init(const std::string& canon_dir, std::uint64_t world_seed) {
     wild.skirmish = &combat_skirmish_adapter;
 }
 
+namespace {
+
+// FND-09: what the day's ticks did that the player must hear about, found by
+// comparing the world before and after the day (so no module file changes).
+struct NoticeMarks {
+    int next_raid = 0;
+    std::size_t failed_quests = 0;
+    std::size_t verdicts = 0;
+    std::map<Id, Id> player_crimes;  // open crime id -> law row
+};
+
+NoticeMarks mark(const WorldState& w) {
+    NoticeMarks m;
+    m.next_raid = w.wild.next_raid;
+    m.failed_quests = w.quests.failed_list.size();
+    m.verdicts = w.justice.verdicts.size();
+    for (const Crime& c : w.justice.open_crimes)
+        if (c.criminal == "player") m.player_crimes[c.id] = c.law_row;
+    return m;
+}
+
+void post_notices(WorldState& w, const NoticeMarks& m, DayNumber day) {
+    const int new_raids = w.wild.next_raid - m.next_raid;
+    const std::size_t logged = w.wild.raids.size();
+    const std::size_t from = new_raids <= 0 ? logged
+                             : logged - std::min<std::size_t>(logged, static_cast<std::size_t>(new_raids));
+    for (std::size_t i = from; i < logged; ++i) push_notice(w.notices, day, "notice.raid", w.wild.raids[i].summary);
+    for (std::size_t i = m.failed_quests; i < w.quests.failed_list.size(); ++i)
+        push_notice(w.notices, day, "notice.quest_failed", w.quests.failed_list[i]);
+    for (std::size_t i = m.verdicts; i < w.justice.verdicts.size(); ++i) {
+        const Hearing& h = w.justice.verdicts[i];
+        const auto c = m.player_crimes.find(h.crime_id);
+        if (c != m.player_crimes.end()) push_notice(w.notices, day, "notice.verdict", c->second + ":" + h.verdict);
+    }
+}
+
+}  // namespace
+
 void WorldState::advance_days(int days) {
     for (int i = 0; i < days; ++i) {
+        const NoticeMarks marks = mark(*this);
         const WorldContext ctx = context();
         tick_economy(ctx, economy, 1);
         tick_population(ctx, population, 1);
@@ -127,6 +170,7 @@ void WorldState::advance_days(int days) {
         // W5: the gods' morning — banked favour penalties land on the
         // performer, wrath decays (a curse holds; only atonement lifts it).
         tick_divine(*this);
+        post_notices(*this, marks, day);
         ++day;
     }
 }

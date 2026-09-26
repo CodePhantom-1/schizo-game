@@ -480,6 +480,11 @@ std::string save_world(const WorldState& w) {
         wr.line({"NEEDS_MINUTES", s64(static_cast<std::int64_t>(w.needs.minute_carry.size()))});
         for (const auto& [actor, m] : w.needs.minute_carry) wr.line({actor, s64(m)});
     }
+    {
+        wr.line({"NOTICES_NEXT", s64(w.notices.next_seq)});
+        wr.line({"NOTICES", s64(static_cast<std::int64_t>(w.notices.recent.size()))});
+        for (const Notice& n : w.notices.recent) wr.line({s64(n.seq), s64(n.day), n.key, n.text});
+    }
     // --- end P0a
 
     return wr.str();
@@ -1095,6 +1100,16 @@ void load_world(WorldState& out, const std::string& canon_dir, const std::string
                 std::vector<std::string> f = rd.next();
                 if (f.size() != 2) throw std::runtime_error("snapshot: bad needs-minutes row");
                 w.needs.minute_carry[f[0]] = static_cast<int>(Reader::parse_i64(f[1]));
+            }
+        }
+        // FND-09: the player notice feed (absent before P0a).
+        if (!rd.at_end() && rd.peek_tag() == "NOTICES_NEXT") {
+            w.notices.next_seq = Reader::parse_i64(rd.scalar("NOTICES_NEXT"));
+            const std::size_t n = rd.section("NOTICES");
+            for (std::size_t i = 0; i < n; ++i) {
+                std::vector<std::string> f = rd.next();
+                if (f.size() != 4) throw std::runtime_error("snapshot: bad notice row");
+                w.notices.recent.push_back(Notice{Reader::parse_i64(f[0]), Reader::parse_i64(f[1]), f[2], f[3]});
             }
         }
         // --- end P0a

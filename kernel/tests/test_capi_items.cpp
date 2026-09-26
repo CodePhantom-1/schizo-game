@@ -1,4 +1,4 @@
-// test_capi_items.cpp — the CApiItems surface. MECH:FND-05 MECH:FND-03 MECH:INV-03 MECH:INV-04 MECH:WLD-01 MECH:WLD-03 MECH:WLD-05 MECH:FND-06
+// test_capi_items.cpp — the CApiItems surface. MECH:FND-05 MECH:FND-03 MECH:INV-03 MECH:INV-04 MECH:WLD-01 MECH:WLD-03 MECH:WLD-05 MECH:FND-06 MECH:FND-09
 #include "sim/CApi.h"
 #include "sim/Test.hpp"
 
@@ -138,6 +138,26 @@ static bool test_minutes_carry_through_a_save() {
     return true;
 }
 
-SIM_MAIN(test_minutes_carry_through_a_save, test_last_reason_starts_empty_and_null_is_minus_one, test_carrying_through_c,
+static bool test_notices_through_c() {
+    SimWorld* w = sim_world_create("../db/canon", 21);
+    char buf[512];
+    SIM_CHECK_EQ(sim_world_notice_count(w), 0);
+    SIM_CHECK_EQ(sim_world_notice_at(w, 0, buf, sizeof buf), -2);
+    sim_world_set_drought(w, 4);
+    sim_world_set_war(w, 3);
+    sim_world_advance_days(w, 120);
+    const int64_t n = sim_world_notice_count(w);
+    SIM_CHECK(n > 0);
+    SIM_CHECK(sim_world_notice_at(w, n - 1, buf, sizeof buf) > 0);
+    SIM_CHECK(std::string(buf).find(";notice.") != std::string::npos);  // "day;key;text"
+    SIM_CHECK_EQ(sim_world_notice_at(w, n, buf, sizeof buf), -2);
+    SIM_CHECK_EQ(sim_world_notice_at(w, -1, buf, sizeof buf), -2);
+    SIM_CHECK_EQ(sim_world_notice_count(nullptr), -1);
+    SIM_CHECK_EQ(sim_world_notice_at(w, 0, nullptr, 0), -1);
+    sim_world_destroy(w);
+    return true;
+}
+
+SIM_MAIN(test_notices_through_c, test_minutes_carry_through_a_save, test_last_reason_starts_empty_and_null_is_minus_one, test_carrying_through_c,
          test_stacks_and_defs_read_back, test_world_items_and_containers_through_c,
          test_bound_drop_reports_its_reason)

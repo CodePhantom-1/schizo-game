@@ -232,4 +232,20 @@ void sim_world_advance_minutes(SimWorld* world, const char* actor, int minutes, 
     }
 }
 
+int64_t sim_world_notice_count(const SimWorld* world) {
+    return guard([&]() -> int64_t {
+        if (world == nullptr) return -1;
+        return world->world.notices.next_seq;
+    });
+}
+
+int sim_world_notice_at(const SimWorld* world, int64_t seq, char* out, int cap) {
+    return guard([&] {
+        if (world == nullptr || out == nullptr || cap <= 0) return -1;
+        const Notice* n = notice_at(world->world.notices, seq);
+        if (n == nullptr) return -2;
+        return write_req(out, cap, std::to_string(n->day) + ';' + n->key + ';' + n->text);
+    });
+}
+
 }  // extern "C"

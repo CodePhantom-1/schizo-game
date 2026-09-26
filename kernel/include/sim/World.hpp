@@ -18,6 +18,8 @@
 #include "sim/Divine.hpp"
 // P0a: goods in the world and in containers (FND-04).
 #include "sim/WorldItems.hpp"
+// P0a: the player notice feed (FND-09).
+#include "sim/Notices.hpp"
 
 namespace sim {
 
@@ -82,6 +84,9 @@ struct WorldState {
     // written only by the verbs in sim/ItemActions.hpp. Saved as the
     // optional trailing WORLD_ITEMS_* / CONTAINERS sections.
     WorldItemsState world_items;
+    // FND-09: the player notice feed, written by advance_days from what the
+    // day's ticks did to the player's world. Saved as the optional NOTICES section.
+    NoticeState notices;
 
     // Loads canon from canon_dir, seeds markets and people, prepares the calendar.
     void init(const std::string& canon_dir, std::uint64_t world_seed);

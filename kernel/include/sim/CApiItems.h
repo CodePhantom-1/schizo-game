@@ -80,6 +80,14 @@ int sim_world_take_out(SimWorld* world, const char* actor, const char* container
 // minutes <= 0 or a null argument does nothing.
 void sim_world_advance_minutes(SimWorld* world, const char* actor, int minutes, int sleeping);
 
+// FND-09: the player notice feed. count is the sequence number the next
+// notice will get (so the engine reads every seq from its last seen up to
+// count-1); -1 on null. at writes "day;key;text" (key is a string-table key:
+// notice.raid | notice.quest_failed | notice.verdict); -2 when that seq was
+// never written or was evicted (only the newest 256 are kept).
+int64_t sim_world_notice_count(const SimWorld* world);
+int sim_world_notice_at(const SimWorld* world, int64_t seq, char* out, int cap);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif
