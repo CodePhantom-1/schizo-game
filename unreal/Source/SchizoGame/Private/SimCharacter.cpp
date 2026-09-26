@@ -51,6 +51,8 @@ ASimCharacter::ASimCharacter()
 	Boom->bUsePawnControlRotation = true;
 	Boom->bEnableCameraLag = true;
 	Boom->CameraLagSpeed = 12.f;
+	Boom->bDoCollisionTest = true;  // the camera never ends up inside a wall (A15)
+	Boom->ProbeSize = 12.f;
 
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(Boom, USpringArmComponent::SocketName);
@@ -189,6 +191,33 @@ void ASimCharacter::Tick(float DeltaSeconds)
 	// Single-clip locomotion for the imported body (the cylinder body has
 	// no clips and skips this inside UpdateBodyAnimation).
 	UpdateBodyAnimation(GetVelocity().SizeSquared2D() > FMath::Square(kMovingSpeedCm));
+	UpdateCamera(DeltaSeconds);
+}
+
+FSimCameraRig ASimCharacter::ComputeCameraRig(bool bAiming, bool bIndoors, bool bRightShoulder)
+{
+	FSimCameraRig Rig;
+	Rig.ArmLength = bAiming ? 140.f : (bIndoors ? 180.f : 340.f);
+	const float Side = bAiming ? 60.f : 45.f;
+	Rig.SocketOffset = FVector(0.f, bRightShoulder ? Side : -Side, bIndoors ? 60.f : 80.f);
+	return Rig;
+}
+
+void ASimCharacter::UpdateCamera(float DeltaSeconds)
+{
+	if (Boom == nullptr || !IsLocallyControlled())
+	{
+		return;
+	}
+	// Under a roof (a doorway, a room): anything solid within 4 m straight above the head.
+	FHitResult Hit;
+	const FVector Head = GetActorLocation() + FVector(0.f, 0.f, 60.f);
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(SimCameraRoof), false, this);
+	const bool bIndoors = GetWorld() != nullptr &&
+		GetWorld()->LineTraceSingleByChannel(Hit, Head, Head + FVector(0.f, 0.f, 400.f), ECC_Visibility, Params);
+	const FSimCameraRig Rig = ComputeCameraRig(bAiming, bIndoors, bRightShoulder);
+	Boom->TargetArmLength = FMath::FInterpTo(Boom->TargetArmLength, Rig.ArmLength, DeltaSeconds, 8.f);
+	Boom->SocketOffset = FMath::VInterpTo(Boom->SocketOffset, Rig.SocketOffset, DeltaSeconds, 8.f);
 }
 
 void ASimCharacter::UpdateBodyAnimation(const bool bMoving)
@@ -238,6 +267,9 @@ void ASimCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 	PlayerInputComponent->BindAction(TEXT("Jump"), IE_Released, this, &ACharacter::StopJumping);
 	PlayerInputComponent->BindAction(TEXT("Sprint"), IE_Pressed, this, &ASimCharacter::OnSprintStart);
 	PlayerInputComponent->BindAction(TEXT("Sprint"), IE_Released, this, &ASimCharacter::OnSprintEnd);
+	PlayerInputComponent->BindAction(TEXT("Aim"), IE_Pressed, this, &ASimCharacter::OnAimStart);
+	PlayerInputComponent->BindAction(TEXT("Aim"), IE_Released, this, &ASimCharacter::OnAimEnd);
+	PlayerInputComponent->BindAction(TEXT("ShoulderSwap"), IE_Pressed, this, &ASimCharacter::OnShoulderSwap);
 }
 
 void ASimCharacter::OnMoveForward(const float AxisValue)

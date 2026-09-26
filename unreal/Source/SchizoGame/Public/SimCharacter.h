@@ -16,6 +16,13 @@ class USpringArmComponent;
 class UStaticMeshComponent;
 class UAnimationAsset;
 
+/** Where the third-person camera wants to be (A15): arm length and shoulder offset. */
+struct FSimCameraRig
+{
+	float ArmLength = 340.f;
+	FVector SocketOffset = FVector(0.f, 45.f, 80.f);
+};
+
 UCLASS()
 class SCHIZOGAME_API ASimCharacter : public ACharacter
 {
@@ -27,6 +34,14 @@ public:
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
 	virtual void Tick(float DeltaSeconds) override;
+
+	/** The camera rig for a situation: outdoors 340 cm, under a roof 180, aiming 140 (aiming wins);
+	 *  shoulder offset ±45 (±60 aiming), head height 80 (60 indoors). */
+	static FSimCameraRig ComputeCameraRig(bool bAiming, bool bIndoors, bool bRightShoulder);
+
+	void OnAimStart() { bAiming = true; }
+	void OnAimEnd() { bAiming = false; }
+	void OnShoulderSwap() { bRightShoulder = !bRightShoulder; }
 
 protected:
 	virtual void BeginPlay() override;
@@ -73,6 +88,12 @@ private:
 
 	/** True once the rigged traveller took over from the programmer art. */
 	bool bSkeletalBody = false;
+
+	/** Camera state (A15). */
+	bool bAiming = false;
+	bool bRightShoulder = true;
+	/** Eases the boom toward the rig each tick; a roof overhead shortens it. */
+	void UpdateCamera(float DeltaSeconds);
 
 	/** Try to replace the cylinder + sphere with the imported traveller
 	    (skeletal preferred, static mesh second, programmer art stays if
