@@ -34,6 +34,14 @@ void ASimPlayerController::OnQuickSave()
 	SimSaves::Save(this, SimSaves::QuickSlot, TEXT("Quicksave"));
 }
 
+void ASimPlayerController::OnJournal()
+{
+	if (USimShellSubsystem* Shell = USimShellSubsystem::Get(this))
+	{
+		Shell->Open(ESimScreen::Journal);  // the journal closes itself on J/Esc (its frame)
+	}
+}
+
 void ASimPlayerController::OnPausePressed()
 {
 	if (USimShellSubsystem* Shell = USimShellSubsystem::Get(this))
@@ -61,6 +69,7 @@ void ASimPlayerController::SetupInputComponent()
 		InputComponent->BindAction("Inventory", IE_Pressed, this, &ASimPlayerController::OnInventoryPressed);
 		InputComponent->BindAction("Inventory", IE_Released, this, &ASimPlayerController::OnInventoryReleased);
 		InputComponent->BindAction("QuickSave", IE_Pressed, this, &ASimPlayerController::OnQuickSave);
+		InputComponent->BindAction("Journal", IE_Pressed, this, &ASimPlayerController::OnJournal);
 		InputComponent->BindAction("Pause", IE_Pressed, this, &ASimPlayerController::OnPausePressed).bExecuteWhenPaused = true;
 		InputComponent->BindAction("QuickLoad", IE_Pressed, this, &ASimPlayerController::OnQuickLoad);
 	}

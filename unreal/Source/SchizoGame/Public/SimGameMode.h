@@ -42,6 +42,8 @@ protected:
 	FString ShotDir;
 	TArray<float> ShotHours;
 	TArray<int32> ShotViews;
+	/** -SimShotScreens=MainMenu,Pause,… : screens captured after the views (UI tour). */
+	TArray<FString> ShotScreens;
 	UPROPERTY()
 	class ACameraActor* ShotCamera = nullptr;
 };

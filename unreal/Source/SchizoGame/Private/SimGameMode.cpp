@@ -2,6 +2,7 @@
 // residents and the sun (W6-C), the verbs and HUD (W6-A, via the player
 // controller), and the sim clock on screen.
 #include "SimGameMode.h"
+#include "UI/SimShellSubsystem.h"
 #include "SimWorldSubsystem.h"
 
 // The kernel's C API through SimRuntime's public include path.
@@ -237,6 +238,12 @@ void ASimGameMode::TickShots(float DeltaSeconds)
 				ShotViews.Add(i);
 			}
 		}
+		FString ScreensArg;
+		if (FParse::Value(FCommandLine::Get(), TEXT("SimShotScreens="), ScreensArg, false))
+		{
+			ScreensArg.ParseIntoArray(ShotScreens, TEXT(","), true);
+			SetTickableWhenPaused(true);  // the screens pause the world; the tour must go on
+		}
 		ShotStage = 1;
 		ShotTimer = 0.f;
 		return;
@@ -276,7 +283,53 @@ void ASimGameMode::TickShots(float DeltaSeconds)
 		bShotPrepared = false;
 		return;
 	}
-	const int32 Total = ShotHours.Num() * ShotViews.Num();
+	const int32 ViewShots = ShotHours.Num() * ShotViews.Num();
+	const int32 Total = ViewShots + ShotScreens.Num();
+	if (ShotIndex >= ViewShots && ShotIndex < Total)
+	{
+		USimShellSubsystem* Shell = USimShellSubsystem::Get(this);
+		const FString& Name = ShotScreens[ShotIndex - ViewShots];
+		if (!bShotPrepared)
+		{
+			PC->SetViewTarget(PC->GetPawn());
+			if (Shell != nullptr)
+			{
+				Shell->CloseAll();
+				for (ESimScreen S : {ESimScreen::MainMenu, ESimScreen::Pause, ESimScreen::SaveLoad, ESimScreen::Settings,
+					ESimScreen::Journal, ESimScreen::Tablet, ESimScreen::Loading})
+				{
+					if (Name == USimShellSubsystem::ScreenName(S))
+					{
+						if (S == ESimScreen::Tablet)
+						{
+							Shell->ShowTablet(NSLOCTEXT("SimShots", "TabletTitle", "A tablet"), NSLOCTEXT("SimShots", "TabletBody", "Wedges in clay: a sample text for the reader."));
+						}
+						else
+						{
+							Shell->Open(S);
+						}
+					}
+				}
+			}
+			bShotPrepared = true;
+			ShotTimer = 0.f;
+			return;
+		}
+		if (ShotTimer >= 1.5f)
+		{
+			const FString File = FPaths::Combine(ShotDir, FString::Printf(TEXT("screen_%s.png"), *Name));
+			FScreenshotRequest::RequestScreenshot(File, true, false);
+			UE_LOG(LogSimGameMode, Log, TEXT("SimShots: %s"), *File);
+			++ShotIndex;
+			bShotPrepared = false;
+			ShotTimer = -0.5f;
+			if (ShotIndex == Total && Shell != nullptr)
+			{
+				Shell->CloseAll();
+			}
+		}
+		return;
+	}
 	if (ShotIndex >= Total)
 	{
 		if (ShotTimer > 1.5f)

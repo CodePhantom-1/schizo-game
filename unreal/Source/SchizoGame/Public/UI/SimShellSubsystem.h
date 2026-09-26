@@ -27,6 +27,8 @@ public:
 	/** Closes S if it is on top. */
 	void Close(ESimScreen Screen);
 	void CloseAll();
+	/** Rebuilds the top screen (after its data changed: a save written, a slot deleted). */
+	void Refresh() { ShowTop(); }
 	bool IsOpen(ESimScreen Screen) const { return Stack.Contains(Screen); }
 	bool IsAnyOpen() const { return !Stack.IsEmpty(); }
 	/** The Esc key while playing: opens the pause menu, or closes the top screen. */

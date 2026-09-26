@@ -10,3 +10,8 @@
 class USimShellSubsystem;
 
 TSharedRef<SWidget> MakeScreen(ESimScreen Screen, USimShellSubsystem& Shell);
+
+/** The Settings screen (SimScreenSettings.cpp). */
+TSharedRef<SWidget> MakeSettingsScreen(USimShellSubsystem& Shell);
+/** The Controls tab's list of actions and keys (SimRebind.cpp). */
+TSharedRef<SWidget> MakeRebindList();

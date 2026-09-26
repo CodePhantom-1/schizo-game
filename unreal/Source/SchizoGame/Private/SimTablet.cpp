@@ -1,5 +1,6 @@
 // SimTablet.cpp — reading is a skill, not a given (rpg-systems §2.5).
 #include "SimTablet.h"
+#include "UI/SimShellSubsystem.h"
 
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
@@ -46,18 +47,24 @@ bool ASimTablet::PlayerReads()
 
 void ASimTablet::Interact()
 {
+	USimShellSubsystem* Shell = USimShellSubsystem::Get(this);
 	if (PlayerReads())
 	{
-		// Readable: the canon line itself.
-		GEngine->AddOnScreenDebugMessage(2, 8.f, FColor::White,
-			FString::Printf(TEXT("The tablet reads: %s"), *CanonText));
+		// Readable: the canon line itself, in the tablet reader (A8).
 		UE_LOG(LogSimTablet, Log, TEXT("Read: %s"), *CanonText);
+		if (Shell != nullptr)
+		{
+			Shell->ShowTablet(NSLOCTEXT("SimUi", "TabletTitle", "A clay tablet"), FText::FromString(CanonText));
+		}
 	}
 	else
 	{
 		// Unreadable: the real script, beautiful and alien (game-design §8).
-		GEngine->AddOnScreenDebugMessage(2, 8.f, FColor::Silver,
-			TEXT("Wedges in clay — a script you cannot yet read."));
 		UE_LOG(LogSimTablet, Log, TEXT("Unreadable: %s"), *CanonText);
+		if (Shell != nullptr)
+		{
+			Shell->ShowTablet(NSLOCTEXT("SimUi", "TabletTitle", "A clay tablet"),
+				NSLOCTEXT("SimUi", "Unreadable", "Wedges in clay — a script you cannot yet read."));
+		}
 	}
 }
