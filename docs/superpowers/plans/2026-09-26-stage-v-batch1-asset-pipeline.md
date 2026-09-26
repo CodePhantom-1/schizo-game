@@ -148,3 +148,35 @@ UE is left-handed: with +X east and +Y north the player sees the mirror of the m
 Then: fresh-reviewer bug review of the whole batch → fix pass → push → CI green.
 
 **Next batches (not this plan):** B2 flora/fauna/props from Kenney/KayKit/Quaternius + stylize meshes + HISM scatter CSV; B3 terrain splat/relief from numpy + Poly Haven ground sets; B4 sound (Freesound CC0/BY + Sonniss) and the heritage reference board (Met/Cleveland); B5 local 2D AI (sd.cpp `--circular`) for decals.
+
+---
+
+## Status (2026-09-26): all 8 tasks done and pushed
+
+| Task | Commits | Verified by |
+|---|---|---|
+| 1 compass | 11b37ed..ad8d2af | `ue_test.sh` 64/64, smoke |
+| 2 manifest + licence gate | ..67c8e28 | `test_art_*`, `license_gate.py` in CI |
+| 3 fetchers | ..e0cb73b | 20 sources fetched, manifested |
+| 4 palette + atlas | ..a0c2951 | `art/review/trim_atlas.png` |
+| 5 door_side + grammar | ..8d32b72 | `test_art_building_grammar.py` 13/13 (in CI) |
+| 6 mesher + gate | ..41b06dd | `check_buildings.py` 94/94, `art/review/buildings_contact.png` |
+| 7 UE import + street | ..d75428c | `Sim.StreetBuildings`, `ue_test.sh` 65/65, `ue_smoke.sh` all ok, in-game shots `art/review/crescent/vb1_*.png` (iGPU) |
+| 8 records | bc31aef.. | HANDOFF, notes for Tommy, `docs/proposals/invented-ledger-buildings.md` |
+
+**Rulings made during execution** (each: what — why — cost if wrong):
+- T3: the fetch CLI lives in `sources.py` (no `fetch_assets.py`) — one file per job — a rename.
+- T5: the plot test's bounds were too loose for yawed parts and domes; fixed the test, not the grammar — a marker may spill < 0.3 m more.
+- T5: test renamed `test_art_building_grammar.py` so CI runs it — none.
+- T6: reed halls are a C-section vault with a door-wide gap, tents a propped eave, the archive's sealed-door panel dropped, reed platforms 0.4 m — every door slot opens into a walkable room like the kit's (UE MaxStepHeight 0.45 m) — the reed halls look split at the door.
+- T6: manifold is proven per part in `building_mesh.py`, not on the GLB (parts overlap by design) — none found.
+- T6: vertex RGB stored at half (M_Building x2) so tints > 1 survive 8-bit colour; the hand-band grime was dropped (coarse boxes have no vertices in the band; `ponytail:` note in `grime()`).
+- T6: the contact sheet renders with Cycles CPU (Workbench cannot multiply the atlas by vertex colour) — ~1 min.
+- T7: `M_Building`'s component masks set on every channel (UE's defaults gave a float4 and the material fell back to default grey; only a real-RHI run shows this) — none now.
+
+**Deferred minors:**
+- `SimPropsBuilder`'s doorstep props (0.85 m beside each door) can overlap the grammar's trade markers — resolve in batch 2's scatter (it owns placement).
+- The reed hall's doorway gap splits its vault visually; a short entrance porch vault would read better.
+- On the Linux iGPU the street faces in shade render near-black (Tommy's palms too) — check sky light on the RTX with Lumen before tuning.
+
+**Machine note:** any rendering UE run on the designer's Linux box must use the iGPU (`VK_DRIVER_FILES=/usr/share/vulkan/icd.d/intel_icd.json`); the RX 5700 XT wedges the kernel driver and crashed the machine on 2026-09-26.
